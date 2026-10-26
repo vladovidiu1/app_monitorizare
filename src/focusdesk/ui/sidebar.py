@@ -8,19 +8,15 @@ from typing import TYPE_CHECKING
 
 from ..domain.models import CLOSED_STATUSES, Kind, Node
 from .common import KIND_GLYPH, STATUS_GLYPH, muted_color
-from .design import icon, button
+from .design import C, icon, button
 from .status_visuals import node_icon, node_label
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
 
 SMART_VIEWS = [
-    ("today", "Astăzi"),
-    ("inbox", "Inbox"),
-    ("waiting", "În așteptare"),
-    ("overdue", "Restante"),
-    ("calendar", "Calendar"),
-    ("archive", "Arhivă"),
+    ("today", "Astăzi"), ("tasks", "Proiecte și taskuri"),
+    ("calendar", "Calendar"), ("activity", "Activitate"),
 ]
 
 
@@ -35,19 +31,33 @@ class Sidebar(ttk.Frame):
         super().__init__(parent, style="Sidebar.TFrame")
         self.app = app
         self._suppress = False
-        button(self, "Timp lucrat", app.open_dashboard, glyph="chart").pack(fill="x", padx=10, pady=(12, 0))
-        ttk.Label(self, text="WORKSPACE", style="Sidebar.TLabel").pack(anchor="w", padx=14, pady=(14, 4))
+
+        ttk.Label(self, text="NAVIGARE", style="Sidebar.TLabel").pack(anchor="w", padx=14, pady=(14, 4))
         self.views = ttk.Treeview(self, show="tree", selectmode="browse", height=len(SMART_VIEWS), style="Nav.Treeview")
         self.views.pack(fill="x", padx=8)
         for key, label in SMART_VIEWS:
-            self.views.insert("", "end", iid=key, text="  " + label, image=icon(self,key))
+            self.views.insert("", "end", iid=key, text="  " + label, image=icon(self,{"tasks":"project","activity":"chart"}.get(key,key)))
         self.views.bind("<<TreeviewSelect>>", self._on_view_select)
         head = ttk.Frame(self, style="Sidebar.TFrame")
         head.pack(fill="x", padx=14, pady=(16, 4))
-        ttk.Label(head, text="PROIECTE ȘI TASKURI", style="Sidebar.TLabel").pack(side="left")
+        ttk.Label(head, text="PROIECTE ȘI CATEGORII", style="Sidebar.TLabel").pack(side="left")
         wrap = ttk.Frame(self)
         wrap.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        self.tree = ttk.Treeview(wrap, show="tree", selectmode="browse")
+        self.hierarchy_head = head
+        self.hierarchy_wrap = wrap
+        secondary = ttk.Frame(self)
+        secondary.pack(side="bottom",fill="x",padx=10,pady=8)
+        ttk.Button(secondary,text="Arhivă",image=icon(self,"archive"),compound="left",command=lambda:app.show_view("archive")).pack(fill="x")
+        ttk.Button(secondary,text="Setări",image=icon(self,"settings"),compound="left",command=app.open_settings).pack(fill="x",pady=2)
+        data_button = ttk.Menubutton(secondary,text="Date și backup")
+        data_button.pack(fill="x",pady=2)
+        data_menu = tk.Menu(data_button,tearoff=False)
+        for label,command in (("Coș…",app.open_trash),("Backup metadate",lambda:app.backup_now(False)),
+                              ("Backup complet",lambda:app.backup_now(True)),("Restaurează backup…",app.restore_backup),
+                              ("Verifică integritatea…",app.show_issues)):
+            data_menu.add_command(label=label,command=command)
+        data_button.configure(menu=data_menu)
+        self.tree = ttk.Treeview(wrap, show="tree", selectmode="browse", style="Dense.Treeview")
         vbar = ttk.Scrollbar(wrap, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vbar.set)
         hbar=ttk.Scrollbar(wrap,orient="horizontal",command=self.tree.xview)
@@ -63,13 +73,17 @@ class Sidebar(ttk.Frame):
         self.tree.bind("<Double-1>", self._on_double)
         self.tree.tag_configure("closed", foreground=muted_color(self))
         self.tree.tag_configure("archived", foreground=muted_color(self))
+        self.views.tag_configure("section",background=C.selected,foreground=C.accent)
         self._first_fill = True
 
     # ---- population -------------------------------------------------
     def refresh(self) -> None:
         ws, q = self.app.ws, self.app.q
+        self.show_hierarchy(self.app.current_view.startswith(("tasks", "tree:", "search:")) or self.app.current_view == "archive")
         self._suppress = True
         try:
+            scroll = self.tree.yview()[0]
+            horizontal = self.tree.xview()[0]
             open_ids = {i for i in self._all_items() if self.tree.item(i, "open")}
             selected = self.tree.selection()
             self.tree.delete(*self.tree.get_children())
@@ -98,6 +112,8 @@ class Sidebar(ttk.Frame):
 
             for n in cmap.get(None, []):
                 add("", n)
+            self.tree.yview_moveto(scroll)
+            self.tree.xview_moveto(horizontal)
             self._first_fill = False
             keep = [s for s in selected if self.tree.exists(s)]
             if keep:
@@ -113,15 +129,18 @@ class Sidebar(ttk.Frame):
             out.extend(self._all_items(c))
         return out
 
-    def _update_counts(self) -> None:
-        q = self.app.q
-        counts = {
-            "today": len(q.view_today()), "inbox": len(q.view_inbox()), "waiting": len(q.view_waiting()),
-            "overdue": len(q.view_overdue()), "calendar": None, "archive": len(q.view_archive()),
-        }
-        for key, label in SMART_VIEWS:
-            n = counts[key]
-            self.views.item(key, text="  " + (f"{label}  ({n})" if n else label))
+    def show_hierarchy(self, visible):
+        self.views.item("tasks", tags=("section",) if visible else ())
+        if visible:
+            self.hierarchy_head.pack(fill="x",padx=14,pady=(16,4))
+            self.hierarchy_wrap.pack(fill="both",expand=True,padx=8,pady=(0,8))
+        else:
+            self.hierarchy_head.pack_forget()
+            self.hierarchy_wrap.pack_forget()
+
+    def _update_counts(self):
+        for key,label in SMART_VIEWS:
+            self.views.item(key,text="  "+label)
 
     # ---- selection --------------------------------------------------
     def select_node(self, node_id: str) -> None:
@@ -143,7 +162,10 @@ class Sidebar(ttk.Frame):
         self._suppress = True
         try:
             self.tree.selection_remove(self.tree.selection())
-            self.views.selection_set(key)
+            if self.views.exists(key):
+                self.views.selection_set(key)
+            else:
+                self.views.selection_remove(self.views.selection())
         finally:
             self._suppress = False
 

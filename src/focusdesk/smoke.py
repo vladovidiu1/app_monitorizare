@@ -59,7 +59,7 @@ def _run(base: Path) -> dict:
         session = SessionService(app.ws).create(task.id, start, start + timedelta(minutes=30))
         app.refresh_all()
         app.select_node(task.id, reveal=True)
-        for view in ('today', 'inbox', 'calendar'):
+        for view in ('today', 'tasks', 'calendar', 'activity'):
             app.show_view(view, select_sidebar=True)
             app.root.update()
         assert not callbacks, callbacks

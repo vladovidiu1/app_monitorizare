@@ -117,7 +117,7 @@ class MarkdownEditor(ttk.Frame):
         self.template_btn = ttk.Button(bottom, text='Descriere structurată', command=self.template)
         self.template_btn.pack(side='left')
         Tooltip(self.template_btn, 'Inserează șablonul numai dacă descrierea este goală. Nu înlocuiește textul existent.')
-        Tooltip(self.notebook, 'Căsuțele Markdown sunt documentare; checklistul funcțional este în Subtask-uri.')
+        Tooltip(self.notebook, 'Căsuțele Markdown sunt documentare; checklistul funcțional este în Subtaskuri.')
         self._toolbar_buttons = [w for w in toolbar.winfo_children()]
 
     def save(self):

@@ -1,9 +1,11 @@
 # Ghid de utilizare
 
+Sidebar: **Astăzi · Proiecte și taskuri · Calendar · Activitate**.
+[Ghidul navigării, filtrelor și activității](NAVIGARE.md).
+
 ## Fluxul zilnic
 
-1. **Captură rapidă**: `Ctrl+N` (titlu + locație; restul în „Mai multe detalii”) sau „+ Nou”. Task-urile cu status
-   „Inbox” apar în vizualizarea Inbox.
+1. **Captură rapidă**: `Ctrl+N` (titlu + locație; restul în „Mai multe detalii”) sau „+ Nou”. Taskurile noi sunt „De făcut” și apar în Proiecte și taskuri.
 2. **Organizare**: arborele din stânga (foldere/categorii, proiecte, task-uri, subtask-uri). Meniu contextual (clic
    dreapta): task/subtask nou, folder/proiect nou, redenumește (`F2`), mută…, legătură…, arhivează, în coș, deschide
    folderul nodului, deschide codul în VS Code. Un task poate fi **legat** de un proiect fără a fi copiat.
@@ -18,7 +20,7 @@
 
 ## Inspector (dreapta)
 
-Detalii · Subtask-uri (+ checklist) · Planificare · Fișiere · Jurnal · Versiuni.
+Detalii · Subtaskuri (+ checklist) · Activitate (jurnal și sesiuni) · Fișiere · Planificare · Versiuni.
 Modificările din „Detalii” se salvează cu `Ctrl+S` (nu la fiecare tastă).
 Dacă schimbi selecția cu modificări nesalvate, aplicația întreabă.
 
@@ -46,7 +48,7 @@ Clic pe titlul unei coloane sortează frații; al treilea clic revine la ordinea
 
 Selectează un task → `Ctrl+M` sau „✉ E-mail”: completezi destinatarul (adrese separate prin `;` sau `,`), verifici subiectul și
 textul (contextul task-ului este deja inclus) și alegi „Trimite” (cu confirmare) sau „Deschide ciorna în Outlook”. Necesită
-Outlook Classic pornit/instalat; trimiterea se notează în Jurnalul task-ului. Vezi [diagnostic-integrari.md](diagnostic-integrari.md).
+Outlook Classic pornit/instalat; trimiterea se notează în Activitatea taskului. Vezi [diagnostic-integrari.md](diagnostic-integrari.md).
 
 ### Colegi și solicitant
 
@@ -62,7 +64,7 @@ Outlook Classic pornit/instalat; trimiterea se notează în Jurnalul task-ului. 
 
 ## Statusuri și priorități
 
-Statusuri: Inbox, De făcut, În lucru, În așteptare, În testare, Finalizat, Anulat. Arhivarea este separată de status. Priorități:
+Statusuri: De făcut, În lucru, În așteptare, În testare, Finalizat, Anulat. Arhivarea este separată de status. Priorități:
 Urgentă, Ridicată, Normală, Redusă (afișate ca text, nu doar culoare). Un task blocat are motiv, dependențe și dată de
 revenire; dependențele nu pot forma cicluri, iar un task cu dependențe nefinalizate se programează doar prin suprascriere
 explicită.

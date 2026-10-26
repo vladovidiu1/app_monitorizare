@@ -97,3 +97,14 @@ executabil în această etapă.
 Pictogramele originale MIT diferențiază statusurile prin formă și etichete text,
 inclusiv în arbore, căutare și inspector. Descrierea are panou redimensionabil,
 editor extins și previzualizare Tk. [Comportament, scurtături și limite](DESCRIERE-MARKDOWN.md).
+
+## Navigare și lucru zilnic
+
+Patru destinații principale; ierarhia apare în Proiecte și taskuri. Inspectorul se
+retrage fără selecție. Listele de taskuri sunt mai dense (26 pixeli logici pe rând),
+iar Astăzi folosește liste persistente, fără carduri mari sau reconstrucții de widgeturi.
+Timerul arată Pauză/Continuă după starea reală. [Ghidul navigării](NAVIGARE.md).
+
+Capturile actuale includ și [toate taskurile](capturi-ui/13-proiecte-taskuri.png) și
+[Activitate](capturi-ui/14-activitate.png). Rularea la minim și cea de 125% au fost
+verificate în Xvfb; vezi [manifestul](capturi-ui/navigation-layouts.json).

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Callable
 import ttkbootstrap as tb
 
 from ..domain.labels import (
-    PRIORITY_FROM_LABEL, PRIORITY_LABELS, STATUS_FROM_LABEL, STATUS_LABELS, format_minutes, format_worked,
+    PRIORITY_FROM_LABEL, PRIORITY_LABELS, STATUS_FROM_LABEL, STATUS_LABELS, VISIBLE_STATUSES, format_minutes, format_worked,
 )
 from ..domain.models import CLOSED_STATUSES, PRIORITY_ORDER, Kind, Node, Priority, Status
 from ..services.queries import Progress
@@ -60,41 +60,60 @@ class TaskList(ttk.Frame):
 
         bar = ttk.Frame(self)
         bar.pack(fill="x", padx=16, pady=(0, 6))
-        self.status_var = tk.StringVar(value=ALL)
-        self.prio_var = tk.StringVar(value=ALL)
+        self.status_var = tk.StringVar(value="Orice status")
+        self.prio_var = tk.StringVar(value="Orice prioritate")
         self.due_var = tk.StringVar(value="Orice termen")
         self.proj_var = tk.StringVar(value="Toate proiectele")
         self.text_var = tk.StringVar()
+        self.requester_var = tk.StringVar()
         self.closed_var = tk.BooleanVar(value=False)
-        self.status_box = self._combo(bar, self.status_var, [ALL] + [STATUS_LABELS[s] for s in Status], 11)
-        self.prio_box = self._combo(bar, self.prio_var, [ALL] + [PRIORITY_LABELS[p] for p in Priority], 9)
+        self.status_box = self._combo(bar, self.status_var, ["Orice status"] + [STATUS_LABELS[s] for s in VISIBLE_STATUSES], 14)
+        self.prio_box = self._combo(bar, self.prio_var, ["Orice prioritate"] + [PRIORITY_LABELS[p] for p in Priority], 14)
         self.due_box = self._combo(bar, self.due_var, list(DUE_FILTERS), 15)
         project_row = ttk.Frame(self)
         project_row.pack(fill="x", padx=16, pady=(0,6))
         self.proj_box = self._combo(project_row, self.proj_var, ["Toate proiectele"], 18)
+        people_row = ttk.Frame(self)
+        people_row.pack(fill="x", padx=16, pady=(0, 6))
+        ttk.Label(people_row, text="De la").pack(side="left", padx=(0, 6))
+        self.requester_entry = ttk.Entry(people_row, textvariable=self.requester_var, width=10)
+        self.requester_entry.pack(side="left", fill="x", expand=True)
+        self.requester_var.trace_add('write', lambda *_: self._debounced_refresh())
         bar2 = ttk.Frame(self)
-        bar2.pack(fill="x", padx=16, pady=(0, 8))
+
         ent = ttk.Entry(project_row, textvariable=self.text_var,width=12)
         ent.pack(side="left",fill="x",expand=True)
         bar2.columnconfigure(0,weight=1)
-        tb.Checkbutton(bar2, text="Arată finalizate", variable=self.closed_var, command=self.refresh,
-                       bootstyle="round-toggle").grid(row=0,column=0,sticky="w")
-        tb.Button(bar2, text="Resetează filtre", command=self.reset_filters, bootstyle="secondary-outline"
-                  ).grid(row=0,column=1,sticky="e")
+        tb.Checkbutton(people_row, text="Închise", variable=self.closed_var, command=self._toggle_closed,
+                       bootstyle="round-toggle").pack(side="left",padx=6)
+        tb.Button(people_row, text="Reset", command=self.reset_filters, bootstyle="secondary-outline"
+                  ).pack(side="left")
         self.text_var.trace_add("write", lambda *_: self._debounced_refresh())
         self._after_id = None
+        for box in (self.status_box,self.prio_box,self.due_box,self.proj_box):
+            box.bind('<<ComboboxSelected>>',self._filter_changed)
+        from .common import Tooltip
+        Tooltip(ent,"Caută în lista curentă")
+        Tooltip(self.requester_entry,"Solicitant: nume, cod sau adresă")
 
         act_bar = ttk.Frame(self)
         act_bar.pack(fill="x", padx=16, pady=(0, 8))
         self.session_btn = SessionButton(act_bar, app, self.selected_id)
         self.session_btn.pack(side="left")
+        self.act_bar = act_bar
+        self.move_btn = ttk.Button(act_bar, text="Mută / proiect…", command=app.move_selected)
+        self.move_btn.pack(side="left", padx=6)
+        quick = ttk.Frame(self)
+        quick.pack(fill="x", padx=16, pady=(0,6))
+        for label, code in (("Toate", "all"), ("În așteptare", "waiting"), ("Restante", "overdue"), ("Finalizate", "done")):
+            ttk.Button(quick, text=label, command=lambda c=code: app.quick_tasks(c)).pack(side="left", padx=(0,4))
 
         self.add_bar = ttk.Frame(self)  # vizibila doar in vizualizarea de arbore, deasupra listei
         self._build_add_bar(self.add_bar)
 
         self.list_wrap = ttk.Frame(self)
         self.list_wrap.pack(fill="both", expand=True, padx=16, pady=(0, 8))
-        self.tv = ttk.Treeview(self.list_wrap, columns=[c[0] for c in COLUMNS], show="tree headings",
+        self.tv = ttk.Treeview(self.list_wrap, style="Dense.Treeview", columns=[c[0] for c in COLUMNS], show="tree headings",
                                selectmode="browse")
         self.tv.heading("#0", text="Titlu", anchor="w", command=lambda: self._sort_by("title"))
         self.tv.column("#0", width=260, minwidth=240, anchor="w", stretch=True)
@@ -140,15 +159,6 @@ class TaskList(ttk.Frame):
         self.add_top_btn = tb.Button(row, text="Aici", bootstyle="secondary-outline",
                                       command=lambda: self._quick_add(under_selection=False))
         self.add_top_btn.pack(side="left", padx=(6, 0))
-        tools = ttk.Frame(bar)
-        tools.pack(anchor="w",pady=(4,0))
-        for text, cmd in (("▲", lambda: self.app.reorder_selected(-1)), ("▼", lambda: self.app.reorder_selected(1)),
-                          ("◀", lambda: self.app.outdent_selected()), ("▶", lambda: self.app.indent_selected())):
-            tb.Button(tools, text=text, width=3, command=cmd, bootstyle="secondary-outline"
-                       ).pack(side="left", padx=2)
-        ttk.Label(bar, style="Muted.TLabel", text=(
-            "Alt + săgeți: schimbă nivelul · Insert: adaugă"
-        )).pack(anchor="w", pady=(3, 0))
 
     def configure_tags(self) -> None:
         self.tv.tag_configure("overdue", foreground=error_color(self))
@@ -177,14 +187,25 @@ class TaskList(ttk.Frame):
             self.add_bar.pack(fill="x", padx=16, pady=(0, 8), before=self.list_wrap)
         else:
             self.tv.configure(displaycolumns=[c[0] for c in COLUMNS])
-            self.add_bar.pack_forget()
+            self.add_bar.pack(fill="x", padx=16, pady=(0,8), before=self.list_wrap)
+        self.refresh()
+
+    def _filter_changed(self,event=None):
+        if STATUS_FROM_LABEL.get(self.status_var.get()) in CLOSED_STATUSES:
+            self.closed_var.set(True)
+        self.refresh()
+
+    def _toggle_closed(self):
+        if not self.closed_var.get() and STATUS_FROM_LABEL.get(self.status_var.get()) in CLOSED_STATUSES:
+            self.status_var.set('Orice status')
         self.refresh()
 
     def reset_filters(self) -> None:
-        self.status_var.set(ALL)
-        self.prio_var.set(ALL)
+        self.status_var.set("Orice status")
+        self.prio_var.set("Orice prioritate")
         self.due_var.set("Orice termen")
         self.proj_var.set("Toate proiectele")
+        self.requester_var.set("")
         self.text_var.set("")
         self.closed_var.set(self.show_closed_default)
         self.refresh()
@@ -197,30 +218,39 @@ class TaskList(ttk.Frame):
     # ---- data -------------------------------------------------------
     def _project_options(self) -> dict[str, str]:
         ws = self.app.ws
-        return {n.title: n.id for n in sorted(ws.nodes.values(), key=lambda n: n.title.lower())
-                if n.kind == Kind.PROJECT}
+        projects = [n for n in ws.nodes.values() if n.kind == Kind.PROJECT]
+        from collections import Counter
+        counts = Counter(n.title for n in projects)
+        return {(n.title if counts[n.title] == 1 else n.title + ' · ' + n.id[:6]): n.id
+                for n in sorted(projects,key=lambda n:n.title.casefold())}
 
     def refresh(self) -> None:
+        if self._after_id:
+            self.after_cancel(self._after_id)
+            self._after_id = None
         q, ws = self.app.q, self.app.ws
         projects = self._project_options()
-        self.proj_box.configure(values=["Toate proiectele", *projects])
-        if self.proj_var.get() not in ("Toate proiectele", *projects):
+        self.proj_box.configure(values=["Toate proiectele", "Fără proiect", *projects])
+        if self.proj_var.get() not in ("Toate proiectele", "Fără proiect", *projects):
             self.proj_var.set("Toate proiectele")
         scope = self.scope_id if self.scope_id in ws.nodes else None
         self._cmap = ws.children_map()
         self._prog = q.progress_map()
         self._worked = q.worked_map(self.app.live_session())
         nodes = self._source()
-        status = None if self.status_var.get() == ALL else STATUS_FROM_LABEL[self.status_var.get()]
-        prio = None if self.prio_var.get() == ALL else PRIORITY_FROM_LABEL[self.prio_var.get()]
+        status = None if self.status_var.get() in (ALL,"Orice status") else STATUS_FROM_LABEL[self.status_var.get()]
+        prio = None if self.prio_var.get() in (ALL,"Orice prioritate") else PRIORITY_FROM_LABEL[self.prio_var.get()]
         proj = projects.get(self.proj_var.get())
         if not self.closed_var.get() and status is None:
             nodes = [n for n in nodes if n.status not in CLOSED_STATUSES]
         nodes = q.filter(nodes, status=status, priority=prio, due=DUE_FILTERS[self.due_var.get()],
-                         project_id=proj, text=self.text_var.get())
+                         project_id=proj, text=self.text_var.get(), requester=self.requester_var.get().strip(),
+                         no_project=self.proj_var.get() == "Fără proiect")
         self._shown = self._sorted(nodes)
         rows = self._tree_rows(scope, nodes) if scope else [("", n) for n in self._shown]
         matched_ids = {n.id for n in nodes}
+        scroll = 0 if self._expand_all else self.tv.yview()[0]
+        horizontal = 0 if self._expand_all else self.tv.xview()[0]
         open_ids = {i for i in self._all_items() if self.tv.item(i, "open")}
         selected = self.tv.selection()
         self._suppress = True
@@ -235,6 +265,8 @@ class TaskList(ttk.Frame):
                 self.tv.selection_set(keep)
         finally:
             self._suppress = False
+        self.tv.yview_moveto(scroll)
+        self.tv.xview_moveto(horizontal)
         self._force_open.clear()
         self._expand_all = False
         self.count_lbl.configure(text=f"{len(self._shown)} task-uri")
@@ -426,26 +458,41 @@ class TaskList(ttk.Frame):
     def _update_target(self) -> None:
         ws = self.app.ws
         self.session_btn.update_state()
-        if self.scope_id is None or ws is None or self.scope_id not in ws.nodes:
+        self.move_btn.state(["!disabled"] if ws and self.app.selected_id and not ws.read_only else ["disabled"])
+        # The same action is already visible in the selected task's inspector.
+        if self.app.config.show_inspector and self.app.selected_id:
+            self.session_btn.pack_forget()
+        elif not self.session_btn.winfo_manager():
+            self.session_btn.pack(side="left")
+        if ws is None:
+            return
+        if self.scope_id is None or self.scope_id not in ws.nodes:
+            self.target_lbl.configure(text="Task independent" if not self._selected_task_id() else "Subtask în selecția curentă")
+            self.add_top_btn.configure(text="Task independent")
+            if self._selected_task_id(): self.add_top_btn.pack(side="left",padx=(6,0))
+            else: self.add_top_btn.pack_forget()
             return
         sel = self._selected_task_id()
         if sel:
             self.target_lbl.configure(text=f"Se adaugă ca subtask în: {ws.breadcrumb(sel)}")
             self.add_top_btn.configure(text="La nivelul listei")
+            self.add_top_btn.pack(side="left",padx=(6,0))
         else:
             self.target_lbl.configure(text=f"Se adaugă task în: {ws.breadcrumb(self.scope_id)}")
             self.add_top_btn.configure(text="Aici")
+            self.add_top_btn.pack_forget()
 
     def _focus_add(self) -> None:
-        if self.scope_id is not None:
+        if self.app.ws is not None:
             self.add_entry.focus_set()
 
     def _quick_add(self, under_selection: bool) -> None:
         title = self.add_var.get().strip()
-        if not title or self.scope_id is None:
+        if not title:
             return
         parent = (self._selected_task_id() if under_selection else None) or self.scope_id
-        self._force_open.add(parent)  # refresh-ul declansat de creare trebuie sa lase parintele deschis
+        if parent:
+            self._force_open.add(parent)  # refresh-ul declansat de creare trebuie sa lase parintele deschis
         if self.app.quick_add_task(parent, title):
             self.add_var.set("")
             self.add_entry.focus_set()

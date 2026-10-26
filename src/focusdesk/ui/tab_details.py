@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import ttkbootstrap as tb
 
 from ..domain.labels import (
-    PRIORITY_FROM_LABEL, PRIORITY_LABELS, STATUS_FROM_LABEL, STATUS_LABELS, format_minutes,
+    PRIORITY_FROM_LABEL, PRIORITY_LABELS, STATUS_FROM_LABEL, STATUS_LABELS, VISIBLE_STATUSES, format_minutes,
 )
 from ..domain.models import CLOSED_STATUSES, Kind, Node, Priority, Status
 from ..domain.timeutil import local_to_utc, utc_to_local
@@ -38,6 +38,7 @@ class DetailsTab(InspectorTab):
         self._loading = False
         self._dirty = False
         self._orig_desc = ""
+        self._loaded_node = None
         self.expanded = None
         self.panes = ttk.PanedWindow(self, orient="vertical")
         self.panes.pack(fill="both", expand=True)
@@ -69,7 +70,7 @@ class DetailsTab(InspectorTab):
         self.requester_field = row("requester", "Cine a solicitat", lambda p: ColleagueField(
             p, lambda: self.app.ws, self._mark_dirty))
         self.status_box = row("status", "Status", lambda p: ttk.Combobox(
-            p, textvariable=self.vars["status"], state="readonly", values=[STATUS_LABELS[s] for s in Status]))
+            p, textvariable=self.vars["status"], state="readonly", values=[STATUS_LABELS[s] for s in VISIBLE_STATUSES]))
         self.prio_box = row("priority", "Prioritate", lambda p: ttk.Combobox(
             p, textvariable=self.vars["priority"], state="readonly", values=[PRIORITY_LABELS[x] for x in Priority]))
 
@@ -158,6 +159,7 @@ class DetailsTab(InspectorTab):
     # ---- load -------------------------------------------------------
     def load(self, node: Node) -> None:
         super().load(node)
+        self._loaded_node = node.model_copy(deep=True)
         ws, q = self.app.ws, self.app.q
         self._loading = True
         try:
@@ -201,9 +203,13 @@ class DetailsTab(InspectorTab):
             self._set_state_recursive(child, "disabled" if ro else None)
 
     def _layout_split(self, event):
-        if not self._split_initialized and event.height > 350:
+        if event.height < 180:
+            return
+        if not self._split_initialized:
             self._split_initialized = True
-            self.panes.sashpos(0, min(260, int(event.height * .43)))
+            self.panes.sashpos(0, min(220, int(event.height * .4)))
+        elif self.panes.sashpos(0) > max(100, event.height - 240):
+            self.panes.sashpos(0, max(100, event.height - 240))
 
     def expand_description(self):
         if self.app.ws.read_only or not self.node_id:
@@ -322,7 +328,7 @@ class DetailsTab(InspectorTab):
             changes["title"] = title
         if node.kind != Kind.FOLDER:
             status = STATUS_FROM_LABEL[v["status"].get()]
-            if status != node.status:
+            if STATUS_LABELS[status] != STATUS_LABELS.get(node.status):
                 changes["status"] = status
             prio = PRIORITY_FROM_LABEL[v["priority"].get()]
             if prio != node.priority:
@@ -386,7 +392,7 @@ class DetailsTab(InspectorTab):
         ws = self.app.ws
         node = ws.get(self.node_id)
         try:
-            changes = self._collect(node)
+            changes = self._collect(self._loaded_node or node)
         except ValueError as exc:
             show_error(self, str(exc))
             return False

@@ -4,7 +4,45 @@ Revizia curentă elimină motorul local și toate funcțiile AI, precum și citi
 monitorizarea și analiza inboxului Outlook. Nu s-a construit executabilul și nu
 s-a pornit workflow-ul de distribuție în această etapă, conform cererii.
 
-## Modernizare: statusuri și editor Markdown
+## Navigare și experiență zilnică — versiunea curentă
+
+Patru destinații: Astăzi, Proiecte și taskuri, Calendar, Activitate. Așteptare,
+restante și finalizate sunt filtre rapide. Inspectorul are Detalii/Subtaskuri/
+Activitate/Fișiere/Planificare/Versiuni; se retrage fără selecție și păstrează
+acțiunile esențiale vizibile. E-mailul manual este în Mai multe și pe Ctrl+M.
+Arhiva, setările, coșul și backupurile rămân accesibile secundar.
+
+Statusul vechi `inbox` este afișat și filtrat ca De făcut, fără rescriere la citire
+sau la salvarea altor câmpuri. Captura rapidă folosește acum `todo`. Fără proiect
+se calculează prin părinții reali, independent de status sau legături. Datele nu au
+fost șterse sau mutate automat. Preferințele vechi de navigare și taburi sunt acceptate.
+
+Verificări efective în Linux, Python 3.12/Tk 9 și Xvfb, fără AI și fără Outlook real:
+
+- **21 cazuri noi** pentru statutul vechi și lipsa rescrierii, filtre/proiect real/
+  solicitant, câmpuri de filtrare cu evenimente Tk, preferințe vechi, cele patru
+  destinații, task independent → proiect → subtask → sesiune → pauză/continuare →
+  finalizare/redeschidere → arhivare/restaurare și coș/restaurare, notițe nesalvate,
+  selecție/scroll, timer și registrul timpului lucrat separat de programat.
+- **53 teste UI/editor/compatibilitate trec** în cadrul suitei complete.
+- Suita completă: **207 trec, aceleași 14 eșecuri preexistente pe Linux, 1 omis**.
+  Validările Windows ale căilor nu au fost relaxate.
+- Scenariile existente de calendar/Planner/ICS/recurențe și e-mail manual cu
+  confirmare prin backend Outlook fals sunt păstrate în suită.
+- Smoke real din surse: pornire, toate cele patru pagini, creare/redeschidere date
+  temporare și compatibilitate; fără pachete AI sau Outlook. Nu este un test EXE.
+- Capturi reale regenerate: 1440×900, minim 1100×700 și scalare Tk 125% pe un
+  desktop virtual 2600×1800. Inspectate vizual Astăzi, task/inspector, Activitate,
+  lista completă și exemplele de la minim/125%; zero erori de callback Tk.
+  Sesiunile din capturi sunt sintetice, numai în workspace demonstrativ temporar.
+- Documentația, legăturile interne și compileall sunt actualizate/verificate.
+  Nu s-a construit executabilul și nu s-a pornit workflow-ul.
+
+Detalii: [NAVIGARE.md](NAVIGARE.md). Windows DPI real, Outlook Classic real și
+executabilul împachetat rămân verificări manuale. Testele cu backend fals și
+scalarea Tk nu certifică aceste integrări.
+
+## Etapa precedentă — statusuri și editor Markdown
 
 Implementate pictograme locale originale MIT pentru cele șase statusuri, etichete
 explicite și actualizare în arbore, listă/căutare, Astăzi și inspector/subtaskuri.
@@ -49,7 +87,7 @@ Cheile vechi din configurație sunt tolerate și păstrate inert. Taskurile și
 Cache-ul `_system/mail/` și evenimentele istorice rămân pe disc, fără procesare sau
 curățare automată. Testele de compatibilitate verifică redeschiderea acestor date.
 
-## Verificări curente
+## Verificări ale etapei de eliminare AI
 
 Mediu executat: Linux x64, CPython 3.12.14, Tk real cu Xvfb. A fost creat un
 virtualenv nou numai cu `pip install -e ".[dev]"`, fără llama-cpp-python, NumPy,

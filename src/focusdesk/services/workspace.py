@@ -199,8 +199,8 @@ class Workspace:
         return node
 
     def quick_capture(self, title: str, parent_id: str | None = None) -> Node:
-        """Captura rapida: task in Inbox (status `inbox`), fara alte campuri."""
-        return self.create_node(Kind.TASK, title, parent_id, status=Status.INBOX)
+        """Captura rapida: task De făcut (status `todo`), fara alte campuri."""
+        return self.create_node(Kind.TASK, title, parent_id, status=Status.TODO)
 
     @staticmethod
     def _build_node(data: dict[str, Any]) -> Node:

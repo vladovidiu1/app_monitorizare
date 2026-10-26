@@ -31,6 +31,7 @@ def main():
         create_demo_workspace(Path(tmp)/'demo')
         app=FocusDeskApp();app.root.withdraw()
         errors=[]
+        captured=[]
         app.root.report_callback_exception=lambda cls,error,tb:errors.append(f"{cls.__name__}: {error}")
         app.root.tk.call('tk','scaling',args.scale*96/72)
         from focusdesk.ui.common import apply_theme
@@ -46,7 +47,16 @@ def main():
             pump();widget.lift();pump()
             box=(widget.winfo_rootx(),widget.winfo_rooty(),widget.winfo_rootx()+widget.winfo_width(),widget.winfo_rooty()+widget.winfo_height())
             ImageGrab.grab(bbox=box).save(args.output/(name+'.png'))
+            captured.append(name+'.png')
         try:
+            # Synthetic sessions only, in the disposable demonstration workspace.
+            from datetime import datetime, timedelta, timezone
+            from focusdesk.domain.session import SessionRecord
+            demo_task=next(n for n in app.ws.nodes.values() if n.title=='Verificare diferențe XML')
+            now=datetime.now(timezone.utc)
+            app.ws.repo.sessions.save(SessionRecord(node_id=demo_task.id,start_at=now-timedelta(hours=2),end_at=now-timedelta(hours=1),status='done',actual_seconds=2700,started_actual_at=now-timedelta(hours=2),summary='Exemplu demonstrativ'))
+            local=now.astimezone(app.q.tz()).replace(second=0,microsecond=0)
+            app.ws.repo.sessions.save(SessionRecord(node_id=demo_task.id,start_at=local,end_at=local+timedelta(minutes=45),status='planned'))
             app.show_view('today',select_sidebar=True);shot('01-astazi')
             project=next(n for n in app.ws.nodes.values() if n.title=='Validări XML')
             task=next(n for n in app.ws.nodes.values() if n.title=='Verificare diferențe XML')
@@ -78,10 +88,12 @@ def main():
             window.editor.render()
             shot('12-descriere-previzualizare',window)
             window.cancel()
+            app.show_view('tasks');app.tasklist.reset_filters();shot('13-proiecte-taskuri')
+            app.show_view('activity');shot('14-activitate')
             if errors:
                 raise RuntimeError('Erori callback Tk: '+ '; '.join(errors))
             report={'scale_simulated':args.scale,'size':args.size,'platform':sys.platform,'theme':app.config.theme,
-                'real_tk':True,'windows_dpi_verified':False,'captures':sorted(p.name for p in args.output.glob('*.png'))}
+                'real_tk':True,'windows_dpi_verified':False,'captures':sorted(captured)}
             (args.output/'manifest.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
         finally:app.on_close()
     return 0

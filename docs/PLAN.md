@@ -18,8 +18,7 @@ scris, dar neverificat automat în acest mediu (vezi [diagnostic-integrari.md](d
 ## Etapa 2 — Organizare completă — Implementat
 
 Mutări recuperabile (jurnal de operații + recuperare la pornire), subtask-uri pe mai multe niveluri, checklist, legături
-(`related_node_ids`) și dependențe (`depends_on_ids`) fără cicluri, filtre/căutare, vizualizări Inbox/Astăzi/În
-așteptare/Restante/Calendar/Arhivă, jurnal, coș cu restaurare, arhivare cu alegerea pentru sesiunile viitoare, backup
+(`related_node_ids`) și dependențe (`depends_on_ids`) fără cicluri, filtre/căutare, destinații Astăzi/Proiecte și taskuri/Calendar/Activitate, filtre rapide și Arhivă secundară, jurnal, coș cu restaurare, arhivare cu alegerea pentru sesiunile viitoare, backup
 (metadate/complet, zilnic, retenție, folder extern), verificare integritate. Testat.
 
 ## Etapa 3 — Execuție și fișiere — Implementat

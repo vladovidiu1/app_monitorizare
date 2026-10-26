@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class SubtasksTab(InspectorTab):
-    title = "Subtask-uri"
+    title = "Subtaskuri"
 
     def __init__(self, parent: tk.Misc, app: "FocusDeskApp") -> None:
         super().__init__(parent, app)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from .models import Kind, Priority, Status
 
 STATUS_LABELS: dict[Status, str] = {
-    Status.INBOX: "Inbox",
+    Status.INBOX: "De făcut",
     Status.TODO: "De făcut",
     Status.IN_PROGRESS: "În lucru",
     Status.WAITING: "În așteptare",
@@ -36,6 +36,13 @@ SESSION_STATUS_LABELS = {
 }
 
 STATUS_FROM_LABEL = {v: k for k, v in STATUS_LABELS.items()}
+VISIBLE_STATUSES = tuple(s for s in Status if s != Status.INBOX)
+
+
+def display_status(status):
+    return Status.TODO if status == Status.INBOX else status
+
+
 PRIORITY_FROM_LABEL = {v: k for k, v in PRIORITY_LABELS.items()}
 
 

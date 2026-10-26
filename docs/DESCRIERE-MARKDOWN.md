@@ -17,7 +17,7 @@ Forma și eticheta identifică statusul; culoarea este un indiciu suplimentar:
 | Finalizat | Cerc cu bifă verde |
 | Anulat | Cerc cu cruce |
 
-Inbox-ul taskurilor păstrează pictograma proprie. Folderul și proiectul rămân
+Taskurile vechi cu status intern `inbox` folosesc pictograma și eticheta De făcut. Folderul și proiectul rămân
 identificabile prin pictogramele lor, indiferent de status. Sistemul se aplică
 arborelui, listei centrale și rezultatelor căutării, cardurilor/sesiunilor din
 Astăzi și inspectorului (inclusiv subtaskurilor). O schimbare salvată de status
@@ -92,7 +92,7 @@ Obiectiv, Context, Pași / cerințe, Rezultat așteptat, Criterii de finalizare,
 Nu înlocuiește descrieri existente.
 
 Căsuțele `- [ ]` / `- [x]` sunt exclusiv documentare Markdown. Nu schimbă checklistul
-funcțional din **Subtask-uri**, progresul sau statusul taskului. Toolbarul și
+funcțional din **Subtaskuri**, progresul sau statusul taskului. Toolbarul și
 secțiunea checklist precizează diferența.
 
 Exemple capturate din Tk real: [statusuri](capturi-ui/11-statusuri.png),

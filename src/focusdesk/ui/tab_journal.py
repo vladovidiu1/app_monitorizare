@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-from ..domain.labels import STATUS_LABELS, format_seconds
+from ..domain.labels import STATUS_LABELS, format_seconds, SESSION_STATUS_LABELS
 from ..domain.models import Node, Status
 from .common import muted_color
 from .inspector import InspectorTab
@@ -19,7 +19,7 @@ KIND_NAMES = {"note": "Notiță", "progress": "Progres", "action": "Acțiune", "
 
 
 class JournalTab(InspectorTab):
-    title = "Jurnal"
+    title = "Activitate"
 
     def __init__(self, parent: tk.Misc, app: "FocusDeskApp") -> None:
         super().__init__(parent, app)
@@ -48,6 +48,8 @@ class JournalTab(InspectorTab):
         self.text.tag_configure("muted", foreground=muted_color(self), font=("Segoe UI", 9))
 
     def load(self, node: Node) -> None:
+        same = self.node_id == node.id
+        scroll = self.text.yview()[0] if same else 0
         super().load(node)
         ws, q = self.app.ws, self.app.q
         tz = q.tz()
@@ -58,12 +60,11 @@ class JournalTab(InspectorTab):
         for s in ws.repo.sessions.list_all():
             if s.node_id != node.id:
                 continue
-            if s.status == "done" and s.actual_seconds:
-                total += s.actual_seconds
-                txt = f"Sesiune de lucru: {format_seconds(s.actual_seconds)}"
-                if s.summary:
-                    txt += f"\n{s.summary}"
-                entries.append((s.stopped_actual_at or s.end_at, "Sesiune", txt, None))
+            total += s.actual_seconds
+            txt = f"{SESSION_STATUS_LABELS[s.status]} · Lucrat: {format_seconds(s.actual_seconds)} · Durată programată: {s.planned_minutes} min"
+            if s.summary:
+                txt += f"\n{s.summary}"
+            entries.append((s.stopped_actual_at or s.start_at, "Sesiune", txt, None))
         for e in ws.list_history(node.id):
             if e.type == "status_changed":
                 new = Status(e.data.get("to")) if e.data.get("to") else None
@@ -77,16 +78,29 @@ class JournalTab(InspectorTab):
             self.text.insert("end", f"{at.astimezone(tz):%d.%m.%Y %H:%M}  ·  {kind}\n", "when")
             self.text.insert("end", body + "\n\n")
         self.text.configure(state="disabled")
+        self.text.yview_moveto(scroll)
         self.total_lbl.configure(text=f"Timp lucrat: {format_seconds(total)}" if total else "Timp lucrat: 0:00:00")
         state = "disabled" if ws.read_only else "normal"
         self.add_btn.configure(state=state)
         self.entry.configure(state=state)
 
-    def _add(self) -> None:
+    def is_dirty(self):
+        return bool(self.entry.get('1.0','end-1c').strip())
+
+    def save(self):
+        return self._add()
+
+    def revert(self):
+        self.entry.delete('1.0','end')
+        super().revert()
+
+    def _add(self):
         text = self.entry.get("1.0", "end").strip()
         if not text or not self.node_id:
-            return
+            return True
         kind = KIND_CHOICES[self.kind_var.get()]
         if self.app.run_write(lambda: self.app.ws.add_note(self.node_id, text, kind), success_text="Notiță salvată"):
             self.entry.delete("1.0", "end")
             self.load(self.app.ws.get(self.node_id))
+            return True
+        return False

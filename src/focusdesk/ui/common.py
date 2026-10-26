@@ -23,7 +23,7 @@ BASE_SIZE = BASE
 
 KIND_GLYPH = {"folder": "▣", "project": "◆"}
 STATUS_GLYPH = {
-    "inbox": "◌", "todo": "○", "in_progress": "◐", "waiting": "⏸", "testing": "◑", "done": "✓", "cancelled": "✕",
+    "inbox": "○", "todo": "○", "in_progress": "◐", "waiting": "⏸", "testing": "◑", "done": "✓", "cancelled": "✕",
 }
 
 
@@ -276,8 +276,8 @@ class SessionButton(tb.Button):
         app.session_buttons.append(self)
 
     def _click(self) -> None:
-        if self._mode == "stop":
-            self.app.stop_session()
+        if self._mode in ("pause","continue"):
+            self.app.toggle_pause()
             return
         nid = self._node_getter()
         if nid:
@@ -290,18 +290,19 @@ class SessionButton(tb.Button):
             return
         nid = self._node_getter()
         if app.timer_active():
-            mode = "stop"
-            text = "Oprește sesiunea" if app.timer.node_id == nid else "Oprește sesiunea curentă"  # type: ignore[union-attr]
-            enabled = True
+            same = app.timer.node_id == nid
+            mode = "pause" if app.timer.running else "continue"
+            text = ("Pauză" if app.timer.running else "Continuă") if same else "Alt task este activ"
+            enabled = same and not app.timer.recovered
         else:
             mode = "start"
-            text = "Începe sesiune"
+            text = "Începe"
             node = ws.nodes.get(nid) if nid else None
             enabled = (node is not None and node.kind == Kind.TASK and node.status not in CLOSED_STATUSES
                        and not ws.read_only)
         if mode != self._mode:
-            self.configure(bootstyle="danger-outline" if mode == "stop" else "primary")
-            self.configure(image=icon(self,"stop" if mode=="stop" else "play-on-accent"))
+            self.configure(bootstyle="danger-outline" if mode == "pause" else "primary")
+            self.configure(image=icon(self,"pause" if mode=="pause" else "play-on-accent"))
             self._mode = mode
         if str(self.cget("text")) != text:
             self.configure(text=text)

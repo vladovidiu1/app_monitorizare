@@ -8,7 +8,7 @@ import os
 import sys
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .storage.atomic import atomic_write_json
 
@@ -41,6 +41,23 @@ class AppConfig(BaseModel):
     show_inspector: bool = True
     show_archived: bool = False
     show_completed: bool = True
+    last_view: str = 'today'
+    inspector_tab: str = 'Detalii'
+
+    @field_validator('last_view', mode='before')
+    @classmethod
+    def _navigation(cls, value):
+        return value if value in ('today', 'tasks', 'calendar', 'activity') else 'tasks'
+
+    @field_validator('inspector_tab', mode='before')
+    @classmethod
+    def _tab(cls, value):
+        if not isinstance(value, str):
+            return 'Detalii'
+        aliases = {'Jurnal': 'Activitate', 'Subtask-uri': 'Subtaskuri'}
+        value = aliases.get(value, value)
+        return value if value in ('Detalii','Subtaskuri','Activitate','Fișiere','Planificare','Versiuni') else 'Detalii'
+
     sash_left: int | None = None
     sash_right: int | None = None
     session_open: dict[str, bool] = Field(default_factory=dict)

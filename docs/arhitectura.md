@@ -55,7 +55,7 @@ src/focusdesk/
   operația; eșecurile rămân vizibile și se pot reîncerca fără duplicate.
 * **E-mail**: dialogul din task (`MailDialog`) validează adresele (`services/mail.py`) → confirmare →
   `OutlookController.send_mail` în `ComWorker` (`CreateItem` → `Recipients.ResolveAll` → `Send`, sau `Display` pentru
-  ciornă) → la succes se notează trimiterea în Jurnalul task-ului. La timeout nu se afirmă că mesajul a plecat sau nu.
+  ciornă) → la succes se notează trimiterea în Activitatea taskului. La timeout nu se afirmă că mesajul a plecat sau nu.
 * **Ierarhie**: lista centrală (`TaskList`) construiește arborele din `parent_id` (stramoșii task-urilor filtrate rămân
   vizibili); progresul pe noduri vine dintr-o singură trecere (`Queries.progress_map`).
 
@@ -83,3 +83,12 @@ Text. Fereastra extinsă este un peer Tcl al bufferului din inspector, cu grab m
 și snapshot de anulare; nu are o copie independentă a descrierii. Salvarea rămâne
 în DetailsTab → Workspace.set_description, pe firul UI. Nu se schimbă formatul sau
 schema datelor și nu se introduc HTML, execuție de cod ori servicii externe.
+
+## Destinații și registrul activității
+
+`ui/activity_page.py` folosește `services/activity.py` pentru agregări directe din
+sesiuni: actual_seconds pentru lucrat, intervale pentru programat, fără adunarea
+rollup-urilor. Paginile Astăzi și Activitate păstrează widgeturile, selecția și
+viewportul. Maparea legacy inbox → etichetă/filtru todo nu este o migrare pe disc.
+Configurația aplicației normalizează destinațiile și taburile vechi. Jurnalul este
+acum tabul Activitate, cu protecție și pentru notițele încă nesalvate.

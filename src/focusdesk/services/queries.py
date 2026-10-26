@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from ..domain.common import utcnow
 from ..domain.models import CLOSED_STATUSES, OPEN_STATUSES, PRIORITY_ORDER, Kind, Node, Priority, Status
 from .workspace import Workspace
+from ..domain.labels import display_status
 
 
 @dataclass
@@ -276,15 +277,22 @@ class Queries:
         return self._sorted(out)
 
     def filter(self, nodes: Iterable[Node], *, status: Status | None = None, priority: Priority | None = None,
-               due: str | None = None, project_id: str | None = None, text: str = "") -> list[Node]:
+               due: str | None = None, project_id: str | None = None, text: str = "", requester: str = "", no_project: bool = False) -> list[Node]:
         """`due`: 'overdue' | 'today' | 'week' | 'none' | None."""
         out = []
         today = self.today()
         text_l = text.strip().lower()
         for n in nodes:
-            if status is not None and n.status != status:
+            if status is not None and display_status(n.status) != display_status(status):
                 continue
             if priority is not None and n.priority != priority:
+                continue
+            if requester:
+                person = n.requested_by
+                hay = ' '.join((person.name, person.code, person.email)) if person else ''
+                if requester.casefold() not in hay.casefold():
+                    continue
+            if no_project and self.ws.nearest_project(n.id) is not None:
                 continue
             if project_id is not None:
                 proj = self.ws.nearest_project(n.id)

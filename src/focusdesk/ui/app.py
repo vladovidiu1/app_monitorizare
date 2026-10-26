@@ -52,19 +52,12 @@ from .tab_subtasks import SubtasksTab
 from .tab_versions import VersionsTab
 from .tasklist import TaskList
 from .today import TodayPage
+from .activity_page import ActivityPage
 
 log = logging.getLogger(__name__)
 
-VIEW_TITLES = {
-    "today": "Astăzi", "inbox": "Inbox", "waiting": "În așteptare", "overdue": "Restante",
-    "calendar": "Calendar", "archive": "Arhivă",
-}
-VIEW_HINTS = {
-    "inbox": "Inbox-ul este gol. Captează rapid cu Ctrl+N.",
-    "waiting": "Nimic în așteptare.",
-    "overdue": "Nicio întârziere.",
-    "archive": "Nimic arhivat.",
-}
+VIEW_TITLES = {"today":"Astăzi", "tasks":"Proiecte și taskuri", "calendar":"Calendar", "activity":"Activitate", "archive":"Arhivă"}
+VIEW_HINTS = {"tasks":"Niciun task. Adaugă un task sau schimbă filtrele.", "archive":"Arhiva este goală."}
 
 
 class FocusDeskApp:
@@ -138,9 +131,6 @@ class FocusDeskApp:
         self.new_menu.add_command(label="Proiect", command=lambda: self.new_node(Kind.PROJECT))
         self.new_btn["menu"] = self.new_menu
         self.new_btn.pack(side="right")
-        self.mail_btn = tb.Button(top, text="E-mail", image=icon(top,"mail"), compound="left", command=self.compose_mail,
-                                  bootstyle="secondary-outline")
-        self.mail_btn.pack(side="right", padx=(0, 8))
         self.search_var = tk.StringVar()
         self.search_entry = ttk.Entry(top, textvariable=self.search_var, width=34)
         self.search_entry.pack(side="right", fill="x", expand=True, padx=(0, 16))
@@ -166,11 +156,12 @@ class FocusDeskApp:
         self.tasklist = TaskList(self.center, self)
         self.today = TodayPage(self.center, self)
         self.calendar_page = CalendarPage(self.center, self)
+        self.activity_page = ActivityPage(self.center, self)
         self.inspector.add_tab(DetailsTab(self.inspector.nb, self))
         self.inspector.add_tab(SubtasksTab(self.inspector.nb, self))
-        self.inspector.add_tab(PlanTab(self.inspector.nb, self))
-        self.inspector.add_tab(FilesTab(self.inspector.nb, self))
         self.inspector.add_tab(JournalTab(self.inspector.nb, self))
+        self.inspector.add_tab(FilesTab(self.inspector.nb, self))
+        self.inspector.add_tab(PlanTab(self.inspector.nb, self))
         self.inspector.add_tab(VersionsTab(self.inspector.nb, self))
         self.root.after(80, self._apply_sashes)
 
@@ -183,8 +174,8 @@ class FocusDeskApp:
                 return
             panes = self.paned.panes()
             from .design import px
-            left = self.config.sash_left or px(self.root,220)
-            right = self.config.sash_right or px(self.root,440)
+            left = self.config.sash_left or px(self.root,210)
+            right = self.config.sash_right or px(self.root,400)
             right = max(px(self.root,380), min(right, total - left - px(self.root,400)))  # lista din mijloc ramane suficient de lata
             has_inspector = str(self.inspector) in panes
             self.paned.sashpos(0, left)
@@ -361,7 +352,7 @@ class FocusDeskApp:
         self.outlook.attach()
         self.sidebar._first_fill = True
         self.selected_id = None
-        self.show_view("today", select_sidebar=True)
+        self.show_view(self.config.last_view, select_sidebar=True)
         self.sidebar.refresh()
         self.root.after(200, self._post_open_checks)
         self._tick()
@@ -503,12 +494,17 @@ class FocusDeskApp:
             self.today.refresh()
         elif v == "calendar":
             self._show_calendar()
+        elif v == "activity":
+            self._show_center(self.activity_page)
+            self.activity_page.refresh()
         else:
             self._show_center(self.tasklist)
             self._configure_list()
 
     def _show_center(self, widget: tk.Misc) -> None:
-        for w in (self.tasklist, self.today, self.calendar_page):
+        self._sync_inspector()
+        self.sidebar.show_hierarchy(self.current_view.startswith(("tasks","tree:","search:")) or self.current_view == "archive")
+        for w in (self.tasklist, self.today, self.calendar_page, self.activity_page):
             if w is not None and w is not widget:
                 w.pack_forget()
         if not widget.winfo_ismapped():
@@ -534,10 +530,32 @@ class FocusDeskApp:
                                      empty_hint="Niciun task aici. Scrie un titlu mai sus și apăsă Enter.",
                                      scope_id=nid)
         else:
-            loaders = {"inbox": q.view_inbox, "waiting": q.view_waiting, "overdue": q.view_overdue,
-                       "archive": q.view_archive}
-            self.tasklist.set_source(VIEW_TITLES.get(v, v), loaders[v], "Vizualizare inteligentă",
-                                     show_closed=(v == "archive"), empty_hint=VIEW_HINTS.get(v, ""))
+            loader = q.view_archive if v == 'archive' else q.tasks
+            self.tasklist.set_source(VIEW_TITLES.get(v, 'Proiecte și taskuri'), loader, "Toate taskurile" if v != 'archive' else 'Elemente arhivate',
+                                     show_closed=(v == 'archive'), empty_hint=VIEW_HINTS.get(v,''))
+
+    def _sync_inspector(self):
+        visible = self.config.show_inspector and self.selected_id is not None
+        attached = str(self.inspector) in self.paned.panes()
+        if visible and not attached:
+            self.paned.add(self.inspector,weight=0)
+            self.root.after_idle(self._apply_sashes)
+        elif not visible and attached:
+            self.paned.forget(self.inspector)
+
+    def quick_tasks(self, code):
+        if not self.confirm_leave():
+            return
+        self.show_view('tasks')
+        self.tasklist.reset_filters()
+        from ..domain.labels import STATUS_LABELS
+        if code == 'waiting': self.tasklist.status_var.set(STATUS_LABELS[Status.WAITING])
+        if code == 'todo': self.tasklist.status_var.set(STATUS_LABELS[Status.TODO])
+        if code == 'done':
+            self.tasklist.status_var.set(STATUS_LABELS[Status.DONE])
+            self.tasklist.closed_var.set(True)
+        if code == 'overdue': self.tasklist.due_var.set('Restante')
+        self.tasklist.refresh()
 
     # ================================================================
     # Navigation
@@ -561,15 +579,20 @@ class FocusDeskApp:
         return False
 
     def show_view(self, key: str, select_sidebar: bool = False) -> None:
+        legacy = {'inbox':'todo','waiting':'waiting','overdue':'overdue','completed':'done'}
+        if key in legacy:
+            self.quick_tasks(legacy[key])
+            return
         if self.ws is None:
             return
         if not self.confirm_leave():
             self._restore_selection_widgets()
             return
         self.current_view = key
+        self.config.last_view = key if key in ("today","tasks","calendar","activity") else "tasks"
+        self.config.save()
         self.current_scope = None
-        if key in VIEW_TITLES:
-            self.sidebar.select_view(key)
+        self.sidebar.select_view(key)
         self.selected_id = None
         self.inspector.load(None)
         self._reload_center()
@@ -580,6 +603,7 @@ class FocusDeskApp:
         if not self.confirm_leave():
             self._restore_selection_widgets()
             return
+        self.config.last_view = "tasks"
         self.current_view = f"tree:{node_id}"
         self.current_scope = node_id
         self.selected_id = node_id
@@ -598,6 +622,7 @@ class FocusDeskApp:
             self._restore_selection_widgets()
             return
         if reveal:
+            self.config.last_view = "tasks"
             node = self.ws.nodes[node_id]
             scope = self._scope_for(node)
             self.current_view = f"tree:{scope}"
@@ -610,6 +635,7 @@ class FocusDeskApp:
         else:
             self.selected_id = node_id
         self.inspector.load(node_id)
+        self._sync_inspector()
         self.update_session_buttons()
 
     def _scope_for(self, node: Node) -> str:
@@ -661,11 +687,12 @@ class FocusDeskApp:
             return
         if not text:
             if self.current_view.startswith("search:"):
-                self.show_view("today", select_sidebar=True)
+                self.show_view("tasks", select_sidebar=True)
             return
         if self.current_view != f"search:{text}":
             if not self.confirm_leave():
                 return
+            self.config.last_view = "tasks"
             self.current_view = f"search:{text}"
             self.current_scope = None
             self.selected_id = None
@@ -772,9 +799,9 @@ class FocusDeskApp:
             return
         self.new_node(Kind.TASK, parent_id=nid)
 
-    def quick_add_task(self, parent_id: str, title: str) -> bool:
+    def quick_add_task(self, parent_id: str | None, title: str) -> bool:
         """Task rapid (doar titlu) sub un container sau un alt task; la orice adancime."""
-        if self.ws is None or parent_id not in self.ws.nodes:
+        if self.ws is None or (parent_id is not None and parent_id not in self.ws.nodes):
             return False
         return self.run_write(lambda: self.ws.create_node(Kind.TASK, title, parent_id), refresh=True)
 
@@ -834,7 +861,7 @@ class FocusDeskApp:
             if node is not None and not self.ws.read_only and node.id in self.ws.nodes:
                 recorded = self.run_write(lambda: self.ws.add_note(node.id, journal_text(draft), kind="action"))
                 self.inspector.refresh_current()
-            suffix = "\n\nTrimiterea este notată în Jurnalul taskului." if recorded else ""
+            suffix = "\n\nTrimiterea este notată în Activitatea taskului." if recorded else ""
             show_info(self.root, f"E-mail trimis către:\n{', '.join(draft.to)}{suffix}",
                       "E-mail trimis")
 
@@ -856,6 +883,8 @@ class FocusDeskApp:
                 self.inspector.load(node.id)
 
     def move_selected(self) -> None:
+        if not self.confirm_leave():
+            return
         node = self._selected_node()
         if node is None:
             return
@@ -1205,6 +1234,8 @@ class FocusDeskApp:
         self.start_session(node.id)
 
     def start_session(self, node_id: str, planned_session_id: str | None = None) -> None:
+        if not self.confirm_leave():
+            return
         if self.ws is None or self.timer is None:
             return
         if self.timer.active:

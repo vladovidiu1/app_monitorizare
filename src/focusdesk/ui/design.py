@@ -112,6 +112,7 @@ def install(root):
         foreground=C.muted, padding=(8,9), relief='flat')
     style.map('Treeview', background=[('selected',C.selected)], foreground=[('selected',C.text)])
     style.map('Treeview.Heading', background=[('active',C.selected)])
+    style.configure('Dense.Treeview', rowheight=px(root,26))
     style.configure('Nav.Treeview', rowheight=px(root,38), background=C.sidebar, fieldbackground=C.sidebar)
     style.configure('TPanedwindow', background=C.canvas, sashwidth=px(root,8))
     if not getattr(root,'_focusdesk_bindings',False):

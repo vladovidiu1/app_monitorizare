@@ -93,7 +93,7 @@ Vezi [pașii de build și verificare](docs/DISTRIBUTIE-WINDOWS.md).
 ## Compatibilitatea datelor existente
 
 Funcțiile AI și monitorizarea/citirea inboxului au fost eliminate. Nu există motor,
-model, chat, propuneri sau scanări de mail în fundal. Inbox-ul taskurilor rămâne.
+model, chat, propuneri sau scanări de mail în fundal. Taskurile sunt reunite în Proiecte și taskuri.
 Taskurile, subtaskurile, descrierile, checklisturile, notițele și sesiunile create
 anterior rămân date obișnuite, editabile. Setările vechi sunt acceptate ca date
 necunoscute, fără activarea serviciilor eliminate. Cache-ul istoric `_system/mail/`
@@ -107,3 +107,9 @@ Taskurile au pictograme locale distincte pentru fiecare status, etichete text ș
 redeschidere explicită. Descrierea are editor Markdown redimensionabil, fereastră
 extinsă și previzualizare locală sigură; `description.md` rămâne autoritar.
 Vezi [ghidul editorului și al statusurilor](docs/DESCRIERE-MARKDOWN.md).
+
+## Navigare simplificată
+
+Patru destinații: **Astăzi**, **Proiecte și taskuri**, **Calendar**, **Activitate**.
+Filtre rapide înlocuiesc paginile separate de restante/așteptare; taskurile vechi sunt
+afișate compatibil ca De făcut. [Ghidul navigării](docs/NAVIGARE.md).

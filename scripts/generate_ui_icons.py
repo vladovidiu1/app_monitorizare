@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw
 ROOT=Path(__file__).resolve().parents[1]/'src/focusdesk/resources/icons'
 ROOT.mkdir(parents=True,exist_ok=True)
 SHAPES={
+ 'pause':[('rect',(6,4,9,20)),('rect',(15,4,18,20))],
  'stop':[('rect',(6,6,18,18))],
  'clear':[('line',(6,6,18,18)),('line',(6,18,18,6))],
  'up':[('line',(5,15,12,8,19,15))],
@@ -42,6 +43,6 @@ for name,shapes in SHAPES.items():
   else:getattr(d,'rectangle' if shape=='rect' else shape)(coords,outline=color,width=7)
  for size in (16,20,24,32,40,48):
   im.resize((size,size),Image.Resampling.LANCZOS).save(ROOT/f'{name}-{size}.png')
-  if name in ('play','add'):
+  if name in ('play','pause','add'):
    white=Image.new('RGBA',im.size,'white');white.putalpha(im.getchannel('A'))
    white.resize((size,size),Image.Resampling.LANCZOS).save(ROOT/f'{name}-on-accent-{size}.png')

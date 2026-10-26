@@ -194,7 +194,7 @@ def test_completed_filter_reopen_and_central_search_icons(ui):
     ui.inspector.reopen_btn.invoke()
     ui.root.update()
     assert ui.ws.get(task_id).status == Status.TODO
-    assert not ui.inspector.reopen_btn.winfo_manager()
+    assert ui.inspector.reopen_btn.cget("text") == "Finalizează"
 
 
 def test_real_paste_and_ctrl_s_save_without_double_submission(ui, monkeypatch):

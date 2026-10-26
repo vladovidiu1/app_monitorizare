@@ -110,13 +110,13 @@ def test_window_layout_and_initial_state(app):
     assert app.current_view == "today"
     assert app.today.winfo_ismapped()
     assert [app.inspector.nb.tab(t, "text") for t in app.inspector.nb.tabs()] == [
-        "Detalii", "Subtask-uri", "Planificare", "Fișiere", "Jurnal", "Versiuni"]
+        "Detalii", "Subtaskuri", "Activitate", "Fișiere", "Planificare", "Versiuni"]
     assert "Calendar: local" in app.status._labels["calendar"].cget("text")
     no_errors(app)
 
 
 def test_all_views_and_every_node_with_every_tab_render(app):
-    for key in ("today", "inbox", "waiting", "overdue", "calendar", "archive", "today"):
+    for key in ("today", "tasks", "activity", "calendar", "archive", "today"):
         app.show_view(key, select_sidebar=True)
         app.root.update()
         assert app.current_view == key
@@ -140,7 +140,7 @@ def test_search_and_list_filters(app):
     assert any("Verificare diferențe XML" in t for t in titles)
     app.search_var.set("")
     app._run_search()
-    assert app.current_view == "today"
+    assert app.current_view == "tasks"
     node = find(app, "Validări XML")
     app.show_node_scope(node.id)
     app.tasklist.status_var.set("Toate")

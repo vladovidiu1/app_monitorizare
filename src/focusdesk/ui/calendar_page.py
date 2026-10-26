@@ -63,6 +63,7 @@ class PlanTab(InspectorTab):
     def load(self, node: Node) -> None:
         super().load(node)
         tz = self.app.ws.settings.timezone
+        selected, scroll, horizontal = self.tv.selection(), self.tv.yview()[0], self.tv.xview()[0]
         self.tv.delete(*self.tv.get_children())
         self._ids = {}
         for s in self.app.sessions.for_node(node.id):
@@ -75,6 +76,9 @@ class PlanTab(InspectorTab):
             self.tv.insert("", "end", iid=s.id, tags=tags, values=(
                 fmt_range(s, tz), SESSION_STATUS_LABELS.get(s.status, s.status),
                 format_seconds(s.actual_seconds) if s.actual_seconds else "—", sync_state_text(s)))
+        self.tv.selection_set([i for i in selected if self.tv.exists(i)])
+        self.tv.yview_moveto(scroll)
+        self.tv.xview_moveto(horizontal)
         self.avail_lbl.configure(text=self.app.availability_hint())
         self.detail.configure(text="")
         ro = self.app.ws.read_only
@@ -256,6 +260,7 @@ class CalendarPage(ttk.Frame):
             if event.session_id in own_session_ids:
                 continue
             outlook_by_day.setdefault(utc_to_local(event.start, tz).date(), []).append(event)
+        selected, scroll, horizontal = self.tv.selection(), self.tv.yview()[0], self.tv.xview()[0]
         self.tv.delete(*self.tv.get_children())
         self._ids = {}
         from .today import long_date
@@ -296,6 +301,9 @@ class CalendarPage(ttk.Frame):
                 if not items and not outlook_items:
                     self.tv.insert(node, "end", values=("", "Nicio sesiune", "", ""))
             d += timedelta(days=1)
+        self.tv.selection_set([i for i in selected if self.tv.exists(i)])
+        self.tv.yview_moveto(scroll)
+        self.tv.xview_moveto(horizontal)
         hint = app.availability_hint() + "  Timpul planificat nu este timp lucrat."
         if self._outlook_error:
             hint += "  " + self._outlook_error

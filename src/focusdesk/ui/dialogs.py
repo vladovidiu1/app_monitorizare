@@ -7,7 +7,7 @@ from tkinter import ttk
 from typing import Any
 
 from ..domain.labels import (
-    KIND_LABELS, PRIORITY_FROM_LABEL, PRIORITY_LABELS, STATUS_FROM_LABEL, STATUS_LABELS,
+    KIND_LABELS, PRIORITY_FROM_LABEL, PRIORITY_LABELS, STATUS_FROM_LABEL, STATUS_LABELS, VISIBLE_STATUSES,
 )
 from ..domain.models import Kind, Node, Priority, Status
 from ..errors import FocusDeskError, ValidationError
@@ -84,7 +84,7 @@ class NewNodeDialog(ModalDialog):
         if self.kind != Kind.FOLDER:
             ttk.Label(m, text="Status").grid(row=r, column=0, sticky="w", pady=3)
             ttk.Combobox(m, textvariable=self.status_var, state="readonly",
-                         values=[STATUS_LABELS[s] for s in Status]).grid(row=r, column=1, sticky="ew", pady=3)
+                         values=[STATUS_LABELS[s] for s in VISIBLE_STATUSES]).grid(row=r, column=1, sticky="ew", pady=3)
             r += 1
             ttk.Label(m, text="Prioritate").grid(row=r, column=0, sticky="w", pady=3)
             ttk.Combobox(m, textvariable=self.prio_var, state="readonly",

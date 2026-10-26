@@ -60,11 +60,11 @@ Flux: task selectat → buton „✉ E-mail” / Ctrl+M / clic dreapta › „Tr
 „Nelămuriri: <task>” și un text cu contextul task-ului (locație, status, termen, următorul pas, descriere limitată), editabil.
 „Trimite” cere confirmare și trimite din contul implicit Outlook; „Deschide ciorna în Outlook” lasă mesajul deschis pentru
 ajustări (nu se trimite nimic). Enter nu trimite din greseală. Dacă Outlook nu poate rezolva un destinatar, **nu se trimite
-nimic**. După o trimitere reușită se adaugă o înregistrare „Acțiune” în Jurnalul task-ului. La timeout (Outlook blocat de un
+nimic**. După o trimitere reușită se adaugă o înregistrare „Acțiune” în Activitatea taskului. La timeout (Outlook blocat de un
 dialog) aplicația nu spune dacă mesajul a plecat: verifică „Elemente trimise”.
 
 Test manual: (1) „Deschide ciorna” cu un destinatar — trebuie să se deschidă o fereastră de mesaj nou cu subiectul/textul;
-(2) trimite-ți ție un mesaj de test cu „Trimite” și verifică „Elemente trimise” și Jurnalul; (3) încearcă o adresă inexistentă
+(2) trimite-ți ție un mesaj de test cu „Trimite” și verifică „Elemente trimise” și Activitatea taskului; (3) încearcă o adresă inexistentă
 și o adresă invalidă (fără @) — trebuie refuzate; (4) dacă politica companiei afișează un avertisment de securitate Outlook la
 automatizare, aplicația nu îl ocolește. Mesajul se trimite ca text simplu; semnătura implicită din Outlook poate lipsi în
 modul „Trimite” (o poți scrie în mesaj sau folosi ciorna) — de verificat pe Outlook-ul real.

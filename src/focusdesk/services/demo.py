@@ -39,7 +39,7 @@ def create_demo_workspace(root: Path) -> None:
         ws.add_related(proj.id, r1.id)
         ws.create_node(Kind.TASK, "Solicitare: raport lunar", daily.id, status=Status.WAITING,
                        waiting_reason="Aștept datele de la contabilitate")
-        ws.create_node(Kind.TASK, "Idei de automatizare", auto.id, status=Status.INBOX)
+        ws.create_node(Kind.TASK, "Idei de automatizare", auto.id, status=Status.TODO)
         ws.update_node(t1.id, pinned_today=today)
         ws.add_note(t1.id, "Am identificat 3 câmpuri care diferă constant între versiuni.", "progress")
     finally:
