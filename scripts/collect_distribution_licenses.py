@@ -4,12 +4,32 @@ import json
 from pathlib import Path
 import sys
 
+from packaging.requirements import Requirement
+
+# Collect the declared runtime closure, plus the bundler's license. Unrelated
+# packages installed on a developer machine must not contaminate the package.
+def distributions():
+    pending = ['focusdesk', 'pyinstaller']
+    seen = set()
+    while pending:
+        name = pending.pop()
+        normalized = name.lower().replace('_', '-')
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        dist = metadata.distribution(name)
+        for dependency in dist.requires or []:
+            requirement = Requirement(dependency)
+            if requirement.marker is None or requirement.marker.evaluate({'extra': ''}):
+                pending.append(requirement.name)
+        yield dist
+
 output=Path(sys.argv[1]);output.mkdir(parents=True,exist_ok=True)
 summary=[]
 python_license=Path(sys.base_prefix)/'LICENSE.txt'
 if python_license.exists():
     (output/'PYTHON-LICENSE.txt').write_bytes(python_license.read_bytes())
-for dist in metadata.distributions():
+for dist in distributions():
     name=dist.metadata['Name'] or 'unknown'
     if name.lower() in ('focusdesk','pip'):
         continue

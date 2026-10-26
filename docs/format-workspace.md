@@ -141,13 +141,11 @@ mărime și retenție. Excluderi implicite: `.git`, `.venv`, `venv`, `__pycache_
 `snapshots`, `backups`, `.env`, chei private și fișiere de credențiale. Dacă sursa se modifică în timpul capturii,
 checkpoint-ul NU se păstrează.
 
-## Cache mail și checkpoint incremental
+## Date istorice ale extensiilor eliminate
 
-`_system/mail/state.json` păstrează cursoare per store/folder, fereastra inițială,
-offsetul ferestrei incrementale, watermark și conversațiile ignorate.
-`_system/mail/messages/<UUID>.json` păstrează textul limitat, metadatele, versiunea
-conținutului, estimarea AI originală, proiecția editabilă, sursele/reviziile, ID-urile
-propunerilor și legăturile confirmate. Decizia suspendată la ignorare se restaurează
-la reluare. Acest cache local este inclus în backup; nu este log de diagnostic.
-Receipts de aplicare/respingere folosesc istoricul comun `_system/history`.
-Vezi [identitatea mesajelor și comportamentul la mutare](MAILURI.md).
+În workspace-urile vechi pot exista `_system/mail/` și evenimente istorice
+`ai_proposal`. Aceste fișiere rămân pe disc, fără citire a inboxului, procesare,
+reconciliere sau ștergere automată. Backupurile obișnuite le pot păstra în continuare.
+Setările necunoscute sunt păstrate inert prin `extra="allow"`.
+Taskurile și subtaskurile create anterior, notițele, sesiunile și descrierile nu au
+un tratament special în funcție de origine: rămân date normale ale utilizatorului.

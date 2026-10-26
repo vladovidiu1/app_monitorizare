@@ -17,7 +17,7 @@ export `.ics`. **Outlook Classic (COM: calendar și e-mail din task) și Git sun
 
 ## Cerințe și rulare din surse
 
-* Windows 10/11, Python 3.11+ pentru funcțiile de bază. Pentru AI și build-ul Windows: **Python 3.12 x64**.
+* Windows 10/11, Python 3.11+; build Windows reproductibil: Python 3.12.10 x64.
 * Mediul recomandat în afara OneDrive (evită sincronizarea fișierelor `.venv`):
 
 ```powershell
@@ -27,35 +27,8 @@ py -3.12 -m venv $env:LOCALAPPDATA\focusdesk-venv
 & $env:LOCALAPPDATA\focusdesk-venv\Scripts\python.exe -m focusdesk --workspace C:\FocusDeskData
 ```
 
-Dependențe (fixate în `pyproject.toml` cu intervale compatibile, verificate cu Python 3.14.6): ttkbootstrap, pydantic,
-portalocker, tzdata, icalendar, pywin32 (doar Windows); dezvoltare: pytest, pyinstaller.
-
-## AI local opțional
-
-Motor integrat **llama-cpp-python 0.3.36**, CPU, într-un proces separat, fără Ollama, server AI sau GPU.
-În **Setări › AI** activezi motorul, alegi GGUF-ul, contextul și firele CPU și testezi modelul.
-**Instrumente › AI local — propuneri…** generează subtask-uri, notițe sau următorul pas, cu previzualizare
-și confirmare; scrierile trec prin Workspace. Aplicația rămâne utilizabilă fără model sau motor nativ.
-
-Butonul **Asistent** și tabul din inspector adaugă chat nemodal, context vizibil task/proiect/workspace,
-„Unde am rămas?”, pași și checklist, rezumat de proiect, căutare după solicitant și ciorne e-mail.
-Răspunsurile citează înregistrări navigabile. Propunerile se revizuiesc înainte/după, se pot modifica
-sau respinge și au istoric persistent, detectarea conflictelor și protecție la dublă aplicare.
-Vezi [docs/ASISTENT.md](docs/ASISTENT.md).
-
-Pregătire explicită pentru dezvoltatori (nu pentru utilizatorul executabilului):
-
-```powershell
-& $env:LOCALAPPDATA\focusdesk-venv\Scripts\python.exe -m pip install -r requirements-ai.txt
-& $env:LOCALAPPDATA\focusdesk-venv\Scripts\python.exe scripts\download_model.py
-& $env:LOCALAPPDATA\focusdesk-venv\Scripts\python.exe scripts\smoke_ai.py
-```
-
-Model: **Qwen/Qwen3-8B-GGUF / Qwen3-8B-Q4_K_M.gguf** (~5 GB), Apache 2.0, revizie și SHA256
-fixate în manifestul versionat. Descărcarea arată progresul, se reia și verifică hash-ul înainte de redenumire.
-În dezvoltare stă în `models/`; în distribuție, lângă executabil, în `models/`, separat de workspace și backupuri.
-Utilizatorul final primește executabilul, modelul și licențele, fără Python sau instalări AI suplimentare.
-Vezi [docs/AI.md](docs/AI.md) pentru build, distribuție, limite și testele efectiv disponibile.
+Dependențe (intervale în `pyproject.toml`, versiuni Windows fixate în `packaging/requirements-windows.lock`): ttkbootstrap, pydantic,
+portalocker, tzdata, icalendar, openpyxl, pywin32 (doar Windows); dezvoltare: pytest, pyinstaller.
 
 La prima pornire alegi un folder pentru workspace (se creează **gol**; un workspace demonstrativ se creează separat, la
 cerere, din ecranul de bun venit sau din meniul Fișier). Ierarhia task-urilor nu are limită de adâncime: fiecare nod are
@@ -67,7 +40,6 @@ recomandată; căile Windows de peste 259 de caractere sunt refuzate explicit.
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\build.ps1            # onedir (implicit) -> %LOCALAPPDATA%\focusdesk-build\dist\FocusDesk\FocusDesk.exe
 powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -OneFile   # opțional: un singur .exe
-powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -ModelPath "$PWD\models\Qwen3-8B-Q4_K_M.gguf"  # include model verificat lângă .exe
 ```
 
 Utilizatorul final nu are nevoie de Python. Datele sunt
@@ -88,7 +60,6 @@ Vezi [docs/RAPORT.md](docs/RAPORT.md) pentru ce s-a verificat efectiv și ce ră
 * [docs/format-workspace.md](docs/format-workspace.md) — structura datelor, schema `node.json`, recuperare
 * [docs/arhitectura.md](docs/arhitectura.md) — module, fire de execuție, decizii
 * [docs/diagnostic-integrari.md](docs/diagnostic-integrari.md) — Outlook (calendar și e-mail), Git, VS Code, ICS: diagnostic și teste manuale
-* [docs/AI.md](docs/AI.md) — motor local, model verificat, descărcare, build și smoke test real
 * [docs/PLAN.md](docs/PLAN.md) — planul pe etape și starea fiecărei funcții
 
 ## Limite cunoscute (pe scurt)
@@ -103,22 +74,6 @@ Vezi [docs/RAPORT.md](docs/RAPORT.md) pentru ce s-a verificat efectiv și ce ră
 * Drag-and-drop în arbore nu este implementat: ordinea și nivelul se schimbă din butoanele ▲▼◀▶ (Alt+→ / Alt+←) sau
   din „Mută…”.
 
-## Mailuri de analizat
-
-Monitorizarea opțională **Outlook Classic COM** este dezactivată implicit și are
-interval inițial/plafon configurabile. Pagina separată „Mailuri de analizat” oferă
-analiză locală GGUF și propuneri cu confirmare, fără modificarea mailurilor originale.
-Vezi [configurare, identitate și limite](docs/MAILURI.md) și
-[verificările efectiv executate](docs/RAPORT.md). New Outlook nu este suportat prin COM.
-
-## E-mail, ziua și rapoarte cu AI
-
-Editorul de mail oferă patru moduri de redactare AI. În Astăzi găsești
-„Pregătește-mi ziua” (selecție AI, calcul Planner) și raport zilnic/săptămânal
-cu cifre calculate din timpul efectiv înregistrat. Toate au previzualizare;
-trimiterea și salvarea rămân explicite. Vezi [ghidul funcțiilor](docs/PRODUCTIVITATE-AI.md).
-Evenimentele Outlook/ICS sunt rezervări personale de timp, fără invitați sau Teams.
-
 ## Interfață luminoasă FocusDesk
 
 Tema, fonturile, paleta, dimensiunile și pictogramele locale sunt centralizate în
@@ -126,20 +81,22 @@ Tema, fonturile, paleta, dimensiunile și pictogramele locale sunt centralizate 
 Vezi [ghidul vizual și capturile reale](docs/INTERFATA.md) pentru layout, scalare,
 reproducerea capturilor și limitele verificării Windows.
 
-## Pachet Windows x64 cu AI și model inclus
+## Distribuție Windows x64
 
-În GitHub: **Actions → FocusDesk Windows x64 cu model → Run workflow → main**.
-După succes, descarcă artifactul **FocusDesk-Windows-x64-cu-model** (retenție o zi).
-Extrage containerul artifactului, apoi ZIP64-ul din interior și pornește
-`FocusDesk/FocusDesk.exe`. Nu instalezi Python, Ollama, CUDA sau un server AI.
-Modelul verificat se află în `models/` lângă executabil. Outlook Classic este opțional.
+Workflow manual: **Actions → FocusDesk Windows x64 → Run workflow → main**.
+Artifact: **FocusDesk-Windows-x64**, cu arhiva aplicației și SHA256. Extrage ambele
+arhive și păstrează întreg folderul `FocusDesk`, inclusiv `_internal` și `licenses`.
+Pornește `FocusDesk.exe`; utilizatorul final nu instalează Python.
+Vezi [pașii de build și verificare](docs/DISTRIBUTIE-WINDOWS.md).
+**Pentru revizia curentă nu s-a construit încă executabilul.**
 
-[Pași exacți, verificări, actualizări fără model și limitele de stocare](docs/DISTRIBUTIE-WINDOWS.md).
-Build-ul este validat numai dacă jobul Windows și smoke-ul GGUF real au reușit;
-starea efectivă este în [raport](docs/RAPORT.md).
+## Compatibilitatea datelor existente
 
-**Build Windows verificat (26 octombrie 2026):**
-[Descarcă pachetul complet cu model, ~5,14 GB](https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139/artifacts/12664103443).
-Retenție o zi; după expirare folosește Run workflow. Verificare efectivă pe EXE:
-GGUF real offline, propunere aplicată temporar, proces AI oprit corect; testele
-Windows au 282 trecute și unul omis. Outlook Classic real rămâne verificare manuală.
+Funcțiile AI și monitorizarea/citirea inboxului au fost eliminate. Nu există motor,
+model, chat, propuneri sau scanări de mail în fundal. Inbox-ul taskurilor rămâne.
+Taskurile, subtaskurile, descrierile, checklisturile, notițele și sesiunile create
+anterior rămân date obișnuite, editabile. Setările vechi sunt acceptate ca date
+necunoscute, fără activarea serviciilor eliminate. Cache-ul istoric `_system/mail/`
+și istoricul existent sunt lăsate pe disc; aplicația nu le curăță automat.
+Outlook Classic rămâne opțional pentru calendar și e-mailul manual cu confirmare.
+Evenimentele sunt rezervări personale de timp, fără invitați sau Teams.

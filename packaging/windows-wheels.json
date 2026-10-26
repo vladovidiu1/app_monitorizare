@@ -1,6 +1,6 @@
 {
   "python": "CPython 3.12 x64",
-  "index": "https://abetlen.github.io/llama-cpp-python/whl/cpu",
+  "index": "https://pypi.org/simple",
   "artifacts": [
     {
       "filename": "altgraph-0.17.5-py2.py3-none-any.whl",
@@ -15,10 +15,6 @@
       "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
     },
     {
-      "filename": "diskcache-5.6.3-py3-none-any.whl",
-      "sha256": "5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19"
-    },
-    {
       "filename": "et_xmlfile-2.0.0-py3-none-any.whl",
       "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa"
     },
@@ -29,22 +25,6 @@
     {
       "filename": "iniconfig-2.3.1-py3-none-any.whl",
       "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7"
-    },
-    {
-      "filename": "jinja2-3.1.6-py3-none-any.whl",
-      "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
-    },
-    {
-      "filename": "llama_cpp_python-0.3.36-py3-none-win_amd64.whl",
-      "sha256": "ae5e88a2cf464e5a2dde7c8898c2d5c71cc24d03cac6396bf7509456bde0b9fb"
-    },
-    {
-      "filename": "markupsafe-3.0.4-cp312-cp312-win_amd64.whl",
-      "sha256": "11935df9bf455ed0c04eb87bcd720f02b1fe5e02128a9430f23aed6f93336fc7"
-    },
-    {
-      "filename": "numpy-2.2.6-cp312-cp312-win_amd64.whl",
-      "sha256": "c1f9540be57940698ed329904db803cf7a402f3fc200bfe599334c9bd84a40b2"
     },
     {
       "filename": "openpyxl-3.1.5-py2.py3-none-any.whl",

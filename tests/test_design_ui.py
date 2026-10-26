@@ -4,8 +4,6 @@ import tkinter as tk
 import pytest
 from tkinter import ttk
 
-from test_ai_ui import ui
-from test_mail_ui import pump
 from focusdesk.config import AppConfig, resource_path
 from focusdesk.ui.app import FocusDeskApp
 from focusdesk.ui.common import apply_theme, is_dark
@@ -14,10 +12,10 @@ from focusdesk.ui.mail_ui import MailDialog
 from focusdesk.ui.settings_dialog import SettingsDialog
 
 
-def test_old_dark_config_starts_light_without_losing_ai_preferences(ws,tmp_path,monkeypatch):
+def test_old_dark_config_starts_light_without_losing_preferences(ws,tmp_path,monkeypatch):
     monkeypatch.setenv('APPDATA',str(tmp_path/'config'))
     config=AppConfig(theme='dark',geometry='1100x700')
-    config.ai.threads=3
+    config.session_open={'folder': True}
     config.save()
     try:
         app=FocusDeskApp()
@@ -26,7 +24,7 @@ def test_old_dark_config_starts_light_without_losing_ai_preferences(ws,tmp_path,
     try:
         assert app.config.theme=='light' and not is_dark(app.root)
         assert ttk.Style().theme_use()==THEME
-        assert app.config.ai.threads==3
+        assert app.config.session_open=={'folder': True}
         # A child owns this Tcl command: global cancellation must preserve its cleanup ledger.
         child=ttk.Frame(app.root)
         child.after(60000,lambda:None)
@@ -51,7 +49,7 @@ def test_visual_tokens_have_readable_contrast_and_local_icons(ui):
         assert ratio(text,bg)>=4.5
     assert icon(ui.root,'calendar') is icon(ui.root,'calendar')
     assert resource_path('icons/LICENSE.txt').exists()
-    assert resource_path('icons/assistant-24.png').exists()
+    assert resource_path('icons/calendar-24.png').exists()
     assert ui.search_entry.cget('takefocus') != '0'
 
 
@@ -88,9 +86,9 @@ def test_late_dialog_text_surface_and_icon_tooltips_are_consistent(ui):
     assert dialog.to_entry.cget('takefocus')!='0'
     dialog.destroy()
     settings=SettingsDialog(ui.root,ui)
-    settings.nb.select(settings.ai_page)
+    settings.nb.select(settings.nb.tabs()[0])
     for _ in range(3):ui.root.update()
-    controls=[w for w in settings.ai_page.winfo_children() if isinstance(w,ttk.Frame)]
+    controls=[w for w in settings.nametowidget(settings.nb.tabs()[0]).winfo_children() if isinstance(w,ttk.Frame)]
     assert all(w.winfo_ismapped() for frame in controls for w in frame.winfo_children() if isinstance(w,ttk.Button))
     settings.destroy()
     assert not errors

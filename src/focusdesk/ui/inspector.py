@@ -78,7 +78,6 @@ class Inspector(ttk.Frame):
             self.path_lbl.configure(text="")
             self.nb.pack_forget()
             self.empty.place(relx=0.5, rely=0.4, anchor="center")
-            self.app.ai.selection_changed()
             return
         self.empty.place_forget()
         if not self.nb.winfo_ismapped():
@@ -95,7 +94,6 @@ class Inspector(ttk.Frame):
                 tab.load(node)
         if current and self.nb.tab(current, "state") == "hidden":
             self.nb.select(self.tabs[0])
-        self.app.ai.selection_changed()
 
     def is_dirty(self) -> bool:
         return any(t.is_dirty() for t in self.tabs if self.node_id and t.node_id == self.node_id)

@@ -1,6 +1,6 @@
 """Planificator determinist: intervale libere din program, fara suprapuneri, respecta dependente si termene.
 
-AI-ul poate propune ordinea/descompunerea, dar nu calculeaza suprapunerile: asta face doar acest modul.
+Calculeaza determinist intervalele, capacitatea, pauzele si dependentele.
 """
 
 from __future__ import annotations

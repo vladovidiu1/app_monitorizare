@@ -56,12 +56,6 @@ class TodayPage(ttk.Frame):
             resume.state(["disabled"])
         if ws.read_only:
             resume.state(["disabled"])
-        ai_bar = ttk.Frame(f, style="Page.TFrame")
-        ai_bar.grid(row=2, column=0, sticky="ew", padx=16, pady=4)
-        from .productivity_ui import ProductivityWindow
-        button(ai_bar, "Pregătește-mi ziua", lambda: ProductivityWindow(app, "day"), glyph="assistant").grid(row=0,column=0,sticky="ew",padx=(0,6),pady=3)
-        button(ai_bar, "Raport de activitate", lambda: ProductivityWindow(app, "report"), glyph="chart").grid(row=0,column=1,sticky="ew",pady=3)
-        ai_bar.columnconfigure((0,1),weight=1)
         summary = ttk.Frame(f, style="Page.TFrame")
         summary.grid(row=3,column=0,sticky="ew",padx=16,pady=(10,0))
         summary.columnconfigure((0,1,2),weight=1,uniform="metric")

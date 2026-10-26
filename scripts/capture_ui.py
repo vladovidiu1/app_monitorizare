@@ -54,11 +54,8 @@ def main():
             app.select_node(task.id,reveal=True);app.inspector.show_tab('Detalii');shot('03-inspector')
             app.show_view('calendar',select_sidebar=True);shot('04-calendar')
             app.select_node(task.id,reveal=True)
-            app.open_assistant();shot('05-asistent',app.assistant_window);app.assistant_window.destroy()
-            dialog=SettingsDialog(app.root,app);dialog.geometry('+30+30');shot('06-setari',dialog)
-            dialog.nb.select(dialog.ai_page);shot('07-setari-ai',dialog);dialog.destroy()
+            dialog=SettingsDialog(app.root,app);dialog.geometry('+30+30');shot('06-setari',dialog);dialog.destroy()
             dialog=MailDialog(app.root,app,task);dialog.geometry('+30+30');shot('08-email',dialog);dialog.destroy()
-            app.show_view('mail_review');shot('09-mailuri')
             window=DashboardWindow(app);window.geometry('+30+30');shot('10-dashboard',window);window.destroy()
             if errors:
                 raise RuntimeError('Erori callback Tk: '+ '; '.join(errors))

@@ -110,7 +110,7 @@ def test_window_layout_and_initial_state(app):
     assert app.current_view == "today"
     assert app.today.winfo_ismapped()
     assert [app.inspector.nb.tab(t, "text") for t in app.inspector.nb.tabs()] == [
-        "Detalii", "Subtask-uri", "Planificare", "Fișiere", "Jurnal", "Versiuni", "Asistent"]
+        "Detalii", "Subtask-uri", "Planificare", "Fișiere", "Jurnal", "Versiuni"]
     assert "Calendar: local" in app.status._labels["calendar"].cget("text")
     no_errors(app)
 

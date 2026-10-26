@@ -20,7 +20,6 @@ SHAPES={
  'folder':[('line',(3,20,3,5,10,5,12,8,21,8,21,20,3,20))],
  'project':[('rect',(4,5,20,21)),('line',(9,5,9,3,15,3,15,5)),('line',(8,11,16,11)),('line',(8,16,13,16))],
  'task':[('rect',(4,3,20,21)),('line',(8,12,11,15,17,8))],
- 'assistant':[('rect',(3,4,21,18)),('line',(6,18,6,22,11,18)),('line',(8,10,16,10)),('line',(8,14,13,14))],
  'search':[('ellipse',(3,3,16,16)),('line',(15,15,22,22))],
  'chart':[('line',(3,3,3,21,22,21)),('line',(7,17,7,12)),('line',(12,17,12,7)),('line',(17,17,17,4))],
  'play':[('line',(7,4,20,12,7,20,7,4))],
@@ -36,6 +35,6 @@ for name,shapes in SHAPES.items():
   else:getattr(d,'rectangle' if shape=='rect' else shape)(coords,outline='#596579',width=7)
  for size in (16,20,24,32,40,48):
   im.resize((size,size),Image.Resampling.LANCZOS).save(ROOT/f'{name}-{size}.png')
-  if name in ('play','assistant','add'):
+  if name in ('play','add'):
    white=Image.new('RGBA',im.size,'white');white.putalpha(im.getchannel('A'))
    white.resize((size,size),Image.Resampling.LANCZOS).save(ROOT/f'{name}-on-accent-{size}.png')

@@ -2,7 +2,7 @@
 
 Noua versiune folosește exclusiv o temă luminoasă, în Tkinter + ttkbootstrap.
 Configurațiile vechi cu `theme: dark` sunt acceptate; aplicația pornește luminos și
-salvează `light` la închidere. Preferințele AI, geometria și celelalte setări sunt
+salvează `light` la închidere. Geometria și celelalte setări sunt
 păstrate. În Instrumente, comutatorul vechi este înlocuit de „Aspect luminos FocusDesk”.
 
 ## Sistem vizual
@@ -27,8 +27,7 @@ Butoanele doar cu pictogramă au tooltip; focusul și scurtăturile existente r�
 ## Modificări vizibile
 
 - Bara principală păstrează FocusDesk, workspace-ul, căutarea extensibilă, Nou,
-  Asistent și E-mail. Starea AI este explicită: dezactivat, în lucru sau activat
-  cu încărcare la cerere; existența unui model nu este presupusă.
+  E-mail.
 - Sidebarul separă navigarea de ierarhia proiectelor, cu pictograme locale și
   selecție indigo discretă. Numărătorile provin în continuare din Queries.
 - Lista de taskuri păstrează ierarhia, extinderea, sortarea și coloanele. Filtrele
@@ -41,12 +40,12 @@ Butoanele doar cu pictogramă au tooltip; focusul și scurtăturile existente r�
   suprafețe compacte și starea timerului/pauzei. Programul și stările goale
   păstrează datele și acțiunile existente. Nu sunt grafice sau cifre decorative.
 - Calendarul, planificarea, dashboardul, setările, mailul, fișierele, jurnalul,
-  versiunile și fluxurile AI folosesc aceleași stiluri. Barele de acțiuni formate
+  versiunile folosesc aceleași stiluri. Barele de acțiuni formate
   din butoane trec pe mai multe rânduri; nu dispar comenzile la redimensionare.
   Tabelele comune au derulare pe ambele axe.
 
 Nu s-au schimbat schema workspace-ului, calculele de timp, Planner, confirmarea
-trimiterii mailurilor sau mecanismul de propuneri AI. Rezervările Outlook/ICS rămân
+trimiterii mailurilor. Rezervările Outlook/ICS rămân
 rezervări personale de timp, fără invitați sau Teams.
 
 ## Dimensiuni și capturi reproductibile
@@ -59,7 +58,7 @@ ferestrei curente.
 
 Scriptul creează un workspace demonstrativ și configurație **temporare**, inclusiv
 preferința veche dark, deschide ferestre Tk reale și salvează capturi PNG. Nu folosește
-mockup-uri, nu activează AI/COM și nu trimite mesaje. Eșuează la erori din callbackurile Tk.
+mockup-uri, nu activează COM și nu trimite mesaje. Eșuează la erori din callbackurile Tk.
 Necesită Pillow (deja folosit de ttkbootstrap) și un desktop/display disponibil:
 
 ```powershell
@@ -76,13 +75,15 @@ comportamentul DPI Windows sau mutarea între monitoare cu DPI diferit.
 ## Verificat efectiv
 
 Interfața a fost pornită în Linux, Tk 9, cu Xvfb. Au fost inspectate capturi reale
-pentru Astăzi, proiect/taskuri/subtaskuri, inspector, Calendar, Asistent, Setări,
-Setări AI, E-mail, Mailuri de analizat și Dashboard, la dimensiunea standard și minimă.
-Au fost generate și inspectate capturi cu scalare Tk 100%, 125% și 150%.
+pentru Astăzi, proiect/taskuri/subtaskuri, inspector, Calendar, Setări,
+E-mail și Dashboard, la dimensiunea standard și minimă.
+Capturile livrate acum au fost regenerate la 100% după eliminarea extensiilor.
+Testele automate verifică păstrarea comenzilor esențiale la minimul 1100 × 700.
+Verificările anterioare cu scalare Tk 125% și 150% nu certifică DPI Windows.
 
 Exemple livrate: [Astăzi](capturi-ui/01-astazi.png),
 [proiect](capturi-ui/02-proiect.png), [inspector](capturi-ui/03-inspector.png),
-[Calendar](capturi-ui/04-calendar.png), [Asistent](capturi-ui/05-asistent.png),
+[Calendar](capturi-ui/04-calendar.png),
 [Setări](capturi-ui/06-setari.png), [E-mail](capturi-ui/08-email.png).
 
 Fonturile și rasterizarea X11 din acest mediu diferă de Segoe UI pe Windows;

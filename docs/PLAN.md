@@ -41,7 +41,7 @@ Worker COM dedicat, diagnostic și alegerea calendarului, citire disponibilitate
 elemente proprii (markeri UserProperties), operații reluabile și conflicte. Logica este testată cu un backend fals;
 **backend-ul COM real nu a fost rulat** (vezi diagnostic).
 
-## Etapa 6 — E-mail din task — De verificat pe Windows (a înlocuit asistentul Ollama, eliminat la cererea utilizatorului)
+## Etapa 6 — E-mail din task — De verificat pe Windows
 
 Dialog „E-mail din task” (Ctrl+M, buton „✉ E-mail”, meniu contextual): destinatari/CC validate, subiect și text implicit
 cu contextul task-ului, confirmare la trimitere, opțiune de ciornă în Outlook, înregistrare în Jurnal. Logica este testată cu
@@ -53,26 +53,23 @@ Ierarhie de orice adâncime (directoare plate în `nodes/`, `parent_id` autorita
 centrală ca arbore cu adăugare rapidă, ▲▼◀▶ și progres pe noduri; aspect modern (temă, spațieri, antet de
 inspector cu titlul).
 
-## Etapa 7 — Automatizări și distribuție — Implementat (build verificat, vezi raport)
+## Etapa 7 — Automatizări și distribuție — Configurație actualizată; executabilul curent nu a fost construit
 
 Checkpoint programat (cât rulează aplicația) cu raportarea orei ratate, checkpoint la finalul sesiunii, Git opțional
 (status/log/diff/commit manual), build PyInstaller onedir (+ onefile opțional), README și documentație.
-
-## Motor AI local integrat
-
-Motorul AI local integrat este adăugat separat de vechea integrare Ollama eliminată: llama-cpp-python CPU,
-GGUF Qwen3 cu manifest verificabil, proces spawn, configurare AI, propuneri confirmate, downloader reluabil și
-împachetare DLL. Starea verificărilor reale, inclusiv limitele Windows, este în [RAPORT.md](RAPORT.md).
-
-Extensia Asistent adaugă chat nemodal și tab în inspector, recuperare lexicală limitată, surse navigabile,
-buget real de tokeni și propuneri multiple cu editare, respingere, conflicte, rezultate parțiale și istoric
-write-ahead care blochează aplicarea repetată. Vezi [ASISTENT.md](ASISTENT.md).
 
 ## Amânat / explicit în afara versiunii
 
 * Drag-and-drop în arbore (opțional în specificație).
 * Extensia VS Code „Save All” (fază viitoare).
 * Programare prin Windows Task Scheduler (documentată ca opțiune viitoare).
-* RAG/baze vectoriale, colaborare multiutilizator, autentificare, Microsoft Graph, servicii cloud.
+* colaborare multiutilizator, autentificare, Microsoft Graph, servicii cloud.
 * Implementare de adaptor email pentru ICS (există doar interfața documentată, dezactivată).
 * `watchdog` (rescanarea este manuală: Fișier › Rescanează workspace).
+
+## Simplificarea versiunii office
+
+AI-ul și monitorizarea inboxului au fost eliminate complet. Organizarea, timerul,
+planificatorul determinist, Outlook calendar, e-mailul manual, colegii, fișierele,
+Git, checkpointurile, backupurile și tema luminoasă rămân disponibile.
+Datele utilizatorului și configurațiile vechi rămân compatibile.

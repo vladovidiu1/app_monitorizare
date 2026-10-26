@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 SMART_VIEWS = [
     ("today", "Astăzi"),
     ("inbox", "Inbox"),
-    ("mail_review", "Mailuri de analizat"),
     ("waiting", "În așteptare"),
     ("overdue", "Restante"),
     ("calendar", "Calendar"),
@@ -40,7 +39,7 @@ class Sidebar(ttk.Frame):
         self.views = ttk.Treeview(self, show="tree", selectmode="browse", height=len(SMART_VIEWS), style="Nav.Treeview")
         self.views.pack(fill="x", padx=8)
         for key, label in SMART_VIEWS:
-            self.views.insert("", "end", iid=key, text="  " + label, image=icon(self,key if key != "mail_review" else "mail"))
+            self.views.insert("", "end", iid=key, text="  " + label, image=icon(self,key))
         self.views.bind("<<TreeviewSelect>>", self._on_view_select)
         head = ttk.Frame(self, style="Sidebar.TFrame")
         head.pack(fill="x", padx=14, pady=(16, 4))
@@ -114,7 +113,6 @@ class Sidebar(ttk.Frame):
         counts = {
             "today": len(q.view_today()), "inbox": len(q.view_inbox()), "waiting": len(q.view_waiting()),
             "overdue": len(q.view_overdue()), "calendar": None, "archive": len(q.view_archive()),
-            "mail_review": None,
         }
         for key, label in SMART_VIEWS:
             n = counts[key]

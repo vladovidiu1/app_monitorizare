@@ -8,7 +8,6 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .models import SCHEMA_VERSION
-from .mail_monitor import FolderChoice
 
 
 class _Base(BaseModel):
@@ -109,32 +108,6 @@ class BackupSettings(_Base):
     daily: bool = True
 
 
-class MailMonitorSettings(_Base):
-    enabled: bool = False
-    store_id: str = ""
-    mailbox: str = ""
-    folders: list[FolderChoice] = Field(default_factory=list, max_length=10)
-    interval_seconds: int = Field(default=300, ge=30, le=86400)
-    first_days: int = Field(default=7, ge=1, le=365)
-    first_since: date | None = None
-    first_until: date | None = None
-    first_max: int = Field(default=100, ge=1, le=1000)
-    page_size: int = Field(default=25, ge=1, le=50)
-    max_per_check: int = Field(default=50, ge=1, le=100)
-
-    @model_validator(mode="after")
-    def _valid(self):
-        if self.enabled and (not self.store_id or not self.folders):
-            raise ValueError("Alege explicit contul și cel puțin un folder pentru monitorizare.")
-        if any(folder.store_id != self.store_id for folder in self.folders):
-            raise ValueError("Folderele trebuie să aparțină contului ales.")
-        if len({folder.folder_id for folder in self.folders}) != len(self.folders):
-            raise ValueError("Nu selecta același folder de două ori.")
-        if self.first_since and self.first_until and self.first_since > self.first_until:
-            raise ValueError("Interval inițial invalid.")
-        return self
-
-
 class Settings(_Base):
     schema_version: int = SCHEMA_VERSION
     timezone: str = "Europe/Bucharest"
@@ -148,7 +121,6 @@ class Settings(_Base):
     backup: BackupSettings = Field(default_factory=BackupSettings)
     checkpoints: CheckpointSettings = Field(default_factory=CheckpointSettings)
     outlook: OutlookSettings = Field(default_factory=OutlookSettings)
-    mail_monitor: MailMonitorSettings = Field(default_factory=MailMonitorSettings)
     vscode_path: str | None = None
     ics_email_adapter_enabled: bool = False
     inbox_default_parent: str | None = None

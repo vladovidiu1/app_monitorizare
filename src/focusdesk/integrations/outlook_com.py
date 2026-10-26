@@ -64,18 +64,6 @@ class OutlookComBackend:
         self._app = None
         self._ns = None
 
-    def list_mail_folders(self):
-        from .mail_read import list_folders
-        return list_folders(self)
-
-    def scan_mail_page(self, plan):
-        from .mail_read import scan_page
-        return scan_page(self, plan)
-
-    def read_mail_details(self, locators):
-        from .mail_read import read_details
-        return read_details(self, locators)
-
     # ---- connection -------------------------------------------------
     def _connect(self):
         if self._app is None:
