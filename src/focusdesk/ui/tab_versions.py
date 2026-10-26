@@ -67,7 +67,7 @@ class GitCommitDialog(ModalDialog):
                 self.tv.selection_add(str(i))
         self._entries = entries
         ttk.Label(self.body, text="Mesaj").pack(anchor="w")
-        self.msg = tk.Text(self.body, height=5, wrap="word", font=("Segoe UI", 10))
+        self.msg = tk.Text(self.body, height=5, wrap="word", font="TkTextFont")
         self.msg.pack(fill="x")
         self.msg.insert("1.0", message)
 

@@ -17,6 +17,7 @@ from ..services.queries import Progress
 from .common import BASE_SIZE, FONT_FAMILY, SessionButton, error_color, muted_color
 from .formats import format_date
 from .sidebar import node_glyph
+from .design import icon
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -69,15 +70,18 @@ class TaskList(ttk.Frame):
         self.status_box = self._combo(bar, self.status_var, [ALL] + [STATUS_LABELS[s] for s in Status], 11)
         self.prio_box = self._combo(bar, self.prio_var, [ALL] + [PRIORITY_LABELS[p] for p in Priority], 9)
         self.due_box = self._combo(bar, self.due_var, list(DUE_FILTERS), 15)
-        self.proj_box = self._combo(bar, self.proj_var, ["Toate proiectele"], 18)
+        project_row = ttk.Frame(self)
+        project_row.pack(fill="x", padx=16, pady=(0,6))
+        self.proj_box = self._combo(project_row, self.proj_var, ["Toate proiectele"], 18)
         bar2 = ttk.Frame(self)
         bar2.pack(fill="x", padx=16, pady=(0, 8))
-        ent = ttk.Entry(bar2, textvariable=self.text_var)
-        ent.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ent = ttk.Entry(project_row, textvariable=self.text_var,width=12)
+        ent.pack(side="left",fill="x",expand=True)
+        bar2.columnconfigure(0,weight=1)
         tb.Checkbutton(bar2, text="Arată finalizate", variable=self.closed_var, command=self.refresh,
-                       bootstyle="round-toggle").pack(side="left", padx=(0, 10))
+                       bootstyle="round-toggle").grid(row=0,column=0,sticky="w")
         tb.Button(bar2, text="Resetează filtre", command=self.reset_filters, bootstyle="secondary-outline"
-                  ).pack(side="left")
+                  ).grid(row=0,column=1,sticky="e")
         self.text_var.trace_add("write", lambda *_: self._debounced_refresh())
         self._after_id = None
 
@@ -94,14 +98,19 @@ class TaskList(ttk.Frame):
         self.tv = ttk.Treeview(self.list_wrap, columns=[c[0] for c in COLUMNS], show="tree headings",
                                selectmode="browse")
         self.tv.heading("#0", text="Titlu", anchor="w", command=lambda: self._sort_by("title"))
-        self.tv.column("#0", width=200, minwidth=150, anchor="w", stretch=True)
+        self.tv.column("#0", width=260, minwidth=240, anchor="w", stretch=True)
         for cid, text, width in COLUMNS:
             self.tv.heading(cid, text=text, anchor="w", command=lambda c=cid: self._sort_by(c))
             self.tv.column(cid, width=width, minwidth=50, anchor="w", stretch=False)
         vbar = ttk.Scrollbar(self.list_wrap, orient="vertical", command=self.tv.yview)
         self.tv.configure(yscrollcommand=vbar.set)
-        self.tv.pack(side="left", fill="both", expand=True)
-        vbar.pack(side="right", fill="y")
+        self.hbar = ttk.Scrollbar(self.list_wrap, orient="horizontal", command=self.tv.xview)
+        self.tv.configure(xscrollcommand=self.hbar.set)
+        self.list_wrap.columnconfigure(0,weight=1)
+        self.list_wrap.rowconfigure(0,weight=1)
+        self.tv.grid(row=0,column=0,sticky="nsew")
+        vbar.grid(row=0,column=1,sticky="ns")
+        self.hbar.grid(row=1,column=0,sticky="ew")
         self.configure_tags()
         self.tv.bind("<<TreeviewSelect>>", self._on_select)
         self.tv.bind("<Double-1>", self._on_double)
@@ -132,21 +141,21 @@ class TaskList(ttk.Frame):
         self.add_top_btn = tb.Button(row, text="Aici", bootstyle="secondary-outline",
                                       command=lambda: self._quick_add(under_selection=False))
         self.add_top_btn.pack(side="left", padx=(6, 0))
-        tools = ttk.Frame(row)
-        tools.pack(side="left", padx=(14, 0))
+        tools = ttk.Frame(bar)
+        tools.pack(anchor="w",pady=(4,0))
         for text, cmd in (("▲", lambda: self.app.reorder_selected(-1)), ("▼", lambda: self.app.reorder_selected(1)),
                           ("◀", lambda: self.app.outdent_selected()), ("▶", lambda: self.app.indent_selected())):
             tb.Button(tools, text=text, width=3, command=cmd, bootstyle="secondary-outline"
                        ).pack(side="left", padx=2)
         ttk.Label(bar, style="Muted.TLabel", text=(
-            "▲▼ ordinea  ·  ▶ (Alt+→) subtask al celui de deasupra  ·  ◀ (Alt+←) scoate un nivel  ·  Insert: câmpul de adăugare"
+            "Alt + săgeți: schimbă nivelul · Insert: adaugă"
         )).pack(anchor="w", pady=(3, 0))
 
     def configure_tags(self) -> None:
         self.tv.tag_configure("overdue", foreground=error_color(self))
         self.tv.tag_configure("closed", foreground=muted_color(self))
         self.tv.tag_configure("context", foreground=muted_color(self))
-        self.tv.tag_configure("group", font=(FONT_FAMILY, BASE_SIZE, "bold"))
+        self.tv.tag_configure("group", font=(self._root()._focusdesk_family, BASE_SIZE, "bold"))
 
     # ---- configuration ----------------------------------------------
     def set_source(self, title: str, loader: Callable[[], list[Node]], crumb: str = "",
@@ -219,7 +228,7 @@ class TaskList(ttk.Frame):
             for parent_iid, n in rows:
                 is_open = self._expand_all or n.id in open_ids or n.id in self._force_open
                 self.tv.insert(parent_iid, "end", iid=n.id, tags=self._tags_for(n, n.id in matched_ids),
-                               text=self._title_text(n), open=is_open, values=self._values(n, scope is not None))
+                               text=self._title_text(n), image=icon(self,n.kind.value), open=is_open, values=self._values(n, scope is not None))
             keep = [s for s in selected if self.tv.exists(s)]
             if keep:
                 self.tv.selection_set(keep)
@@ -273,7 +282,7 @@ class TaskList(ttk.Frame):
         return tags
 
     def _title_text(self, n: Node) -> str:
-        text = f"{node_glyph(n)}  {n.title}"
+        text = n.title
         if n.kind == Kind.TASK and n.status not in CLOSED_STATUSES and self.app.q.is_blocked(n):
             text += "  [blocat]"
         return text

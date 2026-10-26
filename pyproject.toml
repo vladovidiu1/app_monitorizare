@@ -19,6 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pyinstaller>=6.10"]
+ai = ["llama-cpp-python==0.3.36", "numpy==2.2.6", "jinja2==3.1.6", "diskcache==5.6.3"]
 
 [project.scripts]
 focusdesk = "focusdesk.main:main"
@@ -27,7 +28,7 @@ focusdesk = "focusdesk.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-focusdesk = ["resources/*"]
+focusdesk = ["resources/*", "resources/icons/*.png", "resources/icons/LICENSE.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

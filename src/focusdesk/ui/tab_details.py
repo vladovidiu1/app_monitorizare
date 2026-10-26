@@ -41,7 +41,7 @@ class DetailsTab(InspectorTab):
         self.sf.pack(fill="both", expand=True)
         f = self.sf.inner
         f.columnconfigure(1, weight=1)
-        pad = {"padx": (8, 8), "pady": 3}
+        pad = {"padx": (12, 12), "pady": 5}
         self.vars: dict[str, tk.StringVar] = {k: tk.StringVar() for k in (
             "title", "status", "priority", "due", "due_time", "est", "rem", "tags", "next", "waiting", "review", "completed")}
         self.pin_var = tk.BooleanVar()
@@ -71,12 +71,17 @@ class DetailsTab(InspectorTab):
 
         def due_frame(p):
             fr = ttk.Frame(p)
-            ttk.Entry(fr, textvariable=self.vars["due"], width=12).pack(side="left")
-            ttk.Label(fr, text="ora").pack(side="left", padx=(8, 2))
-            ttk.Entry(fr, textvariable=self.vars["due_time"], width=6).pack(side="left")
-            ttk.Button(fr, text="Azi", width=4, command=lambda: self._set_due("azi")).pack(side="left", padx=(8, 2))
-            ttk.Button(fr, text="Mâine", width=6, command=lambda: self._set_due("mâine")).pack(side="left", padx=2)
-            ttk.Button(fr, text="✕", width=3, command=lambda: self._set_due("")).pack(side="left", padx=2)
+            fields=ttk.Frame(fr)
+            fields.pack(anchor="w",fill="x")
+            ttk.Entry(fields, textvariable=self.vars["due"], width=12).pack(side="left")
+            ttk.Label(fields, text="ora").pack(side="left", padx=(8,2))
+            ttk.Entry(fields, textvariable=self.vars["due_time"], width=6).pack(side="left")
+            actions=ttk.Frame(fr)
+            actions.pack(anchor="w",pady=(4,0))
+            ttk.Button(actions,text="Azi",command=lambda:self._set_due("azi")).pack(side="left")
+            ttk.Button(actions,text="Mâine",command=lambda:self._set_due("mâine")).pack(side="left",padx=4)
+            from .design import button
+            button(actions,"",lambda:self._set_due(""),glyph="clear",tooltip="Elimină termenul",width=2).pack(side="left")
             return fr
 
         row("due", "Termen", due_frame)
@@ -107,7 +112,7 @@ class DetailsTab(InspectorTab):
         ttk.Label(f, text="Descriere").grid(row=r, column=0, sticky="nw", **pad)
         dwrap = ttk.Frame(f)
         dwrap.grid(row=r, column=1, sticky="ew", **pad)
-        self.desc = tk.Text(dwrap, height=8, wrap="word", undo=True, font=("Segoe UI", 10), borderwidth=1,
+        self.desc = tk.Text(dwrap, height=8, wrap="word", undo=True, font="TkTextFont", borderwidth=1,
                             relief="solid", highlightthickness=0)
         self.desc.pack(side="left", fill="both", expand=True)
         dsb = ttk.Scrollbar(dwrap, orient="vertical", command=self.desc.yview)
@@ -141,13 +146,15 @@ class DetailsTab(InspectorTab):
         self._dep_ids: list[str] = []
         self._link_ids: list[str] = []
 
-        bar = ttk.Frame(f)
-        bar.grid(row=r, column=0, columnspan=2, sticky="ew", padx=8, pady=(10, 12))
+        bar = ttk.Frame(self, padding=(10,8))
+        self.sf.pack_forget()
+        bar.pack(side="bottom", fill="x")
+        self.sf.pack(fill="both", expand=True)
         self.save_btn = tb.Button(bar, text="Salvează (Ctrl+S)", command=self.save, bootstyle="primary")
         self.save_btn.pack(side="left")
         ttk.Button(bar, text="Renunță la modificări", command=self.revert).pack(side="left", padx=8)
         self.state_lbl = ttk.Label(bar, text="", style="Muted.TLabel")
-        self.state_lbl.pack(side="left", padx=8)
+        self.state_lbl.pack(side="bottom", fill="x", pady=(6,0))
 
     # ---- applicability ----------------------------------------------
     def applies_to(self, node: Node) -> bool:

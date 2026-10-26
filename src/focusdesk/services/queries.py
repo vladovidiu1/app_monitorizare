@@ -152,10 +152,10 @@ class Queries:
         return out
 
     # ---- worked time --------------------------------------------------
-    def worked_map(self, live: tuple[str, float] | None = None) -> dict[str, int]:
+    def worked_map(self, live: tuple[str, float] | None = None, *, sessions=None) -> dict[str, int]:
         """Secunde lucrate pe nod, inclusiv sesiunile subtask-urilor; `live` = sesiunea activa (nod, secunde)."""
         own: dict[str, float] = {}
-        for s in self.ws.repo.sessions.list_all():
+        for s in sessions if sessions is not None else self.ws.repo.sessions.list_all():
             if s.actual_seconds > 0:
                 own[s.node_id] = own.get(s.node_id, 0) + s.actual_seconds
         if live is not None and live[1] > 0:
@@ -319,3 +319,33 @@ class Queries:
                 if r >= 0.85:
                     out.append((a, b, r))
         return out
+
+    def assistant_candidates(self, query: str, scope_id: str | None) -> list[Node]:
+        """Căutare lexicală limitabilă: solicitantul este căutat explicit, fără index vectorial."""
+        import re
+        import unicodedata
+
+        def fold(value):
+            return "".join(c for c in unicodedata.normalize("NFKD", value.casefold()) if not unicodedata.combining(c))
+
+        candidates = self.tasks_in(scope_id)
+        question = fold(query)
+        person = re.search(r"(?:colegul|colega|de la|solicitantul)\s+(.+?)[?!.]*$", question)
+        if person:
+            name = re.sub(r"^(?:colegul|colega)\s+", "", person[1]).strip(" ?!.")
+            terms = re.findall(r"\w+", name)
+            return self._sorted(n for n in candidates if n.requested_by and terms and all(
+                term in fold(n.requested_by.name + " " + n.requested_by.code + " " + (n.requested_by.email_address or "")) for term in terms))
+        stop = {"ce", "am", "de", "la", "unde", "ramas", "propune", "pasi", "rezuma", "proiectul", "task", "taskuri", "si", "in",
+                "despre", "pentru", "cu", "care", "sunt", "cauta", "gaseste", "arata", "listeaza"}
+        terms = set(re.findall(r"\w+", question)) - stop
+        def score(n):
+            text = fold(" ".join([n.title, n.next_action or "", n.waiting_reason or "", " ".join(n.tags),
+                                  n.requested_by.name if n.requested_by else ""]))
+            return sum(term in text for term in terms)
+        hits = [node for node in candidates if score(node)] if terms else []
+        if hits:
+            candidates = hits
+        elif terms and re.match(r"^(?:ce taskuri|cauta|gaseste|arata|listeaza|care sunt taskuri)", question):
+            candidates = []
+        return sorted(candidates, key=lambda n: (-score(n), n.sort_order, n.title.casefold()))

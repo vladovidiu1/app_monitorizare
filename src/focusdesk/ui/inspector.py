@@ -50,8 +50,9 @@ class Inspector(ttk.Frame):
         self.head_lbl.pack(side="left")
         self.path_lbl = ttk.Label(self, text="", style="Crumb.TLabel", wraplength=520, justify="left")
         self.path_lbl.pack(fill="x", padx=14)
-        self.nb = ttk.Notebook(self)
+        self.nb = ttk.Notebook(self, style="Inspector.TNotebook")
         self.nb.pack(fill="both", expand=True, padx=6, pady=6)
+        self.bind("<Configure>", lambda e: (self.head_lbl.configure(wraplength=max(160,e.width-32)), self.path_lbl.configure(wraplength=max(160,e.width-32))))
         self.tabs: list[InspectorTab] = []
         self.empty = ttk.Label(self, text="Selectează un folder, proiect sau task\npentru a vedea detaliile.",
                                style="Muted.TLabel", justify="center")
@@ -77,12 +78,13 @@ class Inspector(ttk.Frame):
             self.path_lbl.configure(text="")
             self.nb.pack_forget()
             self.empty.place(relx=0.5, rely=0.4, anchor="center")
+            self.app.ai.selection_changed()
             return
         self.empty.place_forget()
         if not self.nb.winfo_ismapped():
             self.nb.pack(fill="both", expand=True, padx=6, pady=6)
         node = self.app.ws.get(node_id)
-        self.head_lbl.configure(text=f"{node_glyph(node)}  {node.title}")
+        self.head_lbl.configure(text=node.title)
         anc = " › ".join(a.title for a in self.app.ws.ancestors(node_id))
         self.path_lbl.configure(text=f"{KIND_LABELS[node.kind]}  ·  {anc or 'Rădăcina workspace-ului'}")
         current = self.nb.select()
@@ -93,6 +95,7 @@ class Inspector(ttk.Frame):
                 tab.load(node)
         if current and self.nb.tab(current, "state") == "hidden":
             self.nb.select(self.tabs[0])
+        self.app.ai.selection_changed()
 
     def is_dirty(self) -> bool:
         return any(t.is_dirty() for t in self.tabs if self.node_id and t.node_id == self.node_id)

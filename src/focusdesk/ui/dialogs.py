@@ -108,7 +108,7 @@ class NewNodeDialog(ModalDialog):
         ttk.Entry(m, textvariable=self.tags_var).grid(row=r, column=1, sticky="ew", pady=3)
         r += 1
         ttk.Label(m, text="Descriere").grid(row=r, column=0, sticky="nw", pady=3)
-        self.desc = tk.Text(m, height=5, width=40, wrap="word", font=("Segoe UI", 10))
+        self.desc = tk.Text(m, height=5, width=40, wrap="word", font="TkTextFont")
         self.desc.grid(row=r, column=1, sticky="ew", pady=3)
         if self.kind == Kind.TASK:
             hint = "Termen: ZZ.LL.AAAA, azi, mâine, +3. Estimare: 90, 1h30."

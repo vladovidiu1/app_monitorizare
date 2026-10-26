@@ -21,10 +21,11 @@ class MailDialog(ModalDialog):
     # Enter nu trebuie sa trimita mesajul din greseala (ex. din campul „Către”).
     enter_confirms = False
 
-    def __init__(self, parent: tk.Misc, app: "FocusDeskApp", node: Node) -> None:
+    def __init__(self, parent: tk.Misc, app: "FocusDeskApp", node: Node | None) -> None:
         super().__init__(parent, "E-mail din task", resizable=True, ok_text="Trimite", cancel_text="Anulează")
         self.app = app
         self.action = "send"
+        self.node_id = node.id if node else None
         self.geometry("720x620")
         self.minsize(560, 480)
         self.draft_btn = ttk.Button(self.buttons, text="Deschide ciorna în Outlook", command=self._open_draft)
@@ -37,17 +38,17 @@ class MailDialog(ModalDialog):
         b = self.body
         b.columnconfigure(1, weight=1)
         b.rowconfigure(4, weight=1)
-        ttk.Label(b, text=f"Task: {node.title}", style="Section.TLabel").grid(
+        ttk.Label(b, text=f"Task: {node.title}" if node else "E-mail — raport de activitate", style="Section.TLabel").grid(
             row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
         self.to_var, self.cc_var = tk.StringVar(), tk.StringVar()
-        person = node.requested_by
+        person = node.requested_by if node else None
         try:
-            person = requester(app.ws, node)
+            person = requester(app.ws, node) if node else None
         except FocusDeskError as exc:
             show_error(self, str(exc))
         if person:
             self.to_var.set(person.email)
-        self.subject_var = tk.StringVar(value=default_subject(node))
+        self.subject_var = tk.StringVar(value=default_subject(node) if node else "Raport de activitate")
         for r, (label, var) in enumerate((("Către", self.to_var), ("CC", self.cc_var), ("Subiect", self.subject_var)), 1):
             ttk.Label(b, text=label).grid(row=r, column=0, sticky="w", pady=4, padx=(0, 10))
             line = ttk.Frame(b)
@@ -63,18 +64,37 @@ class MailDialog(ModalDialog):
         ttk.Label(b, text="Mesaj").grid(row=4, column=0, sticky="nw", pady=4, padx=(0, 10))
         wrap = ttk.Frame(b)
         wrap.grid(row=4, column=1, sticky="nsew", pady=4)
-        self.text = tk.Text(wrap, wrap="word", height=12, font=("Segoe UI", 10), borderwidth=1, relief="solid",
+        self.text = tk.Text(wrap, wrap="word", height=12, font="TkTextFont", borderwidth=1, relief="solid",
                             highlightthickness=0, undo=True)
         sb = ttk.Scrollbar(wrap, orient="vertical", command=self.text.yview)
         self.text.configure(yscrollcommand=sb.set)
         self.text.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
-        self.text.insert("1.0", default_body(app.ws, node))
+        self.text.insert("1.0", default_body(app.ws, node) if node else "")
         ttk.Label(b, style="Muted.TLabel", wraplength=640, justify="left", text=(
             "Adrese separate prin „;” sau „,”. Se trimite din contul implicit din Outlook Classic. Nimic nu pleacă "
             "până nu apeși „Trimite”; „Deschide ciorna” îl lasă în Outlook pentru ultimele ajustări.")).grid(
             row=5, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        from ..services.ai_productivity import MAIL_MODES
+        ai_line = ttk.Frame(b)
+        ai_line.grid(row=6, column=0, columnspan=2, sticky="ew", pady=5)
+        self.ai_mode = tk.StringVar(value=MAIL_MODES[0])
+        ttk.Combobox(ai_line, textvariable=self.ai_mode, values=MAIL_MODES, state="readonly", width=25).pack(side="left")
+        ttk.Button(ai_line, text="Generează cu AI…", command=self._generate_ai).pack(side="left", padx=6)
+        ttk.Label(b, text="Mesaj nou, nu Reply/ReplyAll în conversația originală.", style="Muted.TLabel").grid(row=7, column=0, columnspan=2, sticky="w")
         self.to_entry.focus_set()
+
+    def _generate_ai(self):
+        if not self.node_id:
+            show_error(self, "Raportul este deja calculat; redactarea pe context de task necesită un task.")
+            return
+        from .productivity_ui import ProductivityWindow
+        def use(subject, body):
+            if self.winfo_exists():
+                self.subject_var.set(subject)
+                self.text.delete("1.0", "end")
+                self.text.insert("1.0", body)
+        ProductivityWindow(self.app, "mail", parent=self, node_id=self.node_id, mail_mode=self.ai_mode.get(), use_draft=use)
 
     def _add_colleague(self, target: tk.StringVar) -> None:
         person = ColleaguePickerDialog(self, self.app.ws).run()

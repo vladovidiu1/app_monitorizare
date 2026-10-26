@@ -11,3 +11,11 @@ dist/
 # date de test / workspace-uri locale nu se versioneaza
 FocusDeskData/
 FocusDeskDemo/
+models/*.gguf
+models/*.part
+models/*.tmp
+# Windows distribution build/cache outputs
+.build-venv/
+.wheelhouse/
+artifacts/
+*.gguf

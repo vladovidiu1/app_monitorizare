@@ -44,8 +44,8 @@ class SessionService:
         self.ws = ws
 
     # ---- queries ----------------------------------------------------
-    def all(self) -> list[SessionRecord]:
-        return self.ws.repo.sessions.list_all()
+    def all(self, *, check=None) -> list[SessionRecord]:
+        return self.ws.repo.sessions.list_all(check=check)
 
     def for_node(self, node_id: str, include_cancelled: bool = True) -> list[SessionRecord]:
         out = [s for s in self.all() if s.node_id == node_id and (include_cancelled or s.status != "cancelled")]

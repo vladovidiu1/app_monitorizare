@@ -1,0 +1,82 @@
+{
+  "100": {
+    "scale_simulated": 1.0,
+    "size": "1440x900",
+    "platform": "linux",
+    "theme": "light",
+    "real_tk": true,
+    "windows_dpi_verified": false,
+    "captures": [
+      "01-astazi.png",
+      "02-proiect.png",
+      "03-inspector.png",
+      "04-calendar.png",
+      "05-asistent.png",
+      "06-setari.png",
+      "07-setari-ai.png",
+      "08-email.png",
+      "09-mailuri.png",
+      "10-dashboard.png"
+    ]
+  },
+  "min": {
+    "scale_simulated": 1.0,
+    "size": "1100x700",
+    "platform": "linux",
+    "theme": "light",
+    "real_tk": true,
+    "windows_dpi_verified": false,
+    "captures": [
+      "01-astazi.png",
+      "02-proiect.png",
+      "03-inspector.png",
+      "04-calendar.png",
+      "05-asistent.png",
+      "06-setari.png",
+      "07-setari-ai.png",
+      "08-email.png",
+      "09-mailuri.png",
+      "10-dashboard.png"
+    ]
+  },
+  "125": {
+    "scale_simulated": 1.25,
+    "size": "1800x1125",
+    "platform": "linux",
+    "theme": "light",
+    "real_tk": true,
+    "windows_dpi_verified": false,
+    "captures": [
+      "01-astazi.png",
+      "02-proiect.png",
+      "03-inspector.png",
+      "04-calendar.png",
+      "05-asistent.png",
+      "06-setari.png",
+      "07-setari-ai.png",
+      "08-email.png",
+      "09-mailuri.png",
+      "10-dashboard.png"
+    ]
+  },
+  "150": {
+    "scale_simulated": 1.5,
+    "size": "2160x1350",
+    "platform": "linux",
+    "theme": "light",
+    "real_tk": true,
+    "windows_dpi_verified": false,
+    "captures": [
+      "01-astazi.png",
+      "02-proiect.png",
+      "03-inspector.png",
+      "04-calendar.png",
+      "05-asistent.png",
+      "06-setari.png",
+      "07-setari-ai.png",
+      "08-email.png",
+      "09-mailuri.png",
+      "10-dashboard.png"
+    ]
+  }
+}

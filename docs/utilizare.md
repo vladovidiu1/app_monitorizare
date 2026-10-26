@@ -18,8 +18,10 @@
 
 ## Inspector (dreapta)
 
-Detalii · Subtask-uri (+ checklist) · Planificare · Fișiere · Jurnal · Versiuni. Modificările din „Detalii” se
-salvează cu `Ctrl+S` (nu la fiecare tastă). Dacă schimbi selecția cu modificări nesalvate, aplicația întreabă.
+Detalii · Subtask-uri (+ checklist) · Planificare · Fișiere · Jurnal · Versiuni · Asistent.
+Modificările din „Detalii” se salvează cu `Ctrl+S` (nu la fiecare tastă).
+Dacă schimbi selecția cu modificări nesalvate, aplicația întreabă.
+Tabul **Asistent** oferă chat și acțiuni rapide pentru task/proiect, cu context vizibil și surse.
 
 ## Scurtături
 
@@ -81,12 +83,38 @@ folder nou” nu suprascrie niciodată workspace-ul curent.
 
 ## Instrumente
 
+Butonul **Asistent** din bara principală deschide chatul fără să blocheze aplicația. Alege explicit contextul;
+pentru „Ce taskuri am de la colegul X?” folosește Întreg workspace. „Propuneri…” arată înainte/după,
+motiv și surse; acceptă, modifică sau respinge. „Istoric propuneri…” păstrează rezultatele aplicării.
+„Pregătește e-mail” produce o ciornă, transferată în editorul existent numai la confirmare.
+Detalii și limite: [ASISTENT.md](ASISTENT.md).
+
 * Verificare integritate (probleme detectate la încărcare; nimic nu se șterge automat).
 * Setări: program de lucru (fus `Europe/Bucharest`, pauze, zile nelucrătoare, durate sesiune, rezervă zilnică), backup,
   checkpoint-uri, Outlook, VS Code.
-* Temă deschisă/întunecată (persistentă), arată/ascunde inspectorul, arată elemente arhivate.
+* Aspect luminos FocusDesk (configurațiile dark vechi sunt acceptate), arată/ascunde inspectorul, arată elemente arhivate.
+* **AI local — propuneri…**: după activarea și testarea din Setări › AI, selectează un nod și cere un subtask,
+  o notiță sau următorul pas. Verifică propunerea și confirmă explicit aplicarea. AI poate greși; nimic nu se aplică
+  automat. „Anulează” oprește procesul de inferență. Modelul este extern workspace-ului; vezi [AI.md](AI.md).
 
 ## Modificări făcute în Explorer
 
 Aplicația nu urmărește folderele în timp real. După modificări externe: Fișier › Rescanează workspace. Dacă un `node.json`
 a fost editat extern și apoi încerci să-l salvezi din aplicație, ți se cere reîncărcarea (nu se suprascrie silențios).
+
+## Mailuri Outlook de analizat
+
+Deschide Outlook Classic și configurează explicit **Setări → Mailuri**. Alege
+mailboxul, folderele și perioada/plafonul inițial. În pagina **Mailuri de analizat**,
+selectează un mail, pornește **Analizează local**, apoi verifică **Propuneri**.
+Acceptarea, editarea și respingerea sunt explicite; ignorarea unei conversații
+persistă și poate fi anulată fără a pierde respingerile anterioare.
+Vezi [ghidul complet](MAILURI.md), inclusiv interpretarea termenelor și limitele COM.
+
+## E-mail, ziua și rapoarte cu AI
+
+Editorul de mail oferă patru moduri de redactare AI. În Astăzi găsești
+„Pregătește-mi ziua” (selecție AI, calcul Planner) și raport zilnic/săptămânal
+cu cifre calculate din timpul efectiv înregistrat. Toate au previzualizare;
+trimiterea și salvarea rămân explicite. Vezi [ghidul funcțiilor](PRODUCTIVITATE-AI.md).
+Evenimentele Outlook/ICS sunt rezervări personale de timp, fără invitați sau Teams.

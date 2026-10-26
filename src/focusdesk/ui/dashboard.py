@@ -12,6 +12,7 @@ import ttkbootstrap as tb
 
 from ..domain.labels import format_worked
 from .common import muted_color, ok_color
+from .design import C
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -140,7 +141,7 @@ class DashboardWindow(tk.Toplevel):
         style = ttk.Style()
         base = style.lookup("TFrame", "background") or self.cget("background")
         fg = style.lookup("TLabel", "foreground") or "#000000"
-        accent = ok_color(self)
+        accent = C.accent
         muted = muted_color(self)
         today = self.app.q.today()
         weeks = calendar.Calendar(0).monthdatescalendar(self.year, self.month)
@@ -157,18 +158,18 @@ class DashboardWindow(tk.Toplevel):
                 bg, text_fg = base, (fg if in_month else muted)
                 if secs:
                     bg, text_fg = self._blend(base, accent, 0.2 + 0.6 * secs / peak)
-                border = accent if day == self.selected else (muted if day == today else base)
+                border = accent if day == self.selected else (muted if day == today else C.border)
                 cell = tk.Frame(gf, background=bg, highlightthickness=2 if border != base else 1,
                                 highlightbackground=border, highlightcolor=border)
                 cell.grid(row=r, column=c, sticky="nsew", padx=1, pady=1)
                 tk.Label(cell, text=str(day.day), background=bg, foreground=text_fg, anchor="nw",
-                         font=("Segoe UI", 9, "bold" if day == today else "normal")).pack(anchor="nw", padx=4)
+                         font=(self._root()._focusdesk_family, 9, "bold" if day == today else "normal")).pack(anchor="nw", padx=4)
                 if secs:
                     tk.Label(cell, text=_short(secs), background=bg, foreground=text_fg,
-                             font=("Segoe UI", 11, "bold")).pack(expand=True)
+                             font=(self._root()._focusdesk_family, 11, "bold")).pack(expand=True)
                     n = len(self._data[day])
                     tk.Label(cell, text=f"{n} task-uri" if n != 1 else "1 task", background=bg, foreground=text_fg,
-                             font=("Segoe UI", 8)).pack(side="bottom", pady=(0, 3))
+                             font=(self._root()._focusdesk_family, 8)).pack(side="bottom", pady=(0, 3))
                 if in_month:
                     for w in (cell, *cell.winfo_children()):
                         w.bind("<Button-1>", lambda _e, d=day: self._select(d))

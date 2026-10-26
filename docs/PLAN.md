@@ -9,7 +9,7 @@ scris, dar neverificat automat în acest mediu (vezi [diagnostic-integrari.md](d
 
 | Funcție | Stare |
 |---|---|
-| Fereastră Tkinter+ttk (ttkbootstrap), panouri redimensionabile, meniu clasic, temă deschisă/întunecată persistentă, DPI | Implementat (verificat vizual prin capturi) |
+| Fereastră Tkinter+ttk (ttkbootstrap), panouri redimensionabile, meniu clasic, temă exclusiv luminoasă, migrare compatibilă din dark, DPI | Implementat (verificat vizual prin capturi) |
 | Workspace gol la prima pornire, workspace demonstrativ la cerere | Implementat |
 | Modele Pydantic cu `schema_version`, scriere atomică, `.bak`, hash/revizie, lock real (portalocker) | Implementat, testat |
 | Creare/editare/redenumire noduri, arbore `ttk.Treeview`, inspector „Detalii”, persistență la restart | Implementat, testat |
@@ -57,6 +57,16 @@ inspector cu titlul).
 
 Checkpoint programat (cât rulează aplicația) cu raportarea orei ratate, checkpoint la finalul sesiunii, Git opțional
 (status/log/diff/commit manual), build PyInstaller onedir (+ onefile opțional), README și documentație.
+
+## Motor AI local integrat
+
+Motorul AI local integrat este adăugat separat de vechea integrare Ollama eliminată: llama-cpp-python CPU,
+GGUF Qwen3 cu manifest verificabil, proces spawn, configurare AI, propuneri confirmate, downloader reluabil și
+împachetare DLL. Starea verificărilor reale, inclusiv limitele Windows, este în [RAPORT.md](RAPORT.md).
+
+Extensia Asistent adaugă chat nemodal și tab în inspector, recuperare lexicală limitată, surse navigabile,
+buget real de tokeni și propuneri multiple cu editare, respingere, conflicte, rezultate parțiale și istoric
+write-ahead care blochează aplicarea repetată. Vezi [ASISTENT.md](ASISTENT.md).
 
 ## Amânat / explicit în afara versiunii
 

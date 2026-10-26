@@ -10,6 +10,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .ai.protocol import EngineSettings
 from .storage.atomic import atomic_write_json
 
 log = logging.getLogger(__name__)
@@ -31,6 +32,10 @@ def resource_path(relative: str) -> Path:
     return Path(__file__).parent / "resources" / relative
 
 
+class AiConfig(EngineSettings):
+    enabled: bool = False
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -43,6 +48,7 @@ class AppConfig(BaseModel):
     sash_left: int | None = None
     sash_right: int | None = None
     session_open: dict[str, bool] = Field(default_factory=dict)
+    ai: AiConfig = Field(default_factory=AiConfig)
 
     @classmethod
     def path(cls) -> Path:

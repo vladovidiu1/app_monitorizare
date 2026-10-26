@@ -1,0 +1,130 @@
+name: FocusDesk Windows x64 cu model
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_update:
+        description: Produce și pachetul mic fără model
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: focusdesk-windows-distribution
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    env:
+      PYTHONUTF8: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      FD_UI_WATCHDOG: '600'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.14'
+          architecture: x64
+      - name: Install exact, verified Windows CPU wheels
+        shell: pwsh
+        run: |
+          python -m pip download --only-binary=:all: -r packaging/requirements-windows.lock --dest "$env:RUNNER_TEMP/wheelhouse"
+          if ($LASTEXITCODE -ne 0) { throw 'Wheel download failed' }
+          python scripts/verify_windows_wheels.py "$env:RUNNER_TEMP/wheelhouse"
+          if ($LASTEXITCODE -ne 0) { throw 'Wheel verification failed' }
+          python -m pip install --no-index --no-deps --find-links "$env:RUNNER_TEMP/wheelhouse" -r packaging/requirements-windows.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency install failed' }
+          python -m pip install --no-deps --no-build-isolation -e .
+          if ($LASTEXITCODE -ne 0) { throw 'Project install failed' }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency check failed' }
+          Remove-Item "$env:RUNNER_TEMP/wheelhouse" -Recurse -Force
+      - name: Test application (fake backends, no Outlook requirement)
+        shell: pwsh
+        run: |
+          python -m pytest -q --junitxml="$env:RUNNER_TEMP/tests.xml"
+          if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+      - name: Resolve paths and cache identity
+        id: paths
+        shell: pwsh
+        run: |
+          $m = Get-Content src/focusdesk/resources/ai-model.json -Raw | ConvertFrom-Json
+          "key=qwen3-windows-x64-$($m.revision)-$($m.sha256)" >> $env:GITHUB_OUTPUT
+          "model=$env:GITHUB_WORKSPACE/models/$($m.filename)" >> $env:GITHUB_OUTPUT
+          "bundle=$env:RUNNER_TEMP/focusdesk-build/dist/FocusDesk" >> $env:GITHUB_OUTPUT
+          $free = (Get-PSDrive -Name ([IO.Path]::GetPathRoot($env:GITHUB_WORKSPACE).Substring(0,1))).Free
+          if ($free -lt ($m.size * 2 + 2GB)) { throw "Insufficient free disk: $free bytes; need model + ZIP64 + 2 GiB margin" }
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        id: model-cache
+        with:
+          path: models/*.gguf
+          key: ${{ steps.paths.outputs.key }}
+      - name: Download only the pinned GGUF and verify SHA256 (including cache hits)
+        shell: pwsh
+        run: |
+          python scripts/download_model.py --directory models
+          if ($LASTEXITCODE -ne 0) { throw 'Model unavailable or SHA256 mismatch' }
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        with:
+          path: models/*.gguf
+          key: ${{ steps.paths.outputs.key }}
+      - name: Build onedir, bundle CPU runtime, licenses and model
+        shell: pwsh
+        run: |
+          ./scripts/build.ps1 -Python (Get-Command python).Source -OutDir "$env:RUNNER_TEMP/focusdesk-build" -ModelPath '${{ steps.paths.outputs.model }}' -LinkModel -SkipTests -SkipSmoke
+      - name: Frozen real-GGUF smoke, empty PATH and outbound firewall block
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path '${{ steps.paths.outputs.bundle }}/FocusDesk.exe').Path
+          $rule = "FocusDesk-CI-offline-$env:GITHUB_RUN_ID"
+          New-NetFirewallRule -DisplayName $rule -Direction Outbound -Program $exe -Action Block -Profile Any -ErrorAction Stop | Out-Null
+          try {
+            python scripts/verify_distribution.py --exe $exe --reports "$env:RUNNER_TEMP/focusdesk-reports" --timeout 600
+            if ($LASTEXITCODE -ne 0) { throw 'Frozen offline verification failed' }
+          } finally {
+            Remove-NetFirewallRule -DisplayName $rule -ErrorAction SilentlyContinue
+          }
+      - name: Audit and create ZIP64 packages
+        shell: pwsh
+        env:
+          INCLUDE_UPDATE: ${{ inputs.include_update }}
+        run: |
+          $extra = @()
+          if ($env:INCLUDE_UPDATE -eq 'true') { $extra += '--with-update' }
+          python scripts/package_windows.py --bundle '${{ steps.paths.outputs.bundle }}' --output "$env:RUNNER_TEMP/packages" @extra
+          if ($LASTEXITCODE -ne 0) { throw 'Distribution audit or ZIP64 packaging failed' }
+          Get-Item "$env:RUNNER_TEMP/packages/*" | Select-Object Name,Length | Format-Table | Out-String | Add-Content $env:GITHUB_STEP_SUMMARY
+          'Download the artifact, then extract the contained ZIP64. Outlook Classic real verification remains manual.' >> $env:GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: FocusDesk-Windows-x64-cu-model
+          path: |
+            ${{ runner.temp }}/packages/FocusDesk-Windows-x64-cu-model.zip
+            ${{ runner.temp }}/packages/FocusDesk-Windows-x64-cu-model.zip.sha256
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: inputs.include_update
+        with:
+          name: FocusDesk-Windows-x64-fara-model
+          path: |
+            ${{ runner.temp }}/packages/FocusDesk-Windows-x64-fara-model.zip
+            ${{ runner.temp }}/packages/FocusDesk-Windows-x64-fara-model.zip.sha256
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: FocusDesk-Windows-x64-verificari
+          path: |
+            ${{ runner.temp }}/tests.xml
+            ${{ runner.temp }}/focusdesk-reports/*.json
+          retention-days: 7
+          if-no-files-found: warn

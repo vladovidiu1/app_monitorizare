@@ -1,0 +1,134 @@
+{
+  "python": "CPython 3.12 x64",
+  "index": "https://abetlen.github.io/llama-cpp-python/whl/cpu",
+  "artifacts": [
+    {
+      "filename": "altgraph-0.17.5-py2.py3-none-any.whl",
+      "sha256": "f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597"
+    },
+    {
+      "filename": "annotated_types-0.8.0-py3-none-any.whl",
+      "sha256": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"
+    },
+    {
+      "filename": "colorama-0.4.6-py2.py3-none-any.whl",
+      "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
+    },
+    {
+      "filename": "diskcache-5.6.3-py3-none-any.whl",
+      "sha256": "5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19"
+    },
+    {
+      "filename": "et_xmlfile-2.0.0-py3-none-any.whl",
+      "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa"
+    },
+    {
+      "filename": "icalendar-7.3.0-py3-none-any.whl",
+      "sha256": "8355acfe17be81b368f0b1e3740817cea9b56ea889931f8f1a87c62f2d28db0b"
+    },
+    {
+      "filename": "iniconfig-2.3.1-py3-none-any.whl",
+      "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7"
+    },
+    {
+      "filename": "jinja2-3.1.6-py3-none-any.whl",
+      "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
+    },
+    {
+      "filename": "llama_cpp_python-0.3.36-py3-none-win_amd64.whl",
+      "sha256": "ae5e88a2cf464e5a2dde7c8898c2d5c71cc24d03cac6396bf7509456bde0b9fb"
+    },
+    {
+      "filename": "markupsafe-3.0.4-cp312-cp312-win_amd64.whl",
+      "sha256": "11935df9bf455ed0c04eb87bcd720f02b1fe5e02128a9430f23aed6f93336fc7"
+    },
+    {
+      "filename": "numpy-2.2.6-cp312-cp312-win_amd64.whl",
+      "sha256": "c1f9540be57940698ed329904db803cf7a402f3fc200bfe599334c9bd84a40b2"
+    },
+    {
+      "filename": "openpyxl-3.1.5-py2.py3-none-any.whl",
+      "sha256": "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2"
+    },
+    {
+      "filename": "packaging-26.3-py3-none-any.whl",
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+    },
+    {
+      "filename": "pefile-2024.8.26-py3-none-any.whl",
+      "sha256": "76f8b485dcd3b1bb8166f1128d395fa3d87af26360c2358fb75b80019b957c6f"
+    },
+    {
+      "filename": "pillow-13.0.0-cp312-cp312-win_amd64.whl",
+      "sha256": "ff3fe9eb621fbb9db4c4be33ab946f6bac5f98ab50ca8d3260503653656c961b"
+    },
+    {
+      "filename": "pluggy-1.7.0-py3-none-any.whl",
+      "sha256": "7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec"
+    },
+    {
+      "filename": "portalocker-4.4.1-py3-none-any.whl",
+      "sha256": "4a184e8fb1adb37e078ca1804f1b7c0d8e73d81136790b1ad695ae8f1c8be291"
+    },
+    {
+      "filename": "pydantic-2.14.1-py3-none-any.whl",
+      "sha256": "9195d967ec791692a04438115466764fb8b9a27b31f14a760437694f40d6b454"
+    },
+    {
+      "filename": "pydantic_core-2.50.1-cp312-cp312-win_amd64.whl",
+      "sha256": "132529c83901437ff642f585216831bf5fd7a91df66829907e155192ead62498"
+    },
+    {
+      "filename": "pygments-2.21.0-py3-none-any.whl",
+      "sha256": "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9"
+    },
+    {
+      "filename": "pyinstaller-6.22.3-py3-none-win_amd64.whl",
+      "sha256": "500bd58c7bf7e584a8435adccbd763a0b918d5c12b08d74ff50fd79b2915458b"
+    },
+    {
+      "filename": "pyinstaller_hooks_contrib-2026.9-py3-none-any.whl",
+      "sha256": "fb3e67dd64122561724c48ad0366ac9e8c16e638b63bf7d85de03bf3fdbf06c3"
+    },
+    {
+      "filename": "pytest-9.1.1-py3-none-any.whl",
+      "sha256": "37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c"
+    },
+    {
+      "filename": "python_dateutil-3.0.0-py2.py3-none-any.whl",
+      "sha256": "3c79630202e4152c6add678446984236efe4f57e84d8e892aab0637bab82e9fd"
+    },
+    {
+      "filename": "pywin32-312-cp312-cp312-win_amd64.whl",
+      "sha256": "b457f6d628a47e8a7346ce22acb7e1a46a4a78b52e1d17e1af56871bd19a93bc"
+    },
+    {
+      "filename": "pywin32_ctypes-0.2.3-py3-none-any.whl",
+      "sha256": "8a1513379d709975552d202d942d9837758905c8d01eb82b8bcc30918929e7b8"
+    },
+    {
+      "filename": "setuptools-84.2.1-py3-none-any.whl",
+      "sha256": "ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2"
+    },
+    {
+      "filename": "six-1.17.0-py2.py3-none-any.whl",
+      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
+    },
+    {
+      "filename": "ttkbootstrap-2.2.6-py3-none-any.whl",
+      "sha256": "f50fbdc3252ce1f4de79e7a8d057e5185bb718ebfecec200a7f500c3dece72fa"
+    },
+    {
+      "filename": "typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+    },
+    {
+      "filename": "typing_inspection-0.4.4-py3-none-any.whl",
+      "sha256": "65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147"
+    },
+    {
+      "filename": "tzdata-2026.5-py2.py3-none-any.whl",
+      "sha256": "b683bd1b6659ddcd810ff02ad09ba821d4bf1065072805063eb35c49617905ac"
+    }
+  ]
+}

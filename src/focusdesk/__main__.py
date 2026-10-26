@@ -1,3 +1,7 @@
-from focusdesk.main import main
+from focusdesk.bootstrap import prepare_multiprocessing
 
-raise SystemExit(main())
+if __name__ == "__main__":
+    prepare_multiprocessing()
+    from focusdesk.main import main
+
+    raise SystemExit(main())

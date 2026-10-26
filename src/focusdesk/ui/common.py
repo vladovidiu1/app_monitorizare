@@ -14,9 +14,12 @@ from ..domain.models import CLOSED_STATUSES, Kind
 if TYPE_CHECKING:
     from .app import FocusDeskApp
 
-THEMES = {"light": "bootstrap-light", "dark": "bootstrap-dark"}
-FONT_FAMILY = "Segoe UI"
-BASE_SIZE = 10
+from .design import C, FONT, BASE, install, icon, button
+
+# Compatibilité cu configurațiile vechi; randarea este exclusiv luminoasă.
+THEMES = {"light": "bootstrap-light", "dark": "bootstrap-light"}
+FONT_FAMILY = FONT
+BASE_SIZE = BASE
 
 KIND_GLYPH = {"folder": "▣", "project": "◆"}
 STATUS_GLYPH = {
@@ -31,10 +34,8 @@ def dpi_scale(widget: tk.Misc) -> float:
         return 1.0
 
 
-def apply_theme(root: tk.Misc, mode: str) -> None:
-    style = tb.Style()
-    style.theme_use(THEMES.get(mode, THEMES["light"]))
-    apply_fonts(root)
+def apply_theme(root: tk.Misc, mode: str = "light") -> None:
+    install(root)
     apply_input_colors(root)
 
 
@@ -56,58 +57,40 @@ def apply_input_colors(root: tk.Misc) -> None:
     except Exception:
         accent = "#0d6efd"
     # Selectia ramane colorata si cand lista nu are focusul (altfel devine aproape invizibila).
-    style.map("Treeview", background=[("selected", accent)], foreground=[("selected", "#ffffff")])
+    style.map("Treeview", background=[("selected", C.selected)], foreground=[("selected", C.text)])
     root.option_add("*Text.background", bg)
     root.option_add("*Text.foreground", fg)
     root.option_add("*Text.insertBackground", fg)
     root.option_add("*Listbox.background", bg)
     root.option_add("*Listbox.foreground", fg)
+    root.option_add("*Text.highlightBackground", C.border)
+    root.option_add("*Text.highlightColor", C.accent)
     for w in _walk(root):
         if isinstance(w, tk.Text):
-            w.configure(background=bg, foreground=fg, insertbackground=fg)
+            w.configure(background=bg, foreground=fg, insertbackground=fg, borderwidth=0, relief="flat",
+                        highlightthickness=1, highlightbackground=C.border, highlightcolor=C.accent)
         elif isinstance(w, tk.Listbox):
             w.configure(background=bg, foreground=fg)
 
 
 def apply_fonts(root: tk.Misc) -> None:
-    for name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont", "TkCaptionFont",
-                 "TkTooltipFont", "TkIconFont", "TkSmallCaptionFont"):
-        try:
-            tkfont.nametofont(name).configure(family=FONT_FAMILY, size=BASE_SIZE)
-        except tk.TclError:
-            pass
-    style = ttk.Style()
-    scale = dpi_scale(root)
-    style.configure("Treeview", rowheight=int(32 * scale), font=(FONT_FAMILY, BASE_SIZE))
-    style.configure("Treeview.Heading", font=(FONT_FAMILY, BASE_SIZE, "bold"), padding=(8, 7))
-    style.configure("Title.TLabel", font=(FONT_FAMILY, 17, "bold"))
-    style.configure("Brand.TLabel", font=(FONT_FAMILY, 13, "bold"))
-    style.configure("TNotebook.Tab", padding=(14, 8))
-    style.configure("TButton", padding=(12, 6))
-    style.configure("TMenubutton", padding=(14, 6))
-    style.configure("TEntry", padding=(8, 6))
-    style.configure("TCombobox", padding=(8, 5))
-    style.configure("Section.TLabel", font=(FONT_FAMILY, 11, "bold"))
-    style.configure("Muted.TLabel", font=(FONT_FAMILY, 9))
-    style.configure("Crumb.TLabel", font=(FONT_FAMILY, 9))
-    style.configure("Link.TLabel", font=(FONT_FAMILY, BASE_SIZE, "underline"),
-                    foreground="#6ea8fe" if is_dark(root) else "#0b5ed7")
+    install(root)
 
 
 def is_dark(root: tk.Misc) -> bool:
-    return "dark" in tb.Style().theme_use()
+    return False
 
 
 def muted_color(root: tk.Misc) -> str:
-    return "#9aa0a6" if is_dark(root) else "#6c757d"
+    return C.muted
 
 
 def error_color(root: tk.Misc) -> str:
-    return "#ff6b6b" if is_dark(root) else "#c0392b"
+    return C.danger
 
 
 def ok_color(root: tk.Misc) -> str:
-    return "#51cf66" if is_dark(root) else "#2e7d32"
+    return C.success
 
 
 def show_error(parent: tk.Misc, message: str, title: str = "Eroare") -> None:
@@ -169,7 +152,7 @@ class ModalDialog(tk.Toplevel):
         self.body = ttk.Frame(self, padding=(16, 14, 16, 6))
         self.body.pack(fill="both", expand=True)
         self.buttons = ttk.Frame(self, padding=(16, 6, 16, 14))
-        self.buttons.pack(fill="x")
+        self.buttons.pack(side="bottom", fill="x")
         self.ok_btn = tb.Button(self.buttons, text=ok_text, command=self._on_ok, bootstyle="primary")
         self.cancel_btn = ttk.Button(self.buttons, text=cancel_text, command=self.destroy)
         self.ok_btn.pack(side="right")
@@ -247,14 +230,20 @@ def make_tree(parent: tk.Misc, columns: list[tuple[str, str, int]], *, show_tree
         tv.column(cid, width=width, minwidth=40, anchor="w", stretch=(cid == ids[0] and not show_tree))
     vbar = ttk.Scrollbar(frame, orient="vertical", command=tv.yview)
     tv.configure(yscrollcommand=vbar.set)
-    tv.pack(side="left", fill="both", expand=True)
-    vbar.pack(side="right", fill="y")
+    hbar=ttk.Scrollbar(frame,orient="horizontal",command=tv.xview)
+    tv.configure(xscrollcommand=hbar.set)
+    frame.columnconfigure(0,weight=1)
+    frame.rowconfigure(0,weight=1)
+    tv.grid(row=0,column=0,sticky="nsew")
+    vbar.grid(row=0,column=1,sticky="ns")
+    hbar.grid(row=1,column=0,sticky="ew")
     return tv, frame
 
 
 class Tooltip:
     def __init__(self, widget: tk.Misc, text: str) -> None:
         self.widget, self.text, self.tip = widget, text, None
+        widget._focusdesk_tooltip = self
         widget.bind("<Enter>", self._show, add="+")
         widget.bind("<Leave>", self._hide, add="+")
 
@@ -266,7 +255,8 @@ class Tooltip:
         self.tip = tk.Toplevel(self.widget)
         self.tip.wm_overrideredirect(True)
         self.tip.wm_geometry(f"+{x}+{y}")
-        tk.Label(self.tip, text=self.text, background="#ffffe0", foreground="#222", relief="solid", borderwidth=1,
+        tk.Label(self.tip, text=self.text, background=C.surface, foreground=C.text, relief="flat", borderwidth=0,
+                 highlightthickness=1, highlightbackground=C.border,
                  padx=6, pady=3, wraplength=360, justify="left").pack()
 
     def _hide(self, _e=None) -> None:
@@ -279,7 +269,7 @@ class SessionButton(tb.Button):
     """Porneste sesiunea task-ului dat; cat timp o sesiune e activa devine „Oprește sesiunea”."""
 
     def __init__(self, parent: tk.Misc, app: "FocusDeskApp", node_getter: Callable[[], str | None]) -> None:
-        super().__init__(parent, text="▶ Începe sesiune", command=self._click, bootstyle="success")
+        super().__init__(parent, text="Începe sesiune", image=icon(parent,"play-on-accent"), compound="left", command=self._click, bootstyle="primary")
         self.app = app
         self._node_getter = node_getter
         self._mode = "start"
@@ -301,16 +291,17 @@ class SessionButton(tb.Button):
         nid = self._node_getter()
         if app.timer_active():
             mode = "stop"
-            text = "■ Oprește sesiunea" if app.timer.node_id == nid else "■ Oprește sesiunea curentă"  # type: ignore[union-attr]
+            text = "Oprește sesiunea" if app.timer.node_id == nid else "Oprește sesiunea curentă"  # type: ignore[union-attr]
             enabled = True
         else:
             mode = "start"
-            text = "▶ Începe sesiune"
+            text = "Începe sesiune"
             node = ws.nodes.get(nid) if nid else None
             enabled = (node is not None and node.kind == Kind.TASK and node.status not in CLOSED_STATUSES
                        and not ws.read_only)
         if mode != self._mode:
-            self.configure(bootstyle="danger" if mode == "stop" else "success")
+            self.configure(bootstyle="danger-outline" if mode == "stop" else "primary")
+            self.configure(image=icon(self,"stop" if mode=="stop" else "play-on-accent"))
             self._mode = mode
         if str(self.cget("text")) != text:
             self.configure(text=text)

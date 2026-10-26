@@ -1,5 +1,173 @@
 # Raport de verificare
 
+## Distribuție Windows x64 — pregătire 2026-10-26
+
+Adăugate workflow manual Windows, lock cu 32 wheel-uri Windows verificate SHA256,
+build onedir cu DLL-uri CPU, licențe și model extern, arhivare ZIP64 și pachet mic
+fără model. Cache-ul GGUF include revizia și SHA256; modelul nu intră în Git.
+
+Verificări locale executate pe Linux:
+
+- **267 teste trec, 14 eșecuri preexistente, 1 omis**; patru teste noi pentru audit,
+  ZIP64, excluderea modelului din update și izolarea profilului de diagnostic.
+- Descărcate efectiv cele 32 wheel-uri pentru CPython 3.12 Windows x64; hash-uri
+  salvate și reverificate prin `scripts/verify_windows_wheels.py`.
+- `actionlint 1.7.12` trece pentru workflow; compileall și diff-check trec.
+- Diagnosticul nou de model absent a fost rulat din surse cu Tk real: UI utilizabilă,
+  proces copil separat, închidere verificată și date/setări temporare păstrate.
+
+**Aceste verificări locale nu reprezintă un build Windows verificat.** Starea rulării
+GitHub Actions va fi consemnată mai jos după încercarea de publicare/lansare. Testul
+Outlook Classic real rămâne manual. [Pași și limite](DISTRIBUTIE-WINDOWS.md).
+
+
+## Modernizare FocusDesk Light — 2026-10-26
+
+Interfață exclusiv luminoasă în Tkinter + ttkbootstrap; configurațiile vechi dark
+pornesc luminos fără pierderea celorlalte preferințe. Nu s-a generat executabilul.
+
+| Verificare executată | Rezultat |
+|---|---|
+| Suita completă | **263 trec, 14 eșuează, 1 omis**; aceleași 14 eșecuri preexistente de căi Windows pe Linux, baseline 259/14/1 |
+| 4 teste UI noi | Migrare dark, păstrarea setărilor AI, contrast minimum 4,5:1 pentru text/selecție/accent, pictograme locale, salvare vizibilă la minim, acces la coloane, focus și stilul dialogurilor create ulterior |
+| Suita UI în ordine alternativă | **38 trec, 1 eșuează** (același test preexistent de cale Linux), fără erorile de inițializare a unei instanțe noi; cleanup-ul callbackurilor copil este verificat |
+| Capturi reale | 10 ecrane pentru fiecare configurație: 1440×900 la 100%, 1100×700, 1800×1125 la 125% Tk și 2160×1350 la 150% Tk; fără erori de callback |
+| Ecrane inspectate | Astăzi, proiect/subtaskuri, inspector, Calendar, Asistent, Setări, AI, E-mail, Mailuri de analizat, Dashboard; inspector și dialoguri verificate și la scalare simulată |
+| Modificări nesalvate și fluxuri AI/Outlook | Păstrate; testele UI existente trec, cu excepția eșecului preexistent de cale externă Linux |
+| Windows DPI / Outlook real | **Neexecutate**; Tk/Xvfb Linux nu certifică DPI Windows, High Contrast sau monitoare cu DPI diferit |
+
+Capturile sunt imagini reale din aplicație, într-un workspace demonstrativ temporar,
+nu mockup-uri: [galerie și instrucțiuni](INTERFATA.md), [manifest](capturi-ui/manifest.json).
+Fontul sans disponibil și rasterizarea X11 diferă de Segoe UI Windows; fallback-ul
+unor semne tipografice este limitat. Pictogramele principale sunt PNG locale originale
+cu licență MIT, la șase dimensiuni; nicio resursă UI nu se descarcă la utilizare.
+Nu s-au modificat schema workspace-ului, logica Planner sau calculele timpului lucrat.
+
+
+## Productivitate AI: e-mail, zi și raport — 2026-10-26
+
+Implementată pe aceeași ramură, folosind motorul și validarea comună a propunerilor.
+
+| Verificare executată | Rezultat |
+|---|---|
+| 13 teste noi | Trec: lipsa datelor, cifre actual_seconds fără rollup dublu, fus/zi, finalizări, surse învechite, maximum trei priorități, taskuri neestimate, dependențe blocate, plan fără suprapuneri, ciornă editabilă, raport fără AI, anulare și absența trimiterii/salvării automate |
+| Smoke real `scripts/smoke_productivity.py --mode all` | **GGUF Qwen3 real pe CPU**, proces spawn, trei operații în același motor, fără Outlook |
+| Ciornă reală | Propunere email validată, 1409 tokeni prompt + 253 răspuns, 3 surse |
+| Selecția zilei reală | Un task selectat cu sursă validată, 923 tokeni prompt + 127 răspuns; fără intervale calculate de AI |
+| Raport real | Explicație validată pe totalurile calculate în cod, 1211 tokeni prompt + 202 răspuns, 2 surse |
+| Efecte ale smoke-ului | Zero acțiuni aplicate, zero mailuri trimise; numai date de test într-un workspace temporar |
+| Suita completă după extensie | **259 trec, 14 eșuează, 1 omis**; aceleași 14 eșecuri preexistente de căi Windows pe Linux; baseline anterior 246/14/1 |
+
+Mediu: Linux, Python 3.12, llama-cpp-python 0.3.36, GGUF din manifest, UI Tk cu Xvfb.
+Cifrele din smoke descriu exemplele executate, nu garantează calitatea oricărei redactări.
+Validarea numerică și a surselor nu dovedește corectitudinea semantică a fiecărei fraze;
+previzualizarea editabilă și confirmarea utilizatorului rămân obligatorii.
+Nu au fost executate trimitere reală Outlook, sincronizare Windows sau build Windows
+nou pentru această extensie. Rezervările personale de timp rămân distincte de întâlniri
+cu invitați/Teams. Ghid și limite: [PRODUCTIVITATE-AI.md](PRODUCTIVITATE-AI.md).
+
+
+## Monitorizare mailuri și analiză locală — 2026-10-26
+
+Implementată pe aceeași ramură, peste ComWorker și mecanismul comun de propuneri.
+
+| Verificare executată | Rezultat |
+|---|---|
+| 25 teste noi mail | Trec: prima scanare limitată, paginare/restart, dedup/mutare, ignorare/respingere persistentă, COM indisponibil/blocat, SMTP Exchange simulat, metadate atașamente, informare/cerere/răspuns, termene și citate, buget, rezultate parțiale, UI Tk |
+| Smoke `scripts/smoke_mail.py` | **GGUF real CPU**, transport **Outlook fals** prin ComWorker; clasificare `request`, o propunere validată, 977 tokeni prompt + 132 răspuns; zero taskuri create, zero mailuri trimise |
+| Suita completă | **246 trec, 14 eșuează, 1 omis**; aceleași 14 eșecuri preexistente de căi Windows pe Linux; baseline anterior 221/14/1 |
+| Outlook Classic real / build Windows pentru extensia mail | **Neexecutate** în mediul Linux |
+
+Nu se declară verificată citirea inboxului pe Outlook real. Testele native COM
+folosesc obiecte simulate, distinct de inferența GGUF reală. Checklist-ul manual
+Windows și limitele de identitate, paginare și timeout sunt în [MAILURI.md](MAILURI.md).
+Un apel COM blocat rămâne neîntrerupt până răspunde; workerul refuză suprapunerea.
+
+
+## Extensie Asistent conversațional — 2026-10-26
+
+Implementată pe aceeași ramură, peste motorul local existent. Mediu executat: **Linux x86_64,
+CPython 3.12.14, llama-cpp-python 0.3.36 CPU, GGUF Qwen3 din manifest**, Tk real cu Xvfb.
+
+| Verificare efectivă | Rezultat |
+|---|---|
+| **34 teste noi de asistent** | Trec: context/requester, surse/ID-uri/proprietari, buget exact cu rezervă, intenții de consultare, câmpuri interzise, cicluri, revizii, editare/respingere, replay după redeschidere, erori după scriere și rezultate parțiale |
+| UI Tk real | Buton și chat fără grab modal, tab în inspector, context vizibil, recuperare în fundal, link la notița exactă, previzualizare fără aplicare, confirmare și ignorarea rezultatului după schimbarea workspace-ului |
+| „Unde am rămas?” cu **model real** | Răspuns cu task și notiță citate, `1099` tokeni de intrare + `129` generați; `actions=[]`, fără aplicare |
+| Subtask + checklist cu **model real** | Acțiune `create_task` validată, părinte/citări cunoscute și pași nebifați; propunere neaplicată |
+| E-mail cu **model real** | Subiect/corp de ciornă și surse validate; fără trimitere sau apel Outlook |
+| Build PyInstaller **onedir Linux** pentru extensie | Reușit |
+| Asistent în executabil cu **PATH gol**, model real | Răspuns valid cu surse: `1109` tokeni de intrare + `86` generați; proces spawn, fără Python extern și fără aplicări |
+| Propunere structurată în executabil cu **PATH gol**, model real | Subtask/checklist validat: `1104` tokeni de intrare + `194` generați, aproximativ `88,7 s`; fără aplicare |
+| Suita completă după extensie | **221 trec, 14 eșuează, 1 omis** |
+
+Intrările reale de mai sus au respectat limita de 4096 tokeni inclusiv rezerva explicită de 1024
+și marja de 16. Testul cu tokenizer conservator și multe surse verifică și eliminarea istoricului/surselor
+când bugetul nu încape. Cifrele observate nu reprezintă o garanție de timp de răspuns pe alt procesor.
+
+Aplicarea este verificată în teste pe workspace-uri temporare reale: aceeași propunere nu se repetă
+după redeschidere, o scriere urmată de eroare rămâne incertă, un receipt `started` blochează replay,
+iar un istoric ilizibil la mijlocul lotului nu pierde rezultatele deja aplicate. Actualizările proprii de
+revizie/progres/blocaje dintr-un lot nu produc conflicte false pentru operația următoare.
+
+Cele **14 eșecuri** sunt cele preexistente de validare a căilor Windows pe Linux, enumerate în secțiunea
+motorului de mai jos. Baseline-ul înaintea acestei extensii era **187 trecute, 14 eșuate, 1 omis**;
+cele 34 de teste noi trec. Așteptarea testului care enumera taburile inspectorului a fost actualizată
+pentru tabul Asistent cerut; validarea căilor și testele aferente nu au fost relaxate.
+
+**Nu s-au executat în această extensie:** build/exe Windows, un nou build onefile, Outlook COM real sau
+trimitere reală de e-mail. Build-urile onefile ale motorului din etapa anterioară sunt dovezi istorice,
+nu verificarea noului chat pe Windows. Ciornele AI au fost testate până la transferul în editorul existent
+cu backend/UI controlate; transportul păstrează traseul existent prin ComWorker.
+
+Detalii funcționale, limitele căutării lexicale și protocolul de confirmare/istoric: [ASISTENT.md](ASISTENT.md).
+
+## Actualizare AI local — 2026-10-26
+
+Mediu executat: **Linux x86_64, CPython 3.12.14, llama-cpp-python 0.3.36 CPU**, NumPy 2.2.6,
+Tk 9 cu Xvfb. Testele Windows istorice de mai jos nu reprezintă verificarea acestei integrări AI pe Windows.
+
+| Verificare efectivă | Rezultat |
+|---|---|
+| API Hugging Face: nume exact, revizie, dimensiune și SHA256 LFS | `Qwen3-8B-Q4_K_M.gguf`, revizie `7c41481f57cb95916b40956ab2f0b139b296d974`; manifest versionat, licență și model card de la aceeași revizie |
+| Descărcare reală a unui singur GGUF, SHA256 complet înainte de redenumire | **5 027 783 488 octeți**, hash `d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785`; fișier local ignorat de Git |
+| Repetarea downloader-ului cu fișier final valid | Reutilizat după verificare, fără o nouă descărcare |
+| **38 teste AI**: proces real cu backend fals, crash, timeout, anulare, copil care nu citește Pipe, reutilizare și cleanup, callback tardiv, validare semantică, HTTP simulat, template/gramatică, UI Tk real | **38 trec**; recuperarea download-ului întrerupt este testată cu fluxuri simulate, nu prin întreruperea intenționată a transferului de 5 GB |
+| Smoke **real din surse**, proces spawn, template Qwen3 fără thinking, gramatică JSON și Pydantic | **Trece**, răspuns `Salut!`, aproximativ **21,11 s**, inclusiv verificarea și încărcarea modelului |
+| Build PyInstaller **onedir Linux**, apoi executabil cu `PATH` gol și GGUF real | **Trece**, spawn + încărcare + inferență, aproximativ **27,57 s** |
+| Build PyInstaller **onefile Linux**, apoi executabil cu `PATH` gol și GGUF real extern | **Trece**, spawn + încărcare + inferență, aproximativ **22,20 s** |
+| Executabil fără model, cu `PATH` gol | Eroare controlată și ieșire curată, fără buclă de pornire a aplicației |
+| Suita completă actualizată, inclusiv AI | **187 trec, 14 eșuează, 1 omis** |
+| Integritatea dependențelor | `pip check` trece |
+
+Cele **14 eșecuri** sunt aceleași ca înaintea modificărilor AI: `validate_external_path` folosește
+`PureWindowsPath.is_absolute()` și respinge căi Linux. Afectează fișiere externe/checkpoint-uri,
+scheduler și fluxul UI fișiere/checkpoint. Baseline-ul măsurat înaintea modificărilor era
+**149 trecute, 14 eșuate, 1 omis**; toate cele 38 de teste adăugate trec. Testul omis cere junction Windows.
+Nu s-a modificat validarea de căi sau testele existente pentru a masca aceste rezultate.
+
+Smoke-ul real a detectat o incompatibilitate a parserului nativ cu gramatica expandată pentru
+`maxLength=2000`. Corecția păstrează gramatica pentru structura/enum-urile JSON și validează limitele
+de text în Pydantic, cu buget nativ de maximum 512 tokeni. Verificările reale reușite de mai sus
+sunt executate după această corecție; rezultatele nu provin din mock-uri.
+
+### Windows: verificat disponibilitatea, nu execuția
+
+Au fost descărcate wheel-ul CPU oficial **0.3.36 Windows x64** și toate dependențele sale pentru
+**CPython 3.12 x64**, numai în formă binară. SHA256-ul wheel-ului coincide cu digestul publicat de
+GitHub Releases. Dovezi: `packaging/ai-windows-artifacts.json`. Importurile PE ale DLL-urilor au fost
+inspectate: necesită MSVC/OpenMP, fără CUDA. Spec-ul colectează explicit runtime-urile Microsoft;
+build-ul se oprește dacă nu le găsește pe mașina de build.
+
+**Nu s-au executat aici** build-ul Windows, exe Windows pe un calculator curat, Outlook COM real,
+sau verificarea tuturor procesoarelor/combinațiilor Windows. Build-urile și smoke-urile Linux nu
+demonstrează aceste rezultate. `scripts/build.ps1 -ModelPath ...` împachetează modelul extern și
+verifică executabilul cu `PATH` gol; `scripts/verify_ai_exe.py` permite repetarea separată a testului
+pe Windows. Vezi [AI.md](AI.md) pentru instalarea exclusiv pe mașina dezvoltatorului și distribuția
+cu model, licențe și DLL-uri, fără instalări AI suplimentare pentru utilizatorul final.
+
+## Raport istoric al aplicației înainte de AI
+
 Data: 2026-10-20. Mediu: Windows 10/11, Python 3.14.6 (singurul interpretor disponibil; `pyproject.toml` cere ≥ 3.11,
 dar versiunile 3.11–3.13 **nu au fost rulate**). Toate dependențele au avut wheel-uri pentru 3.14.
 

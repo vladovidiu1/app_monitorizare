@@ -140,3 +140,14 @@ arhivă (pentru listare rapidă). Manifest: `id`, `node_id`, `owner_node_id`, `p
 mărime și retenție. Excluderi implicite: `.git`, `.venv`, `venv`, `__pycache__`, `node_modules`, `build`, `dist`,
 `snapshots`, `backups`, `.env`, chei private și fișiere de credențiale. Dacă sursa se modifică în timpul capturii,
 checkpoint-ul NU se păstrează.
+
+## Cache mail și checkpoint incremental
+
+`_system/mail/state.json` păstrează cursoare per store/folder, fereastra inițială,
+offsetul ferestrei incrementale, watermark și conversațiile ignorate.
+`_system/mail/messages/<UUID>.json` păstrează textul limitat, metadatele, versiunea
+conținutului, estimarea AI originală, proiecția editabilă, sursele/reviziile, ID-urile
+propunerilor și legăturile confirmate. Decizia suspendată la ignorare se restaurează
+la reluare. Acest cache local este inclus în backup; nu este log de diagnostic.
+Receipts de aplicare/respingere folosesc istoricul comun `_system/history`.
+Vezi [identitatea mesajelor și comportamentul la mutare](MAILURI.md).

@@ -57,7 +57,7 @@ class ComWorker:
 
     @property
     def busy(self) -> bool:
-        return self._running is not None and not self._running.finished.is_set()
+        return (self._running is not None and not self._running.finished.is_set()) or not self._q.empty()
 
     # ---- submit -----------------------------------------------------
     def submit(self, fn: Callable[[Any], Any], on_done: Callable[[Any], None],

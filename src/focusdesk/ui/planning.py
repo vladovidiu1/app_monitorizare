@@ -214,7 +214,7 @@ class PlannerDialog(ModalDialog):
                                                ("why", "Motiv", 420)], height=4)
         f3.pack(fill="x", pady=(6, 0))
         self.reserve_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(self.body, text="Marchează sesiunile pentru rezervare în calendar (Outlook/ICS)",
+        ttk.Checkbutton(self.body, text="Rezervări personale de timp în calendar (Outlook/ICS), fără invitați sau Teams",
                         variable=self.reserve_var).pack(anchor="w", pady=(6, 0))
         self._pre = set(preselected or [])
         self._fill_tasks()

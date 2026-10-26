@@ -35,6 +35,14 @@ class SettingsDialog(ModalDialog):
         self._page_schedule()
         self._page_backup()
         self._page_checkpoints()
+        from .ai_ui import AiSettingsPanel
+
+        self.ai_page = AiSettingsPanel(self.nb, app)
+        self.nb.add(self.ai_page, text="AI")
+        from .mail_monitor_ui import MailSettingsPanel
+        self.mail_page = MailSettingsPanel(self.nb, self)
+        self.nb.add(self.mail_page, text="Mailuri")
+        self.collectors.append(self.mail_page.collect)
         from .outlook_ui import build_outlook_settings_page
 
         extra: list[tuple[str, Callable]] = [("Outlook", build_outlook_settings_page), *EXTRA_PAGES]
@@ -42,7 +50,8 @@ class SettingsDialog(ModalDialog):
             page = ttk.Frame(self.nb, padding=12)
             self.nb.add(page, text=title)
             self.collectors.append(builder(page, self))
-        self.geometry("760x600")
+        self.geometry("900x720")
+        self.minsize(760,600)
         if app.ws.read_only:
             self.ok_btn.state(["disabled"])
 
@@ -256,6 +265,7 @@ class SettingsDialog(ModalDialog):
                 c(new)
             Settings.model_validate(new.model_dump())
             self._new = new
+            self._new_ai = self.ai_page.collect()
             return True
         except (ValueError, FocusDeskError) as exc:
             show_error(self, f"Setări invalide: {exc}")
@@ -266,6 +276,10 @@ class SettingsDialog(ModalDialog):
         ok = self.app.run_write(lambda: (ws.update_settings(self._new),
                                          ws.repo.rename_workspace(self.name_var.get())))
         if ok:
+            if self.app.config.ai != self._new_ai:
+                self.app.ai.close()
+            self.app.config.ai = self._new_ai
+            self.app.config.save()
             self.app.ws_label.configure(text=ws.name)
             self.app.root.title(f"FocusDesk — {ws.name}")
         return ok

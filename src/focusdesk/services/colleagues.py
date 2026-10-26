@@ -90,4 +90,6 @@ def requester(ws: Workspace, node: Node) -> Colleague | None:
     saved = node.requested_by
     if saved is None:
         return None
+    if saved.email_address:
+        return saved  # A real external SMTP address must never be rebuilt from a display name/code.
     return next((person for person in load_colleagues(ws) if person.code == saved.code), saved)

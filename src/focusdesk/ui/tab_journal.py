@@ -30,7 +30,7 @@ class JournalTab(InspectorTab):
                      width=10).pack(side="left")
         self.total_lbl = ttk.Label(top, text="", style="Muted.TLabel")
         self.total_lbl.pack(side="right")
-        self.entry = tk.Text(self, height=4, wrap="word", font=("Segoe UI", 10), borderwidth=1, relief="solid",
+        self.entry = tk.Text(self, height=4, wrap="word", font="TkTextFont", borderwidth=1, relief="solid",
                              highlightthickness=0)
         self.entry.pack(fill="x", padx=8, pady=4)
         self.entry.bind("<Control-Return>", lambda _e: (self._add(), "break")[1])
@@ -38,7 +38,7 @@ class JournalTab(InspectorTab):
         self.add_btn.pack(anchor="e", padx=8)
         wrap = ttk.Frame(self)
         wrap.pack(fill="both", expand=True, padx=8, pady=8)
-        self.text = tk.Text(wrap, wrap="word", state="disabled", font=("Segoe UI", 10), borderwidth=0,
+        self.text = tk.Text(wrap, wrap="word", state="disabled", font="TkTextFont", borderwidth=0,
                             highlightthickness=0)
         sb = ttk.Scrollbar(wrap, orient="vertical", command=self.text.yview)
         self.text.configure(yscrollcommand=sb.set)

@@ -449,10 +449,72 @@ class Workspace:
         self.emit("notes_changed", node_id=node_id)
         return entry
 
-    def list_notes(self, node_id: str) -> list[NoteEntry]:
-        notes = self.repo.notes_store(node_id).list_all()
+    def list_notes(self, node_id: str, *, check=None) -> list[NoteEntry]:
+        notes = self.repo.notes_store(node_id).list_all(check=check)
         notes.sort(key=lambda n: n.at, reverse=True)
         return notes
+
+    def mail_state(self):
+        from ..domain.mail_monitor import MailMonitorState
+        path = self.root / "_system/mail/state.json"
+        return MailMonitorState.model_validate_json(path.read_bytes()) if path.exists() else MailMonitorState()
+
+    def save_mail_state(self, state) -> None:
+        import threading
+        if threading.current_thread() is not threading.main_thread():
+            raise ValidationError("Starea mailurilor se scrie numai pe firul UI.")
+        from ..storage.atomic import atomic_write_json
+        self._check_writable()
+        atomic_write_json(self.root / "_system/mail/state.json", state.model_dump(mode="json"))
+        self.emit("mail_changed")
+
+    def mail_get(self, message_id):
+        from uuid import UUID
+        from ..domain.mail_monitor import MailRecord
+        UUID(message_id)
+        path = self.root / "_system/mail/messages" / f"{message_id}.json"
+        if not path.exists():
+            return None
+        try:
+            record = MailRecord.model_validate_json(path.read_bytes())
+            if record.id != message_id or record.id != record.header.identity:
+                raise ValueError("Identitate inconsistentă.")
+            return record
+        except Exception:
+            raise ValidationError("Înregistrare de mail ilizibilă; datele nu sunt incluse în diagnostic.") from None
+
+    def mail_records(self):
+        records = []
+        for path in (self.root / "_system/mail/messages").glob("*.json"):
+            try:
+                record = self.mail_get(path.stem)
+                if record:
+                    records.append(record)
+            except Exception:
+                log.warning("Mail local ilizibil: %s (conținut omis din diagnostic)", path.stem)
+        return records
+
+    def save_mail_record(self, record) -> None:
+        import threading
+        if threading.current_thread() is not threading.main_thread():
+            raise ValidationError("Mailurile locale se scriu numai pe firul UI.")
+        from uuid import UUID
+        from ..storage.atomic import atomic_write_json
+        self._check_writable()
+        UUID(record.id)
+        if record.id != record.header.identity:
+            raise ValidationError("Identitatea mailului este inconsistentă.")
+        atomic_write_json(self.root / "_system/mail/messages" / f"{record.id}.json", record.model_dump(mode="json"))
+        self.emit("mail_changed")
+
+    def confirm_mail_link(self, message_id: str, node_id: str) -> None:
+        self._check_writable()
+        self.get(node_id)
+        message = self.mail_get(message_id)
+        if message is None:
+            raise ValidationError("Mailul nu mai există în evidența locală.")
+        message.confirmed_task_ids = list(dict.fromkeys([*message.confirmed_task_ids, node_id]))
+        self.save_mail_record(message)
 
     def record_event(self, type_: str, node_id: str | None, data: dict | None = None) -> None:
         if self.read_only:
@@ -462,12 +524,44 @@ class Workspace:
         except Exception:
             log.exception("Evenimentul de istoric nu a putut fi scris")
 
-    def list_history(self, node_id: str | None = None) -> list[HistoryEvent]:
-        events = self.repo.history.list_all()
+    def list_history(self, node_id: str | None = None, *, check=None) -> list[HistoryEvent]:
+        events = self.repo.history.list_all(check=check)
         if node_id is not None:
             events = [e for e in events if e.node_id == node_id]
         events.sort(key=lambda e: e.at, reverse=True)
         return events
+
+    def ai_receipt(self, item_id: str) -> HistoryEvent | None:
+        from uuid import UUID
+        UUID(item_id)
+        try:
+            return self.repo.history.get(item_id)
+        except NotFoundError:
+            return None
+
+    def claim_ai_action(self, item_id: str, node_id: str | None, data: dict) -> None:
+        """Jurnal write-ahead. Un receipt existent, inclusiv `started`, nu se execută din nou."""
+        import threading
+        if threading.current_thread() is not threading.main_thread():
+            raise ValidationError("Propunerile AI se aplică numai pe firul UI.")
+        self._check_writable()
+        if self.ai_receipt(item_id) is not None:
+            raise ValidationError("Propunere deja înregistrată; nu se repetă aplicarea.")
+        self.repo.history.save(HistoryEvent(id=item_id, type="ai_proposal", node_id=node_id,
+                                          data={**data, "state": "started"}))
+
+    def finish_ai_action(self, item_id: str, state: str, detail: str, *, after_guards=None) -> None:
+        import threading
+        if threading.current_thread() is not threading.main_thread():
+            raise ValidationError("Istoricul AI se salvează numai pe firul UI.")
+        self._check_writable()
+        event = self.ai_receipt(item_id)
+        if event is None or event.type != "ai_proposal" or event.data.get("state") != "started":
+            raise ValidationError("Stare de propunere AI inconsistentă.")
+        event.data = {**event.data, "state": state, "detail": detail, "finished_at": utcnow().isoformat()}
+        if after_guards is not None:
+            event.data["after_guards"] = after_guards
+        self.repo.history.save(event)
 
     # ---- settings ---------------------------------------------------
     def update_settings(self, settings: Settings) -> None:

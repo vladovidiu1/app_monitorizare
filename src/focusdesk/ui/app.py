@@ -34,6 +34,9 @@ from ..integrations.calendar import AvailabilityResult, LocalOnlyProvider
 from ..integrations.ics import IcsExportProvider, IcsItem, stable_uid
 from ..workers.bridge import Job, UiBridge
 from .calendar_page import CalendarPage, PlanTab
+from .ai_ui import AiController, AiWindow
+from .assistant_ui import AssistantTab, AssistantWindow
+from .mail_monitor_ui import MailReviewPage, MailWatchController
 from .common import (
     ModalDialog, THEMES, SessionButton, ask_choice, ask_string, apply_theme, confirm, show_error, show_info,
 )
@@ -58,6 +61,7 @@ log = logging.getLogger(__name__)
 VIEW_TITLES = {
     "today": "Astăzi", "inbox": "Inbox", "waiting": "În așteptare", "overdue": "Restante",
     "calendar": "Calendar", "archive": "Arhivă",
+    "mail_review": "Mailuri de analizat",
 }
 VIEW_HINTS = {
     "inbox": "Inbox-ul este gol. Captează rapid cu Ctrl+N.",
@@ -70,16 +74,22 @@ VIEW_HINTS = {
 class FocusDeskApp:
     def __init__(self, workspace_path: Path | None = None) -> None:
         self.config = AppConfig.load()
-        theme = self.config.theme if self.config.theme in ("light", "dark") else "light"
+        self.config.theme = theme = "light"
         self.root = tb.Window(title="FocusDesk", theme=THEMES[theme], size=(1440, 900), minsize=(1100, 700))
         self._set_icon()
         apply_theme(self.root, theme)
+        from .design import px, MIN_WINDOW
+        self.root.minsize(*(px(self.root,v) for v in MIN_WINDOW))
         if self.config.geometry:
             try:
                 self.root.geometry(self.config.geometry)
             except tk.TclError:
                 pass
         self.bridge = UiBridge(self.root)
+        self.ai = AiController(self)
+        self.ai_window = None
+        self.assistant_window = None
+        self.mail_watch = MailWatchController(self)
         self.outlook = OutlookController(self)
         self.ws: Workspace | None = None  # type: ignore[assignment]
         self.q: Queries | None = None  # type: ignore[assignment]
@@ -123,8 +133,9 @@ class FocusDeskApp:
     def _build_layout(self) -> None:
         top = ttk.Frame(self.root, padding=(16, 12, 16, 10))
         top.pack(fill="x")
-        ttk.Label(top, text="◎ FocusDesk", style="Brand.TLabel").pack(side="left")
-        self.ws_label = ttk.Label(top, text="", style="Muted.TLabel")
+        from .design import icon, button
+        ttk.Label(top, text="  FocusDesk", image=icon(top,"brand",24), compound="left", style="Brand.TLabel").pack(side="left")
+        self.ws_label = ttk.Label(top, text="", style="Muted.TLabel", width=21)
         self.ws_label.pack(side="left", padx=(12, 0), pady=(3, 0))
         self.new_btn = tb.Menubutton(top, text="+ Nou", bootstyle="primary")
         self.new_menu = tk.Menu(self.new_btn, tearoff=False)
@@ -135,23 +146,27 @@ class FocusDeskApp:
         self.new_menu.add_command(label="Proiect", command=lambda: self.new_node(Kind.PROJECT))
         self.new_btn["menu"] = self.new_menu
         self.new_btn.pack(side="right")
-        self.mail_btn = tb.Button(top, text="✉  E-mail", command=self.compose_mail,
+        self.mail_btn = tb.Button(top, text="E-mail", image=icon(top,"mail"), compound="left", command=self.compose_mail,
                                   bootstyle="secondary-outline")
         self.mail_btn.pack(side="right", padx=(0, 8))
+        self.assistant_btn = button(top, "Asistent", self.open_assistant, glyph="assistant")
+        self.assistant_btn.pack(side="right", padx=(0, 8))
         self.search_var = tk.StringVar()
         self.search_entry = ttk.Entry(top, textvariable=self.search_var, width=34)
-        self.search_entry.pack(side="right", padx=(0, 16))
-        ttk.Label(top, text="Caută", style="Muted.TLabel").pack(side="right", padx=(0, 8))
+        self.search_entry.pack(side="right", fill="x", expand=True, padx=(0, 16))
+        ttk.Label(top, text="", image=icon(top,"search"), style="Muted.TLabel").pack(side="right", padx=(0, 8))
         self.search_var.trace_add("write", lambda *_: self._debounce_search())
         self.search_entry.bind("<Escape>", lambda _e: self._clear_search())
         self.search_entry.bind("<Return>", lambda _e: self._run_search())
 
+        self.ai_state = ttk.Label(self.root, text="AI local · dezactivat", style="Muted.TLabel", padding=(18,0,12,6))
+        self.ai_state.pack(fill="x")
         self.status = StatusBar(self.root)
         self.status.pack(side="bottom", fill="x")
         ttk.Separator(self.root).pack(side="bottom", fill="x")
 
         self.paned = ttk.PanedWindow(self.root, orient="horizontal")
-        self.paned.pack(fill="both", expand=True)
+        self.paned.pack(fill="both", expand=True, padx=8, pady=(0,8))
         self.sidebar = Sidebar(self.paned, self)
         self.center = ttk.Frame(self.paned)
         self.inspector = Inspector(self.paned, self)
@@ -163,12 +178,14 @@ class FocusDeskApp:
         self.tasklist = TaskList(self.center, self)
         self.today = TodayPage(self.center, self)
         self.calendar_page = CalendarPage(self.center, self)
+        self.mail_page = MailReviewPage(self.center, self)
         self.inspector.add_tab(DetailsTab(self.inspector.nb, self))
         self.inspector.add_tab(SubtasksTab(self.inspector.nb, self))
         self.inspector.add_tab(PlanTab(self.inspector.nb, self))
         self.inspector.add_tab(FilesTab(self.inspector.nb, self))
         self.inspector.add_tab(JournalTab(self.inspector.nb, self))
         self.inspector.add_tab(VersionsTab(self.inspector.nb, self))
+        self.inspector.add_tab(AssistantTab(self.inspector.nb, self))
         self.root.after(80, self._apply_sashes)
 
     def _apply_sashes(self, attempt: int = 0) -> None:
@@ -179,13 +196,14 @@ class FocusDeskApp:
                 self.root.after(100, lambda: self._apply_sashes(attempt + 1))
                 return
             panes = self.paned.panes()
-            left = self.config.sash_left or 230
-            right = self.config.sash_right or 470
-            right = max(380, min(right, total - left - 640))  # lista din mijloc ramane suficient de lata
+            from .design import px
+            left = self.config.sash_left or px(self.root,220)
+            right = self.config.sash_right or px(self.root,440)
+            right = max(px(self.root,380), min(right, total - left - px(self.root,400)))  # lista din mijloc ramane suficient de lata
             has_inspector = str(self.inspector) in panes
             self.paned.sashpos(0, left)
             if has_inspector:
-                self.paned.sashpos(1, max(left + 400, total - right))
+                self.paned.sashpos(1, max(left + px(self.root,400), total - right))
         except tk.TclError:
             pass
 
@@ -247,7 +265,7 @@ class FocusDeskApp:
         t = tk.Menu(m, tearoff=False)
         m.add_cascade(label="Instrumente", menu=t, underline=0)
         self.dark_var = tk.BooleanVar(value=self.config.theme == "dark")
-        t.add_checkbutton(label="Temă întunecată", variable=self.dark_var, command=self.toggle_theme)
+        t.add_command(label="Aspect luminos FocusDesk", command=self.toggle_theme)
         self.inspector_var = tk.BooleanVar(value=self.config.show_inspector)
         t.add_checkbutton(label="Arată inspectorul", variable=self.inspector_var, command=self.toggle_inspector)
         self.archived_var = tk.BooleanVar(value=self.config.show_archived)
@@ -255,6 +273,8 @@ class FocusDeskApp:
                           command=self.toggle_archived)
         t.add_separator()
         t.add_command(label="Dashboard timp lucrat\tCtrl+D", command=self.open_dashboard)
+        t.add_command(label="Asistent…", command=self.open_assistant)
+        t.add_command(label="AI local — propuneri…", command=self.open_ai)
         t.add_separator()
         t.add_command(label="Verificare integritate workspace…", command=self.show_issues)
         t.add_command(label="Setări…", command=self.open_settings)
@@ -362,6 +382,10 @@ class FocusDeskApp:
 
     def after_workspace_attached(self) -> None:
         """Punct de extindere pentru etapele ulterioare."""
+        if not self.ws.read_only:
+            from ..services.mail_analysis import reconcile
+            reconcile(self.ws)
+        self.mail_watch.next_due = 0
 
     def _post_open_checks(self) -> None:
         ws = self.ws
@@ -420,6 +444,11 @@ class FocusDeskApp:
                     return False
             elif ans != "keep":
                 return False
+        self.ai.invalidate_workspace()
+        self.mail_watch.invalidate(clear_selection=True)
+        if self.ai_window:
+            self.ai_window.destroy()
+        self.ai.cancel()
         self.ws.close()
         self.ws = None  # type: ignore[assignment]
         self.q = None  # type: ignore[assignment]
@@ -438,13 +467,22 @@ class FocusDeskApp:
             pass
         self.config.save()
         self.outlook.shutdown()
+        self.ai.close()
         self.bridge.close()
+        for pending in self.root.tk.call("after", "info"):
+            self.root.tk.call("after", "cancel", pending)
         self.root.destroy()
 
     # ================================================================
     # Events / refresh
     # ================================================================
     def _on_ws_event(self, event: str, data: dict) -> None:
+        if event == "mail_changed":
+            if self.current_view == "mail_review":
+                self.mail_page.refresh()
+            return
+        if event == "settings_changed":
+            self.mail_watch.invalidate()
         if event in ("node_created", "node_updated", "node_moved", "node_trashed", "node_restored", "reloaded",
                      "sessions_changed", "trash_changed"):
             self._schedule_refresh()
@@ -498,12 +536,15 @@ class FocusDeskApp:
             self.today.refresh()
         elif v == "calendar":
             self._show_calendar()
+        elif v == "mail_review":
+            self._show_center(self.mail_page)
+            self.mail_page.refresh()
         else:
             self._show_center(self.tasklist)
             self._configure_list()
 
     def _show_center(self, widget: tk.Misc) -> None:
-        for w in (self.tasklist, self.today, self.calendar_page):
+        for w in (self.tasklist, self.today, self.calendar_page, self.mail_page):
             if w is not None and w is not widget:
                 w.pack_forget()
         if not widget.winfo_ismapped():
@@ -798,16 +839,21 @@ class FocusDeskApp:
         if self.run_write(lambda: self.ws.move(node.id, parent.parent_id, parent.sort_order + 5), refresh=True):
             self.tasklist.select(node.id)
 
-    def compose_mail(self, node_id: str | None = None) -> None:
+    def compose_mail(self, node_id: str | None = None, *, ai_draft=None, standalone=False) -> None:
         """E-mail din task prin Outlook Classic; trimiterea porneste doar din dialog, dupa confirmare."""
         if self.ws is None:
             return
         nid = node_id or self.selected_id
-        node = self.ws.nodes.get(nid) if nid else None
-        if node is None:
+        node = self.ws.nodes.get(nid) if nid and not standalone else None
+        if node is None and ai_draft is None:
             show_info(self.root, "Selectează un task din care să trimiți e-mailul.")
             return
-        res = MailDialog(self.root, self, node).run()
+        dialog = MailDialog(self.root, self, node)
+        if ai_draft is not None:
+            dialog.subject_var.set(ai_draft.subject)
+            dialog.text.delete("1.0", "end")
+            dialog.text.insert("1.0", ai_draft.body)
+        res = dialog.run()
         if not res:
             return
         draft, send = res["draft"], res["action"] == "send"
@@ -817,10 +863,12 @@ class FocusDeskApp:
                 self.status.set_message("Ciorna este deschisă în Outlook")
                 return
             self.status.set_message(f"E-mail trimis către {', '.join(draft.to)}")
-            if not self.ws.read_only and node.id in self.ws.nodes:
-                self.run_write(lambda: self.ws.add_note(node.id, journal_text(draft), kind="action"))
+            recorded = False
+            if node is not None and not self.ws.read_only and node.id in self.ws.nodes:
+                recorded = self.run_write(lambda: self.ws.add_note(node.id, journal_text(draft), kind="action"))
                 self.inspector.refresh_current()
-            show_info(self.root, f"E-mail trimis către:\n{', '.join(draft.to)}\n\nAm notăt trimiterea în Jurnalul task-ului.",
+            suffix = "\n\nTrimiterea este notată în Jurnalul taskului." if recorded else ""
+            show_info(self.root, f"E-mail trimis către:\n{', '.join(draft.to)}{suffix}",
                       "E-mail trimis")
 
         self.outlook.send_mail(draft, send, done)
@@ -1093,7 +1141,8 @@ class FocusDeskApp:
     # View toggles / theme
     # ================================================================
     def toggle_theme(self) -> None:
-        mode = "dark" if self.dark_var.get() else "light"
+        mode = "light"
+        self.dark_var.set(False)
         self.config.theme = mode
         self.config.save()
         apply_theme(self.root, mode)
@@ -1121,6 +1170,19 @@ class FocusDeskApp:
         self.config.show_archived = self.archived_var.get()
         self.config.save()
         self.sidebar.refresh()
+
+    def open_assistant(self) -> None:
+        if self.assistant_window and self.assistant_window.winfo_exists():
+            self.assistant_window.lift()
+            self.assistant_window.panel.on_selection()
+            return
+        self.assistant_window = AssistantWindow(self)
+
+    def open_ai(self) -> None:
+        if self.ai_window and self.ai_window.winfo_exists():
+            self.ai_window.lift()
+            return
+        self.ai_window = AiWindow(self)
 
     def open_settings(self) -> None:
         if self.ws is None:
@@ -1496,6 +1558,16 @@ class FocusDeskApp:
             self._tick_job = None
         if self.ws is None or self.timer is None:
             return
+        try:
+            self.mail_watch.tick()
+            if self.current_view == "mail_review":
+                self.mail_page.status.set(self.mail_watch.status)
+        except Exception:
+            self.mail_watch.status = "Evidența monitorizării nu poate fi citită; verifică datele locale."
+        enabled = self.config.ai.enabled
+        engine = self.ai.engine
+        ai_text = "AI local · dezactivat" if not enabled else "AI local · în lucru" if engine and engine.busy else "AI local · activat, încărcare la cerere"
+        self.ai_state.configure(text=ai_text)
         t = self.timer
         if t.recovered is None and t.state is not None:
             t.tick()
@@ -1506,6 +1578,8 @@ class FocusDeskApp:
             self.status.set_timer(label, active=t.running)
         else:
             self.status.set_timer("Sesiune: niciuna")
+        if self.current_view == "today":
+            self.today.update_timer()
         self.update_session_buttons()
         self._tick_count += 1
         if self._tick_count % 30 == 0:
@@ -1622,7 +1696,7 @@ class StopSessionDialog(ModalDialog):
         ttk.Label(b, text=f"Timp lucrat efectiv: {format_seconds(seconds)} (timpul planificat nu se numără)",
                   style="Muted.TLabel").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 8))
         ttk.Label(b, text="Ce am făcut").grid(row=2, column=0, sticky="nw", pady=3)
-        self.text = tk.Text(b, height=5, width=52, wrap="word", font=("Segoe UI", 10))
+        self.text = tk.Text(b, height=5, width=52, wrap="word", font="TkTextFont")
         self.text.grid(row=2, column=1, sticky="ew", pady=3)
         self.text.focus_set()
         ttk.Label(b, text="Următorul pas").grid(row=3, column=0, sticky="w", pady=3)

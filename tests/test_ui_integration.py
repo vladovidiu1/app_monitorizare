@@ -110,7 +110,7 @@ def test_window_layout_and_initial_state(app):
     assert app.current_view == "today"
     assert app.today.winfo_ismapped()
     assert [app.inspector.nb.tab(t, "text") for t in app.inspector.nb.tabs()] == [
-        "Detalii", "Subtask-uri", "Planificare", "Fișiere", "Jurnal", "Versiuni"]
+        "Detalii", "Subtask-uri", "Planificare", "Fișiere", "Jurnal", "Versiuni", "Asistent"]
     assert "Calendar: local" in app.status._labels["calendar"].cget("text")
     no_errors(app)
 
@@ -358,10 +358,11 @@ def test_settings_dialog_collects_valid_settings(app):
     no_errors(app)
 
 
-def test_theme_toggle_roundtrip(app):
+def test_legacy_theme_toggle_keeps_light_appearance(app):
     app.dark_var.set(True)
     app.toggle_theme()
     app.root.update()
+    assert app.config.theme == "light" and not app.dark_var.get()
     app.dark_var.set(False)
     app.toggle_theme()
     app.root.update()

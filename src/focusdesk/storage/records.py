@@ -39,13 +39,15 @@ class RecordStore(Generic[M]):
     def delete(self, record_id: str) -> None:
         self._path(record_id).unlink(missing_ok=True)
 
-    def list_all(self) -> list[M]:
+    def list_all(self, *, check=None) -> list[M]:
         """Citeste toate inregistrarile; cele corupte sunt raportate in `errors`, nu ridica exceptii."""
         self.errors = []
         out: list[M] = []
         if not self.directory.exists():
             return out
         for p in sorted(self.directory.glob("*.json")):
+            if check:
+                check()
             try:
                 data, _, _ = read_json(p)
                 out.append(self.model.model_validate(data))

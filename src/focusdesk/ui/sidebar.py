@@ -8,17 +8,19 @@ from typing import TYPE_CHECKING
 
 from ..domain.models import CLOSED_STATUSES, Kind, Node
 from .common import KIND_GLYPH, STATUS_GLYPH, muted_color
+from .design import icon, button
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
 
 SMART_VIEWS = [
-    ("today", "☀   Astăzi"),
-    ("inbox", "▤   Inbox"),
-    ("waiting", "⏳   În așteptare"),
-    ("overdue", "⚑   Restante"),
-    ("calendar", "▦   Calendar"),
-    ("archive", "☐   Arhivă"),
+    ("today", "Astăzi"),
+    ("inbox", "Inbox"),
+    ("mail_review", "Mailuri de analizat"),
+    ("waiting", "În așteptare"),
+    ("overdue", "Restante"),
+    ("calendar", "Calendar"),
+    ("archive", "Arhivă"),
 ]
 
 
@@ -30,26 +32,32 @@ def node_glyph(node: Node) -> str:
 
 class Sidebar(ttk.Frame):
     def __init__(self, parent: tk.Misc, app: "FocusDeskApp") -> None:
-        super().__init__(parent)
+        super().__init__(parent, style="Sidebar.TFrame")
         self.app = app
         self._suppress = False
-        ttk.Button(self, text="▦  Dashboard timp lucrat", command=app.open_dashboard).pack(fill="x", padx=10, pady=(12, 0))
-        ttk.Label(self, text="VIZUALIZĂRI", style="Muted.TLabel").pack(anchor="w", padx=14, pady=(14, 4))
-        self.views = ttk.Treeview(self, show="tree", selectmode="browse", height=len(SMART_VIEWS))
+        button(self, "Timp lucrat", app.open_dashboard, glyph="chart").pack(fill="x", padx=10, pady=(12, 0))
+        ttk.Label(self, text="WORKSPACE", style="Sidebar.TLabel").pack(anchor="w", padx=14, pady=(14, 4))
+        self.views = ttk.Treeview(self, show="tree", selectmode="browse", height=len(SMART_VIEWS), style="Nav.Treeview")
         self.views.pack(fill="x", padx=8)
         for key, label in SMART_VIEWS:
-            self.views.insert("", "end", iid=key, text=label)
+            self.views.insert("", "end", iid=key, text="  " + label, image=icon(self,key if key != "mail_review" else "mail"))
         self.views.bind("<<TreeviewSelect>>", self._on_view_select)
-        head = ttk.Frame(self)
+        head = ttk.Frame(self, style="Sidebar.TFrame")
         head.pack(fill="x", padx=14, pady=(16, 4))
-        ttk.Label(head, text="PROIECTE ȘI TASK-URI", style="Muted.TLabel").pack(side="left")
+        ttk.Label(head, text="PROIECTE ȘI TASKURI", style="Sidebar.TLabel").pack(side="left")
         wrap = ttk.Frame(self)
         wrap.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         self.tree = ttk.Treeview(wrap, show="tree", selectmode="browse")
         vbar = ttk.Scrollbar(wrap, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vbar.set)
-        self.tree.pack(side="left", fill="both", expand=True)
-        vbar.pack(side="right", fill="y")
+        hbar=ttk.Scrollbar(wrap,orient="horizontal",command=self.tree.xview)
+        self.tree.configure(xscrollcommand=hbar.set)
+        self.tree.column("#0",width=300,minwidth=180,stretch=True)
+        wrap.columnconfigure(0,weight=1)
+        wrap.rowconfigure(0,weight=1)
+        self.tree.grid(row=0,column=0,sticky="nsew")
+        vbar.grid(row=0,column=1,sticky="ns")
+        hbar.grid(row=1,column=0,sticky="ew")
         self.tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self.tree.bind("<Button-3>", self._on_context)
         self.tree.bind("<Double-1>", self._on_double)
@@ -79,7 +87,7 @@ class Sidebar(ttk.Frame):
                     tags.append("archived")
                 kids = cmap.get(n.id, [])
                 is_open = n.id in open_ids or (self._first_fill and parent_iid == "")
-                self.tree.insert(parent_iid, "end", iid=n.id, text=f"{node_glyph(n)}  {n.title}",
+                self.tree.insert(parent_iid, "end", iid=n.id, text="  " + n.title, image=icon(self,n.kind.value),
                                  open=is_open, tags=tags)
                 for c in kids:
                     add(n.id, c)
@@ -106,10 +114,11 @@ class Sidebar(ttk.Frame):
         counts = {
             "today": len(q.view_today()), "inbox": len(q.view_inbox()), "waiting": len(q.view_waiting()),
             "overdue": len(q.view_overdue()), "calendar": None, "archive": len(q.view_archive()),
+            "mail_review": None,
         }
         for key, label in SMART_VIEWS:
             n = counts[key]
-            self.views.item(key, text=f"{label}  ({n})" if n else label)
+            self.views.item(key, text="  " + (f"{label}  ({n})" if n else label))
 
     # ---- selection --------------------------------------------------
     def select_node(self, node_id: str) -> None:

@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import re
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class Colleague(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     name: str
-    code: str
+    code: str = ""
+    email_address: str | None = None
 
     @field_validator("name")
     @classmethod
@@ -25,14 +26,29 @@ class Colleague(BaseModel):
     @classmethod
     def _code(cls, value: str) -> str:
         value = value.strip().lower()
+        if not value:
+            return value
         if not re.fullmatch(r"[a-z0-9]+(?:[._-][a-z0-9]+)*", value):
             raise ValueError("Codul trebuie sa fie un identificator, fara @ sau spatii.")
         return value
 
+    @field_validator("email_address")
+    @classmethod
+    def _smtp(cls, value):
+        if value is not None and not re.fullmatch(r"[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+", value):
+            raise ValueError("Adresă SMTP invalidă.")
+        return value
+
+    @model_validator(mode="after")
+    def _identity(self):
+        if not self.code and not self.email_address:
+            raise ValueError("Codul colegului sau adresa SMTP explicită este obligatorie.")
+        return self
+
     @property
     def email(self) -> str:
-        return f"{self.code}@eon.com"
+        return self.email_address or f"{self.code}@eon.com"
 
     @property
     def label(self) -> str:
-        return f"{self.name} ({self.code})"
+        return f"{self.name} ({self.code or self.email_address})"

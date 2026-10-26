@@ -14,6 +14,8 @@ src/focusdesk/
   workers/       bridge (thread pool + coadă către Tk), com_worker (thread COM dedicat)
   ui/            fereastra principală, arbore, listă, inspector (taburi), Astăzi, calendar, dialoguri, setări
   resources/     pictograma aplicației
+  ai/            protocol JSON IPC, supervisor spawn, backend llama.cpp CPU, manifest/download și smoke real
+                 assistant_protocol: răspunsuri cu surse și operații tipizate
 ```
 
 ## Fire de execuție
@@ -25,6 +27,11 @@ src/focusdesk/
   thread-ul; spre UI circulă doar tipuri primitive (dataclass-uri). Timeout-ul este la nivel de UI: un apel COM blocat nu
   poate fi anulat forțat în siguranță, deci rezultatul tardiv este ignorat, iar cererile noi sunt refuzate până se termină
   apelul blocat (mesaj explicit).
+* **AI**: un proces `spawn` separat deține biblioteca nativă și un singur model încărcat la cerere.
+  Supervisor-ul și sender-ul IPC lucrează în fundal; mesajele JSON cu UUID ajung în Tk prin `UiBridge.post`.
+  Procesul nu primește Workspace sau widgeturi. Anularea/timeout-ul termină procesul nativ și invalidează callback-ul;
+  pornirea următoare este automată. La oprire normală se trimite `stop`, cu escaladare la terminate/kill dacă este necesar.
+  Bootstrap-ul apelează `freeze_support` înainte de importul aplicației și pregătește stdout/stderr pentru executabilul fără consolă.
 * Operațiile pe workspace din workeri sunt doar citiri/I-O pe fișiere proprii (ex. `CheckpointService.create`,
   `FileService.copy_managed`); înregistrarea în model se face pe thread-ul UI.
 
@@ -58,3 +65,43 @@ src/focusdesk/
   ciornă) → la succes se notează trimiterea în Jurnalul task-ului. La timeout nu se afirmă că mesajul a plecat sau nu.
 * **Ierarhie**: lista centrală (`TaskList`) construiește arborele din `parent_id` (stramoșii task-urilor filtrate rămân
   vizibili); progresul pe noduri vine dintr-o singură trecere (`Queries.progress_map`).
+* **Propunere AI**: context limitat al nodului selectat → GGUF Qwen3, template cu `enable_thinking=False`
+  → gramatică din JSON Schema → validare Pydantic → verificare semantică și fingerprint al sursei
+  → previzualizare și confirmare → o singură scriere prin `Workspace`, exclusiv pe firul Tk.
+  Nu se generează/comandă operații Outlook sau shell. Vezi [AI.md](AI.md).
+
+Asistentul extins folosește `assistant_context` pentru recuperare lexicală prin Queries/serviciile existente,
+într-un job anulabil UiBridge. Procesul modelului măsoară tokenii reali și returnează separat ID-urile
+surselor folosite efectiv. `assistant_proposals` verifică surse/fingerprint-uri, simulează înainte/după
+și dependențele întregului lot și aplică fiecare operație numai pe firul Tk. Rezervările UUID și rezultatele
+se scriu prin Workspace în istoricul existent înainte/după efect; `started` rămas după crash blochează replay.
+Nu există tranzacție atomică pentru lot: incertitudinea oprește operațiile următoare și este raportată distinct.
+Ferestrele și tabul folosesc un epoch de workspace și o generație de cerere; callback-urile vechi nu se aplică.
+Vezi [ASISTENT.md](ASISTENT.md).
+
+## Monitorizarea mailurilor
+
+`MailWatchController` serializează scanările pe `ComWorker` comun. `mail_read`
+returnează exclusiv DTO-uri; `MailMonitorService` gestionează ferestrele, deduplicarea
+și checkpoint-urile persistente. `mail_analysis` recuperează candidați prin Queries,
+validează citate/date și proiectează estimarea în mecanismul comun de propuneri.
+Firul UI persistă prin Workspace; inferența rulează în procesul AI existent.
+Detalii și limite: [MAILURI.md](MAILURI.md).
+
+## Fluxuri de productivitate AI
+
+`services/ai_productivity.py` recuperează candidații zilei, calculează raportul din
+Queries.worked_by_day și validează ciornele/selectarea prin ProposalBatch. Sursele
+`report` au fingerprint recalculabil din cifrele și taskurile perioadei; sursele
+zilei expiră la schimbarea datei locale/fusului. `ui/productivity_ui.py` recuperează
+în fundal, apelează motorul existent și oferă previzualizare, copiere și transfer
+explicit către MailDialog/PlannerDialog. Raportul complet este calculat în cod,
+independent de reducerea detaliilor din prompt. Nu există operații IPC noi de
+trimitere sau programare; salvarea rămâne în fluxurile manuale existente.
+
+## Interfață luminoasă FocusDesk
+
+Tema, fonturile, paleta, dimensiunile și pictogramele locale sunt centralizate în
+`ui/design.py`. Aspectul luminos se aplică inclusiv configurațiilor vechi dark.
+Vezi [ghidul vizual și capturile reale](INTERFATA.md) pentru layout, scalare,
+reproducerea capturilor și limitele verificării Windows.
