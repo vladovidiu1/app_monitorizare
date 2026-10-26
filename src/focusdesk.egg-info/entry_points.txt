@@ -1,0 +1,2 @@
+[console_scripts]
+focusdesk = focusdesk.main:main
