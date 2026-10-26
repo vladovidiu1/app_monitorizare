@@ -107,3 +107,25 @@ păstrează separat layoutul de revenire. Generația callbackurilor de sash inva
 repoziționările amânate după restaurarea explicită a layoutului. Selecțiile arborelui
 ascuns nu declanșează navigare. Schimbarea workspace-ului golește istoricul, pozițiile
 și proprietarul bufferelor, inclusiv undo, după rezolvarea ciornelor nesalvate.
+
+## Șabloane de structură locale
+
+`domain/templates.py` definește schema strictă, chei locale și grafuri validate.
+`services/templates.py` citește resursele implicite și catalogul personal; scrierile UI
+intră prin metodele `Workspace.*template`. Capturarea folosește o listă explicită de
+câmpuri, fără copierea modelului Node integral. Substituția literală `{{nume}}` este
+limitată și nu evaluează conținutul. `ui/templates_ui.py` folosește dialoguri nemodale,
+editorul Markdown existent și verificarea identității workspace-ului înainte de scriere.
+
+Crearea validează întregul graf și destinația, generează UUID-uri, remapează referințele
+și jurnalizează planul în `OperationRecord(type=template_create)` înainte de orice nod.
+Planul se scrie pe firul UI prin repository, în ordine părinte-copil, apoi se marchează
+`done`; indexul rămâne un cache. Cererea UUID + amprenta datelor previn aplicarea dublă.
+La eșec sunt retrase doar directoarele lotului nou. Operațiile `pending` sunt recuperate
+înainte de încărcarea nodurilor la deschiderea editabilă, prin `storage/template_operations.py`.
+Dacă rollbackul nu poate termina, jurnalul rămâne pending și eroarea este explicită.
+
+Șabloanele personale se scriu atomic în `_system/templates`; versiunile/amprentele
+previn suprascrierea ciornelor concurente. Backupurile standard le includ fără alt
+format de restaurare. Resursele `resources/templates/*.json` sunt incluse în pachet
+prin setuptools și `collect_data_files` existent pentru PyInstaller; nu a fost construit EXE.

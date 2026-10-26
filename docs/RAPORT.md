@@ -4,7 +4,37 @@ Revizia curentă elimină motorul local și toate funcțiile AI, precum și citi
 monitorizarea și analiza inboxului Outlook. Nu s-a construit executabilul și nu
 s-a pornit workflow-ul de distribuție în această etapă, conform cererii.
 
-## Spațiul de lucru al taskului — verificarea curentă
+## Șabloane reutilizabile — verificarea curentă
+
+Implementate local: catalog implicit/personal, creare cu previzualizare și variabile,
+capturarea unei structuri existente, editor Markdown/ierarhie/checklist, duplicare,
+ștergere, import/export JSON și integrare în backup/restaurare. Fără AI sau analiză de mail.
+
+Verificat efectiv în Linux/Python 3.12/Tk 9, pe date temporare:
+
+- **42 teste noi trec**, dintre care 6 UI: structuri pe mai multe niveluri, UUID-uri noi,
+  remapare dependențe/legături, păstrarea ordinii, excluderea metadatelor personale,
+  variabile inclusiv blocuri Markdown de cod, limite de expansiune/import, JSON invalid,
+  scheme incompatibile, câmpuri nepermise și cicluri.
+- Catalogul implicit nu creează noduri sau fișiere personale. Copiile se păstrează
+  după restart. Editările concurente nu se suprascriu. Doar citire și schimbarea
+  workspace-ului blochează aplicarea dialogurilor vechi.
+- Backup/restaurare meta și full păstrează șabloanele. O eroare după scrierea
+  parțială declanșează rollback. Simularea întreruperii procesului este recuperată
+  la redeschidere; este testată și reîncercarea unui rollback blocat inițial.
+- Apăsarea repetată nu dublează structura; ID-ul cererii funcționează și după restart.
+  UI cere o previzualizare nouă când datele au fost schimbate.
+- Suita completă: **267 trec, 14 eșecuri preexistente pe Linux, 1 omis**. Eșecurile
+  au fost comparate cu raportul anterior: exact același set de validări Windows ale
+  căilor (stage3/stage7/files-checkpoint UI). Regulile Windows nu au fost relaxate.
+- Capturi reale Tk inspectate pentru gestionare, creare/previzualizare și editor:
+  [ghid și capturi](SABLOANE.md). Scriptul folosește workspace demonstrativ temporar.
+
+Nu s-a construit executabilul și nu s-a lansat workflow-ul. Resursele șabloanelor sunt
+incluse în configurația setuptools/PyInstaller, dar distribuția EXE nu a fost verificată
+în această etapă. Outlook real și DPI nativ Windows rămân verificări manuale.
+
+## Spațiul de lucru al taskului — verificarea precedentă
 
 Pagina centrală reutilizează editorul Markdown, ciornele inspectorului și serviciile
 existente. Include navigare Înapoi/subtask, panou secundar redimensionabil, F11 pentru

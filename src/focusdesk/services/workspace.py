@@ -29,6 +29,8 @@ class Workspace:
         self.settings: Settings = repo.load_settings()
         self.recovery_messages: list[str] = []
         self._listeners: list[Listener] = []
+        from .templates import TemplateService
+        self.templates = TemplateService(self)
 
     # ---- life cycle -------------------------------------------------
     @classmethod
@@ -36,7 +38,8 @@ class Workspace:
              read_only: bool = False) -> "Workspace":
         repo = WorkspaceRepository.open(Path(root), create=create, name=name, read_only=read_only)
         ws = cls(repo)
-        ws.recovery_messages = ops.recover_pending(repo)
+        from ..storage.template_operations import recover_templates
+        ws.recovery_messages = recover_templates(repo) + ops.recover_pending(repo)
         moved = ops.flatten_layout(repo)
         if moved:
             ws.recovery_messages.append(
@@ -478,3 +481,19 @@ class Workspace:
     # ---- internals --------------------------------------------------
     def _after_change(self) -> None:
         self.repo.write_index()
+
+    # ---- reusable local structures (UI writes enter through this facade) ----
+    def save_template(self, template, *, expected_hash=None):
+        return self.templates.save(template, expected_hash=expected_hash)
+
+    def duplicate_template(self, template, name=None):
+        return self.templates.duplicate(template, name)
+
+    def delete_template(self, template, expected_hash):
+        return self.templates.delete(template, expected_hash)
+
+    def import_template(self, path):
+        return self.templates.import_file(path)
+
+    def create_from_template(self, template, **options):
+        return self.templates.create(template, **options)

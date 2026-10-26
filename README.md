@@ -121,3 +121,12 @@ amplă și panou redimensionabil cu pași, fișiere, activitate, planificare și
 **Înapoi** păstrează contextul; **F11** comută Concentrare fără să schimbe timerul.
 Editorul și inspectorul împart ciorna; Ctrl+S salvează contextul activ.
 Vezi [ghidul spațiului de lucru](docs/SPATIU-DE-LUCRU.md).
+
+## Șabloane reutilizabile
+
+**+ Nou → Din șablon…** creează proiecte/taskuri cu previzualizare și variabile text.
+Meniul contextual oferă **Salvează ca șablon…**, iar **Instrumente → Gestionare
+șabloane…** permite editare, duplicare, ștergere și import/export JSON. Sunt incluse
+Automatizare SAP, Investigare incident, Dezvoltare aplicație Python și Task simplu.
+Șabloanele personale sunt locale și incluse în backup; nu copiază istoricul sau
+metadatele personale. Vezi [ghidul șabloanelor](docs/SABLOANE.md).

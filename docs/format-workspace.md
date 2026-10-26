@@ -149,3 +149,18 @@ reconciliere sau ștergere automată. Backupurile obișnuite le pot păstra în 
 Setările necunoscute sunt păstrate inert prin `extra="allow"`.
 Taskurile și subtaskurile create anterior, notițele, sesiunile și descrierile nu au
 un tratament special în funcție de origine: rămân date normale ale utilizatorului.
+
+## Șabloane reutilizabile (`_system/templates/<uuid>.json`)
+
+Catalog personal opțional, creat numai la salvare/import. Fiecare JSON are
+`schema_version: 1`, `id`, `revision`, `name`, `variables` și `items`. Elementele
+folosesc chei locale (`key`, `parent`, `depends_on`, `related`), fără UUID-urile nodurilor
+sursă. Tipul rădăcinii este proiect/task; câmpurile permise sunt enumerate în
+[ghidul șabloanelor](SABLOANE.md). Importul respinge câmpuri necunoscute, grafuri
+invalide, versiuni incompatibile și fișiere peste 2 MiB/500 elemente.
+
+Nu se migrează și nu se rescriu nodurile existente. Backupurile meta/full includ
+catalogul; restaurarea obișnuită îl recuperează. Șabloanele implicite rămân resurse ale
+aplicației, nu fișiere personale. Crearea lotului folosește jurnalul existent
+`_system/operations`, tip `template_create`, cu UUID-urile noi și stările
+pending/done/rolled_back; nu este o copie a istoricului sursei.

@@ -1,0 +1,26 @@
+{
+  "scale_simulated": 1.0,
+  "size": "1440x900",
+  "platform": "linux",
+  "theme": "light",
+  "real_tk": true,
+  "windows_dpi_verified": false,
+  "captures": [
+    "01-astazi.png",
+    "02-proiect.png",
+    "03-inspector.png",
+    "04-calendar.png",
+    "06-setari.png",
+    "08-email.png",
+    "10-dashboard.png",
+    "11-statusuri.png",
+    "12-descriere-previzualizare.png",
+    "13-proiecte-taskuri.png",
+    "14-activitate.png",
+    "15-spatiu-lucru.png",
+    "16-concentrare.png",
+    "17-gestionare-sabloane.png",
+    "18-din-sablon.png",
+    "19-editor-sablon.png"
+  ]
+}

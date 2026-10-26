@@ -27,7 +27,7 @@ focusdesk = "focusdesk.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-focusdesk = ["resources/*", "resources/icons/*.png", "resources/icons/LICENSE.txt"]
+focusdesk = ["resources/*", "resources/templates/*.json", "resources/icons/*.png", "resources/icons/LICENSE.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

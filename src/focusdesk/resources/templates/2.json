@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "id": "cf50220d-cc68-5829-b0e3-09c39484b067",
+  "revision": 1,
+  "name": "Investigare incident",
+  "variables": [
+    "nume_proiect"
+  ],
+  "items": [
+    {
+      "key": "root",
+      "parent": null,
+      "kind": "project",
+      "title": "{{nume_proiect}}",
+      "description": "## Obiectiv\n\nInvestigare și remediere incident.\n\n## Context\n",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas1",
+      "parent": "root",
+      "kind": "task",
+      "title": "Descriere și reproducere",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas2",
+      "parent": "root",
+      "kind": "task",
+      "title": "Colectare exemple",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas3",
+      "parent": "root",
+      "kind": "task",
+      "title": "Analiză cauză",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas4",
+      "parent": "root",
+      "kind": "task",
+      "title": "Implementare remediere",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas5",
+      "parent": "root",
+      "kind": "task",
+      "title": "Testare",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas6",
+      "parent": "root",
+      "kind": "task",
+      "title": "Confirmare și închidere",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    }
+  ]
+}

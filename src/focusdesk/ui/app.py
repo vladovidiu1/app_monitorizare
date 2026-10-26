@@ -126,6 +126,7 @@ class FocusDeskApp:
         self.ws_label.pack(side="left", padx=(12, 0), pady=(3, 0))
         self.new_btn = tb.Menubutton(top, text="+ Nou", bootstyle="primary")
         self.new_menu = tk.Menu(self.new_btn, tearoff=False)
+        self.new_menu.add_command(label="Din șablon…", command=self.new_from_template)
         self.new_menu.add_command(label="Task\tCtrl+N", command=lambda: self.new_node(Kind.TASK))
         self.new_menu.add_command(label="Subtask în selecția curentă", command=self.new_subtask)
         self.new_menu.add_separator()
@@ -266,6 +267,7 @@ class FocusDeskApp:
         t.add_command(label="Dashboard timp lucrat\tCtrl+D", command=self.open_dashboard)
         t.add_separator()
         t.add_command(label="Verificare integritate workspace…", command=self.show_issues)
+        t.add_command(label="Gestionare șabloane…", command=self.manage_templates)
         t.add_command(label="Setări…", command=self.open_settings)
         self.tools_menu = t
         # Ajutor
@@ -838,6 +840,30 @@ class FocusDeskApp:
         self.select_node(node.id, reveal=True)
         return node
 
+    def new_from_template(self):
+        if self.ws is None:return
+        if self.ws.read_only:
+            show_error(self.root,"Workspace-ul este deschis doar pentru citire.")
+            return
+        if not self.confirm_leave():return
+        from .templates_ui import CreateTemplateDialog
+        CreateTemplateDialog(self)
+
+    def manage_templates(self):
+        if self.ws is None:return
+        from .templates_ui import TemplateManager
+        TemplateManager(self)
+
+    def save_as_template(self,node_id):
+        if self.ws is None or self.ws.read_only or not self.confirm_leave():return
+        from .templates_ui import TemplateEditor
+        name=ask_string(self.root,"Salvează ca șablon","Nume șablon:",initial=self.ws.get(node_id).title[:200])
+        if not name:return
+        try:
+            template=self.ws.templates.capture(node_id,name)
+            TemplateEditor(self,template)
+        except Exception as exc:show_error(self.root,str(exc))
+
     def new_subtask(self) -> None:
         nid = self.selected_id
         if not nid or self.ws is None or self.ws.nodes[nid].kind != Kind.TASK:
@@ -1042,6 +1068,8 @@ class FocusDeskApp:
                 if node.kind == Kind.FOLDER:
                     menu.add_command(label="Proiect nou aici",
                                      command=lambda: self.new_node(Kind.PROJECT, parent_id=node.id), state=state)
+            if node.kind in (Kind.PROJECT,Kind.TASK):
+                menu.add_command(label="Salvează ca șablon…",command=lambda:self.save_as_template(node.id),state=state)
             menu.add_separator()
             menu.add_command(label="Redenumește\tF2", command=self.rename_selected, state=state)
             menu.add_command(label="Mută…", command=self.move_selected, state=state)

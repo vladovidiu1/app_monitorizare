@@ -108,3 +108,10 @@ Inspectorul și meniul contextual oferă **Deschide spațiul de lucru**: pagină
 cu descriere amplă, Pași, Fișiere, Activitate, Planificare și Versiuni. Înapoi păstrează
 contextul de navigare. **F11** intră/iese din Concentrare, cu timerul neschimbat.
 [Detalii și salvare comună cu inspectorul](SPATIU-DE-LUCRU.md).
+
+## Structuri reutilizabile
+
+**+ Nou → Din șablon…** creează o structură după previzualizare. Pentru reutilizarea
+unui proiect/task existent folosește **Salvează ca șablon…** în meniul contextual.
+Catalogul complet este în **Instrumente → Gestionare șabloane…**.
+[Editare, variabile și protecția datelor](SABLOANE.md).

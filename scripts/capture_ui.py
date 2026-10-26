@@ -101,6 +101,15 @@ def main():
             shot('15-spatiu-lucru')
             app.task_space.toggle_focus();shot('16-concentrare')
             app.task_space.exit_focus();app.timer.discard();app.task_space.back()
+            from focusdesk.ui.templates_ui import TemplateManager, CreateTemplateDialog, TemplateEditor
+            manager=TemplateManager(app);manager.geometry('+30+30');shot('17-gestionare-sabloane',manager);manager.destroy()
+            create=CreateTemplateDialog(app)
+            create.geometry('+30+30');create.title_var.set('Automatizare raport SAP')
+            examples={'nume_proiect':'Raport SAP','sistem_sap':'SAP ERP','tranzactie':'Z_RAPORT','rezultat_asteptat':'Raport verificat și documentat'}
+            for key,value in create.values.items():value.set(examples.get(key,'Exemplu'))
+            create.preview();shot('18-din-sablon',create);create.destroy()
+            editor=TemplateEditor(app,app.ws.templates.capture(work.id,'Raport lunar reutilizabil'))
+            editor.geometry('+30+30');shot('19-editor-sablon',editor);editor.destroy()
             if errors:
                 raise RuntimeError('Erori callback Tk: '+ '; '.join(errors))
             report={'scale_simulated':args.scale,'size':args.size,'platform':sys.platform,'theme':app.config.theme,

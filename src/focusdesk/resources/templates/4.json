@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "79844992-2e0f-528c-aa45-9ecfc712e10d",
+  "revision": 1,
+  "name": "Task simplu",
+  "variables": [],
+  "items": [
+    {
+      "key": "root",
+      "parent": null,
+      "kind": "task",
+      "title": "Task nou",
+      "description": "## Obiectiv\n\n## Context\n\n## Pași\n\n- \n\n## Rezultat așteptat\n\n## Criterii de finalizare\n",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    }
+  ]
+}
