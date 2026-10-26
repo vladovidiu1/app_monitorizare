@@ -74,3 +74,12 @@ sunt validate ca setări active și nu declanșează servicii. Nu există migrar
 Citirea inboxului și toate modulele AI au fost eliminate, inclusiv pornirea,
 IPC-ul, pollingul și controalele UI. `ComWorker` rămâne exclusiv pentru calendar
 și e-mailul trimis/afișat la acțiunea explicită a utilizatorului.
+
+## Documentare Markdown și statusuri
+
+`ui/status_visuals.py` mapează tipul/statusul la resurse locale MIT și etichete.
+`ui/markdown_editor.py` oferă formatarea asistată și previzualizarea inertă în Tk
+Text. Fereastra extinsă este un peer Tcl al bufferului din inspector, cu grab modal
+și snapshot de anulare; nu are o copie independentă a descrierii. Salvarea rămâne
+în DetailsTab → Workspace.set_description, pe firul UI. Nu se schimbă formatul sau
+schema datelor și nu se introduc HTML, execuție de cod ori servicii externe.

@@ -16,8 +16,7 @@ from ..domain.models import CLOSED_STATUSES, PRIORITY_ORDER, Kind, Node, Priorit
 from ..services.queries import Progress
 from .common import BASE_SIZE, FONT_FAMILY, SessionButton, error_color, muted_color
 from .formats import format_date
-from .sidebar import node_glyph
-from .design import icon
+from .status_visuals import node_icon
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -25,7 +24,7 @@ if TYPE_CHECKING:
 ALL = "Toate"
 DUE_FILTERS = {"Orice termen": None, "Restante": "overdue", "Azi": "today", "Următoarele 7 zile": "week",
                "Fără termen": "none"}
-COLUMNS = [("status", "Status", 80), ("priority", "Prioritate", 76), ("due", "Termen", 84),
+COLUMNS = [("status", "Status", 120), ("priority", "Prioritate", 76), ("due", "Termen", 84),
            ("progress", "Progres", 68), ("remaining", "Timp rămas", 150), ("worked", "Timp lucrat", 90),
            ("loc", "Locație", 150)]
 TREE_COLUMNS = ("status", "priority", "due", "progress", "remaining", "worked")
@@ -164,12 +163,14 @@ class TaskList(ttk.Frame):
         self._source = loader
         key = (title, scope_id)
         self._expand_all = key != self._source_key
+        changed_source = key != self._source_key
         self._source_key = key
         self.scope_id = scope_id
         self.title_lbl.configure(text=title)
         self.crumb.configure(text=crumb)
         self.show_closed_default = show_closed
-        self.closed_var.set(show_closed)
+        if changed_source:
+            self.closed_var.set(show_closed)
         self.empty_hint = empty_hint
         if scope_id is not None:
             self.tv.configure(displaycolumns=TREE_COLUMNS)
@@ -228,7 +229,7 @@ class TaskList(ttk.Frame):
             for parent_iid, n in rows:
                 is_open = self._expand_all or n.id in open_ids or n.id in self._force_open
                 self.tv.insert(parent_iid, "end", iid=n.id, tags=self._tags_for(n, n.id in matched_ids),
-                               text=self._title_text(n), image=icon(self,n.kind.value), open=is_open, values=self._values(n, scope is not None))
+                               text=self._title_text(n), image=node_icon(self,n), open=is_open, values=self._values(n, scope is not None))
             keep = [s for s in selected if self.tv.exists(s)]
             if keep:
                 self.tv.selection_set(keep)

@@ -93,3 +93,12 @@ a fost editat extern și apoi încerci să-l salvezi din aplicație, ți se cere
 
 
 Evenimentele Outlook/ICS sunt rezervări personale de timp, fără invitați sau Teams.
+
+## Descriere și identificarea statusului
+
+În Detalii poți redimensiona descrierea sau folosi **Extinde descrierea**. Toolbarul
+editează Markdown, iar tabul Previzualizare îl formatează local. Ctrl+S salvează;
+anularea ferestrei extinse revine la textul de la deschidere. Căsuțele Markdown
+sunt documentare, distincte de checklistul funcțional al taskului.
+Pictogramele și etichetele disting statusurile; inspectorul oferă Redeschide taskul.
+[Ghid complet și scurtături](DESCRIERE-MARKDOWN.md).

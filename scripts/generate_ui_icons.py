@@ -19,6 +19,12 @@ SHAPES={
  'archive':[('rect',(4,8,20,21)),('rect',(3,3,21,8)),('line',(9,12,15,12))],
  'folder':[('line',(3,20,3,5,10,5,12,8,21,8,21,20,3,20))],
  'project':[('rect',(4,5,20,21)),('line',(9,5,9,3,15,3,15,5)),('line',(8,11,16,11)),('line',(8,16,13,16))],
+ 'status-todo':[('ellipse',(4,4,20,20))],
+ 'status-in_progress':[('ellipse',(3,3,21,21)),('line',(10,7,17,12,10,17,10,7))],
+ 'status-waiting':[('ellipse',(3,3,21,21)),('line',(12,6,12,12,17,15))],
+ 'status-testing':[('line',(9,3,15,3)),('line',(10,3,10,10,4,20,20,20,14,10,14,3)),('line',(8,15,16,15))],
+ 'status-done':[('ellipse',(3,3,21,21)),('line',(7,12,11,16,18,8))],
+ 'status-cancelled':[('ellipse',(3,3,21,21)),('line',(7,7,17,17)),('line',(7,17,17,7))],
  'task':[('rect',(4,3,20,21)),('line',(8,12,11,15,17,8))],
  'search':[('ellipse',(3,3,16,16)),('line',(15,15,22,22))],
  'chart':[('line',(3,3,3,21,22,21)),('line',(7,17,7,12)),('line',(12,17,12,7)),('line',(17,17,17,4))],
@@ -29,10 +35,11 @@ SHAPES={
 }
 for name,shapes in SHAPES.items():
  im=Image.new('RGBA',(96,96));d=ImageDraw.Draw(im)
+ color={'status-done':'#287047','status-in_progress':'#4F46B8','status-testing':'#6750A4'}.get(name,'#596579')
  for shape,points in shapes:
   coords=tuple(p*4 for p in points)
-  if shape=='line':d.line(coords,fill='#596579',width=7,joint='curve')
-  else:getattr(d,'rectangle' if shape=='rect' else shape)(coords,outline='#596579',width=7)
+  if shape=='line':d.line(coords,fill=color,width=7,joint='curve')
+  else:getattr(d,'rectangle' if shape=='rect' else shape)(coords,outline=color,width=7)
  for size in (16,20,24,32,40,48):
   im.resize((size,size),Image.Resampling.LANCZOS).save(ROOT/f'{name}-{size}.png')
   if name in ('play','add'):

@@ -100,3 +100,10 @@ necunoscute, fără activarea serviciilor eliminate. Cache-ul istoric `_system/m
 și istoricul existent sunt lăsate pe disc; aplicația nu le curăță automat.
 Outlook Classic rămâne opțional pentru calendar și e-mailul manual cu confirmare.
 Evenimentele sunt rezervări personale de timp, fără invitați sau Teams.
+
+## Statusuri și descrieri
+
+Taskurile au pictograme locale distincte pentru fiecare status, etichete text și
+redeschidere explicită. Descrierea are editor Markdown redimensionabil, fereastră
+extinsă și previzualizare locală sigură; `description.md` rămâne autoritar.
+Vezi [ghidul editorului și al statusurilor](docs/DESCRIERE-MARKDOWN.md).

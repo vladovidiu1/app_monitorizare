@@ -14,6 +14,7 @@ from ..domain.models import CLOSED_STATUSES, Kind, Node
 from .common import ScrollFrame, error_color, muted_color
 from .dialogs import NodePickerDialog
 from .design import C, button, icon
+from .status_visuals import node_icon, node_label
 from .formats import format_date
 
 if TYPE_CHECKING:
@@ -116,7 +117,7 @@ class TodayPage(ttk.Frame):
             fr.grid(row=2 + i, column=0, sticky="ew", pady=1)
             when = f"{s.start_at.astimezone(tz):%H:%M}–{s.end_at.astimezone(tz):%H:%M}"
             ttk.Label(fr, text=when, width=13).pack(side="left")
-            link = ttk.Label(fr, text=node.title, cursor="hand2", style="Link.TLabel")
+            link = ttk.Label(fr, text=node.title + " · " + node_label(node), image=node_icon(self,node), compound="left", foreground=C.muted if node.status in CLOSED_STATUSES else C.accent, cursor="hand2", style="Link.TLabel")
             link.pack(side="left")
             link.bind("<Button-1>", lambda _e, nid=node.id: app.select_node(nid, reveal=True))
             if s.status == "planned" and not ws.read_only:
@@ -148,7 +149,7 @@ class TodayPage(ttk.Frame):
         fr = ttk.Frame(parent, style="Card.TFrame", padding=(8,8))
         fr.grid(row=r, column=0, sticky="ew", pady=4)
         fr.columnconfigure(0, weight=1)
-        title = ttk.Label(fr, text=n.title, cursor="hand2", style="Link.TLabel", wraplength=360)
+        title = ttk.Label(fr, text=n.title, image=node_icon(self,n), compound="left", cursor="hand2", style="Link.TLabel", foreground=C.muted if n.status in CLOSED_STATUSES else C.accent, wraplength=360)
         title.grid(row=0, column=0, sticky="w")
         title.bind("<Button-1>", lambda _e: app.select_node(n.id, reveal=True))
         due = q.due_day(n)

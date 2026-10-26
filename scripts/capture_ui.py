@@ -57,6 +57,27 @@ def main():
             dialog=SettingsDialog(app.root,app);dialog.geometry('+30+30');shot('06-setari',dialog);dialog.destroy()
             dialog=MailDialog(app.root,app,task);dialog.geometry('+30+30');shot('08-email',dialog);dialog.destroy()
             window=DashboardWindow(app);window.geometry('+30+30');shot('10-dashboard',window);window.destroy()
+            from focusdesk.domain.models import Kind, Status
+            from focusdesk.domain.labels import STATUS_LABELS
+            demo_project = app.ws.create_node(Kind.PROJECT, 'Exemple de status')
+            sample = '# Obiectiv\n\nDocumentare **clară** și *ușor de revizuit*.\n\n## Pași / cerințe\n\n- Primul pas\n- [ ] Căsuță Markdown (documentare)\n\n1. Verifică datele\n2. Salvează rezultatul\n\n[Documentație](https://example.com)\n\n```python\nprint("Exemplu de cod; nu se execută")\n```'
+            statuses = (Status.TODO, Status.IN_PROGRESS, Status.WAITING, Status.TESTING, Status.DONE, Status.CANCELLED)
+            nodes = [app.ws.create_node(Kind.TASK, STATUS_LABELS[state], demo_project.id, status=state, description=sample) for state in statuses]
+            app.refresh_all()
+            app.show_node_scope(demo_project.id)
+            app.tasklist.closed_var.set(True);app.tasklist.refresh()
+            app.select_node(nodes[-2].id)
+            pump()
+            assert app.current_scope == demo_project.id and app.selected_id == nodes[-2].id
+            shot('11-statusuri')
+            tab = app.inspector.tab_by_title('Detalii')
+            tab.expand_description()
+            window = tab.expanded
+            window.geometry('1050x760+30+30')
+            window.editor.notebook.select(1)
+            window.editor.render()
+            shot('12-descriere-previzualizare',window)
+            window.cancel()
             if errors:
                 raise RuntimeError('Erori callback Tk: '+ '; '.join(errors))
             report={'scale_simulated':args.scale,'size':args.size,'platform':sys.platform,'theme':app.config.theme,

@@ -22,6 +22,7 @@ from .formats import (
     duration_to_text, format_date, parse_date, parse_duration, parse_tags, parse_time,
 )
 from .inspector import InspectorTab
+from .markdown_editor import MarkdownEditor, ExpandedDescription
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -37,8 +38,11 @@ class DetailsTab(InspectorTab):
         self._loading = False
         self._dirty = False
         self._orig_desc = ""
-        self.sf = ScrollFrame(self)
-        self.sf.pack(fill="both", expand=True)
+        self.expanded = None
+        self.panes = ttk.PanedWindow(self, orient="vertical")
+        self.panes.pack(fill="both", expand=True)
+        self.sf = ScrollFrame(self.panes, height=240)
+        self.panes.add(self.sf, weight=1)
         f = self.sf.inner
         f.columnconfigure(1, weight=1)
         pad = {"padx": (12, 12), "pady": 5}
@@ -109,21 +113,6 @@ class DetailsTab(InspectorTab):
         self.rows["pin"] = [pin]
         r += 1
 
-        ttk.Label(f, text="Descriere").grid(row=r, column=0, sticky="nw", **pad)
-        dwrap = ttk.Frame(f)
-        dwrap.grid(row=r, column=1, sticky="ew", **pad)
-        self.desc = tk.Text(dwrap, height=8, wrap="word", undo=True, font="TkTextFont", borderwidth=1,
-                            relief="solid", highlightthickness=0)
-        self.desc.pack(side="left", fill="both", expand=True)
-        dsb = ttk.Scrollbar(dwrap, orient="vertical", command=self.desc.yview)
-        self.desc.configure(yscrollcommand=dsb.set)
-        dsb.pack(side="right", fill="y")
-        self.desc.bind("<KeyRelease>", lambda _e: self._desc_changed())
-        self.desc.bind("<<Paste>>", lambda _e: self.after(10, self._desc_changed))
-        self.desc.bind("<<Cut>>", lambda _e: self.after(10, self._desc_changed))
-        self.rows["desc"] = []
-        r += 1
-
         # Dependente si legaturi (se aplica imediat, nu fac parte din formular)
         self.dep_frame = ttk.LabelFrame(f, text="Depinde de (dependențe)")
         self.dep_frame.grid(row=r, column=0, columnspan=2, sticky="ew", padx=8, pady=(10, 3))
@@ -146,10 +135,16 @@ class DetailsTab(InspectorTab):
         self._dep_ids: list[str] = []
         self._link_ids: list[str] = []
 
+        self.editor = MarkdownEditor(self.panes, on_change=self._desc_changed,
+                                     on_save=self.save, expand=self.expand_description)
+        self.desc = self.editor.text
+        self.panes.add(self.editor, weight=2)
+        self._split_initialized = False
+        self.panes.bind("<Configure>", self._layout_split)
         bar = ttk.Frame(self, padding=(10,8))
-        self.sf.pack_forget()
+        self.panes.pack_forget()
         bar.pack(side="bottom", fill="x")
-        self.sf.pack(fill="both", expand=True)
+        self.panes.pack(fill="both", expand=True)
         self.save_btn = tb.Button(bar, text="Salvează (Ctrl+S)", command=self.save, bootstyle="primary")
         self.save_btn.pack(side="left")
         ttk.Button(bar, text="Renunță la modificări", command=self.revert).pack(side="left", padx=8)
@@ -187,9 +182,12 @@ class DetailsTab(InspectorTab):
             except FocusDeskError as exc:
                 self._orig_desc = ""
                 show_error(self, str(exc))
+            self.desc.configure(state="normal")
             self.desc.delete("1.0", "end")
             self.desc.insert("1.0", self._orig_desc)
             self.desc.edit_reset()
+            self.desc.edit_modified(False)
+            self.editor.schedule_preview()
         finally:
             self._loading = False
         self._apply_visibility(node)
@@ -198,8 +196,22 @@ class DetailsTab(InspectorTab):
         self._dirty = False
         self._update_state()
         ro = ws.read_only
+        self.editor.set_read_only(ro)
         for child in self.sf.inner.winfo_children():
             self._set_state_recursive(child, "disabled" if ro else None)
+
+    def _layout_split(self, event):
+        if not self._split_initialized and event.height > 350:
+            self._split_initialized = True
+            self.panes.sashpos(0, min(260, int(event.height * .43)))
+
+    def expand_description(self):
+        if self.app.ws.read_only or not self.node_id:
+            return
+        if self.expanded and self.expanded.winfo_exists():
+            self.expanded.lift()
+        else:
+            self.expanded = ExpandedDescription(self)
 
     def _set_state_recursive(self, widget: tk.Misc, state: str | None) -> None:
         if state is None:
@@ -285,7 +297,7 @@ class DetailsTab(InspectorTab):
             self._mark_dirty()
 
     def is_dirty(self) -> bool:
-        return self._dirty
+        return self._dirty or self.desc.get("1.0", "end-1c") != self._orig_desc
 
     def _update_state(self, text: str | None = None, error: bool = False) -> None:
         if text is None:

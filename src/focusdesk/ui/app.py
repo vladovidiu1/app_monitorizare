@@ -257,6 +257,9 @@ class FocusDeskApp:
         self.archived_var = tk.BooleanVar(value=self.config.show_archived)
         t.add_checkbutton(label="Arată elementele arhivate în arbore", variable=self.archived_var,
                           command=self.toggle_archived)
+        self.completed_var = tk.BooleanVar(value=self.config.show_completed)
+        t.add_checkbutton(label="Arată taskurile închise în arbore", variable=self.completed_var,
+                          command=self.toggle_completed)
         t.add_separator()
         t.add_command(label="Dashboard timp lucrat\tCtrl+D", command=self.open_dashboard)
         t.add_separator()
@@ -540,6 +543,11 @@ class FocusDeskApp:
     # Navigation
     # ================================================================
     def confirm_leave(self) -> bool:
+        details = self.inspector.tab_by_title("Detalii")
+        expanded = getattr(details, "expanded", None)
+        if expanded is not None and expanded.winfo_exists():
+            expanded.lift()
+            return False
         if self.ws is None or not self.inspector.is_dirty():
             return True
         ans = ask_choice(self.root, "Modificări nesalvate",
@@ -575,6 +583,7 @@ class FocusDeskApp:
         self.current_view = f"tree:{node_id}"
         self.current_scope = node_id
         self.selected_id = node_id
+        self.sidebar.select_node(node_id)
         self.inspector.load(node_id)
         self._show_center(self.tasklist)
         self._configure_list()
@@ -631,8 +640,9 @@ class FocusDeskApp:
             tab.title_entry.focus_set()  # type: ignore[attr-defined]
 
     def after_inspector_save(self, node_id: str) -> None:
+        self.inspector.refresh_current()
         self.sidebar.refresh()
-        self.tasklist.refresh() if self.tasklist.winfo_ismapped() else None
+        self.tasklist.refresh()
         if self.today.winfo_ismapped():
             self.today.refresh()
 
@@ -876,6 +886,8 @@ class FocusDeskApp:
         self.run_write(lambda: self.ws.update_node(node_id, pinned_today=day), refresh=True)
 
     def toggle_done_selected(self) -> None:
+        if not self.confirm_leave():
+            return
         node = self._selected_node()
         if node is None or node.kind == Kind.FOLDER:
             return
@@ -924,8 +936,10 @@ class FocusDeskApp:
             return
         node = self.ws.nodes.get(node_id) if node_id else None
         if node is not None:
+            if node.id != self.selected_id and not self.confirm_leave():
+                return
             self.selected_id = node.id
-            self.inspector.load(node.id)
+            self.inspector.load(node.id, keep_dirty=True)
         menu = tk.Menu(self.root, tearoff=False)
         ro = self.ws.read_only
         state = "disabled" if ro else "normal"
@@ -942,7 +956,7 @@ class FocusDeskApp:
                 else:
                     menu.add_command(label="▶ Începe sesiune", command=lambda: self.start_session(node.id),
                                      state=state)
-                menu.add_command(label="Finalizează / redeschide", command=self.toggle_done_selected, state=state)
+                menu.add_command(label="Redeschide taskul" if node.status in CLOSED_STATUSES else "Finalizează taskul", command=self.toggle_done_selected, state=state)
                 menu.add_command(label="Prioritate pentru azi (comută)", command=self.toggle_pin_selected, state=state)
             else:
                 menu.add_command(label="Task nou aici", command=lambda: self.new_node(Kind.TASK, parent_id=node.id),
@@ -1122,6 +1136,14 @@ class FocusDeskApp:
             if str(self.inspector) in self.paned.panes():
                 self.paned.forget(self.inspector)
         self.config.save()
+
+    def toggle_completed(self) -> None:
+        if not self.confirm_leave():
+            self.completed_var.set(self.config.show_completed)
+            return
+        self.config.show_completed = self.completed_var.get()
+        self.config.save()
+        self.sidebar.refresh()
 
     def toggle_archived(self) -> None:
         self.config.show_archived = self.archived_var.get()

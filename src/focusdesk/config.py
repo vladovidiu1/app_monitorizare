@@ -40,6 +40,7 @@ class AppConfig(BaseModel):
     geometry: str | None = None
     show_inspector: bool = True
     show_archived: bool = False
+    show_completed: bool = True
     sash_left: int | None = None
     sash_right: int | None = None
     session_open: dict[str, bool] = Field(default_factory=dict)

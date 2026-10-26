@@ -4,6 +4,36 @@ Revizia curentă elimină motorul local și toate funcțiile AI, precum și citi
 monitorizarea și analiza inboxului Outlook. Nu s-a construit executabilul și nu
 s-a pornit workflow-ul de distribuție în această etapă, conform cererii.
 
+## Modernizare: statusuri și editor Markdown
+
+Implementate pictograme locale originale MIT pentru cele șase statusuri, etichete
+explicite și actualizare în arbore, listă/căutare, Astăzi și inspector/subtaskuri.
+Textul taskurilor închise rămâne lizibil; filtrul listei supraviețuiește refresh-ului,
+arborele are opțiune persistentă, iar inspectorul oferă redeschidere explicită.
+Statusul părintelui nu este derivat automat din finalizarea copiilor.
+
+Editorul Markdown are panou redimensionabil, toolbar, liste/indentare, Undo/Redo,
+preview inert Tk și fereastră modală cu buffer partajat (peer Text). Anularea
+restabilește snapshot-ul și starea de dinaintea extinderii; salvarea folosește
+Workspace și păstrează fereastra deschisă la eroare. `description.md` rămâne autoritar.
+Nu s-au introdus dependențe sau acces la rețea. Ghid: [DESCRIERE-MARKDOWN.md](DESCRIERE-MARKDOWN.md).
+
+Verificat efectiv în Linux, Python 3.12.14, Tk 9/Xvfb, virtualenv fără AI/COM:
+
+- **23 cazuri noi** pentru formatare și Undo/Redo, titluri, liste/Enter/indentare,
+  șablon, linkuri și preview sigur, descrieri vechi, paste multilinie și diacritice,
+  Ctrl+S real, selecție cu modificări nesalvate, peer/cancel/save/failure,
+  redeschidere, pictograme actualizate, părinte independent și layout minim.
+- **32 teste selectate trec**, inclusiv design și compatibilitatea versiunii office.
+- Suita completă: **186 trec, aceleași 14 eșecuri preexistente de căi Windows pe
+  Linux, 1 omis** (junction Windows). Nu au fost relaxate validările căilor.
+- Smoke-ul real din surse pornește, creează și redeschide date temporare; trece.
+- 9 capturi reale regenerate, inclusiv toate statusurile și preview extins;
+  capturile inspectorului, statusurilor și preview-ului au fost inspectate vizual.
+- Nu s-a construit executabilul și nu s-a pornit workflow-ul. Windows/Tk 8.6,
+  DPI Windows și Outlook real rămân verificări manuale. Fonturile X11 din acest
+  mediu au unele limitări de randare; testele verifică textul Unicode păstrat.
+
 ## Domeniul păstrat
 
 Proiecte, taskuri/subtaskuri, checklisturi, dependențe, descrieri, jurnal, sesiuni,

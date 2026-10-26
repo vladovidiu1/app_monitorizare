@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from ..domain.models import CLOSED_STATUSES, Kind, Node
 from .common import KIND_GLYPH, STATUS_GLYPH, muted_color
 from .design import icon, button
+from .status_visuals import node_icon, node_label
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -79,6 +80,10 @@ class Sidebar(ttk.Frame):
                 archived = q.is_archived(n)
                 if archived and not show_archived:
                     return
+                if not self.app.config.show_completed and n.status in CLOSED_STATUSES:
+                    # Keep a closed ancestor as structure if it has visible open descendants.
+                    if not any(ws.nodes[k].status not in CLOSED_STATUSES for k in ws.subtree_ids(n.id, include_self=False)):
+                        return
                 tags = []
                 if n.status in CLOSED_STATUSES:
                     tags.append("closed")
@@ -86,7 +91,7 @@ class Sidebar(ttk.Frame):
                     tags.append("archived")
                 kids = cmap.get(n.id, [])
                 is_open = n.id in open_ids or (self._first_fill and parent_iid == "")
-                self.tree.insert(parent_iid, "end", iid=n.id, text="  " + n.title, image=icon(self,n.kind.value),
+                self.tree.insert(parent_iid, "end", iid=n.id, text="  " + n.title + " · " + node_label(n), image=node_icon(self,n),
                                  open=is_open, tags=tags)
                 for c in kids:
                     add(n.id, c)

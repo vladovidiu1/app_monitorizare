@@ -91,3 +91,9 @@ anumite semne tipografice au fallback limitat. Butoanele folosesc pictograme loc
 iar acțiunile nu depind de glyph-uri emoji. Verificarea pe Windows la 100/125/150%,
 High Contrast și pe monitoare cu DPI diferit rămâne manuală. Nu a fost generat un
 executabil în această etapă.
+
+## Statusuri și documentare
+
+Pictogramele originale MIT diferențiază statusurile prin formă și etichete text,
+inclusiv în arbore, căutare și inspector. Descrierea are panou redimensionabil,
+editor extins și previzualizare Tk. [Comportament, scurtături și limite](DESCRIERE-MARKDOWN.md).

@@ -11,7 +11,8 @@ from ..domain.models import CLOSED_STATUSES, Kind, Node, Status
 from .common import confirm, make_tree
 from .formats import format_date
 from .inspector import InspectorTab
-from .sidebar import node_glyph
+from .status_visuals import node_icon
+from .design import C
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -33,6 +34,9 @@ class SubtasksTab(InspectorTab):
         self.tv, frame = make_tree(self, [("title", "Titlu", 220), ("status", "Status", 90), ("due", "Termen", 90)],
                                    height=7)
         frame.pack(fill="both", expand=True, padx=8)
+        self.tv.configure(show="tree headings")
+        self.tv.column("#0", width=32, minwidth=32, stretch=False)
+        self.tv.tag_configure("closed", foreground=C.muted)
         self.tv.bind("<Double-1>", self._open)
         btns = ttk.Frame(self)
         btns.pack(fill="x", padx=8, pady=4)
@@ -41,7 +45,7 @@ class SubtasksTab(InspectorTab):
                           ("În coș", self._trash)):
             ttk.Button(btns, text=text, command=cmd, width=3 if len(text) == 1 else None).pack(side="left", padx=2)
 
-        self.check_frame = ttk.LabelFrame(self, text="Checklist (pași mici, fără identitate proprie)")
+        self.check_frame = ttk.LabelFrame(self, text="Checklist funcțional al taskului (separat de căsuțele Markdown)")
         self.check_frame.pack(fill="x", padx=8, pady=(6, 8))
         self.check_tv = ttk.Treeview(self.check_frame, show="tree", height=4, selectmode="browse")
         self.check_tv.pack(fill="x", padx=6, pady=(6, 2))
@@ -61,8 +65,8 @@ class SubtasksTab(InspectorTab):
         ws = self.app.ws
         self.tv.delete(*self.tv.get_children())
         for c in ws.children(node.id):
-            self.tv.insert("", "end", iid=c.id, values=(
-                f"{node_glyph(c)}  {c.title}", STATUS_LABELS.get(c.status, "") if c.status else "",
+            self.tv.insert("", "end", iid=c.id, image=node_icon(self,c), tags=("closed",) if c.status in CLOSED_STATUSES else (), values=(
+                c.title, STATUS_LABELS.get(c.status, "") if c.status else "",
                 format_date(self.app.q.due_day(c))))
         if node.kind == Kind.TASK:
             self.check_frame.pack(fill="x", padx=8, pady=(6, 8))

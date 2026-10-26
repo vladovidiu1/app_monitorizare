@@ -7,8 +7,10 @@ from tkinter import ttk
 from typing import TYPE_CHECKING
 
 from ..domain.labels import KIND_LABELS
+from ..domain.models import CLOSED_STATUSES, Kind
+from .status_visuals import node_icon, node_label
+from .design import C
 from ..domain.models import Node
-from .sidebar import node_glyph
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -50,6 +52,9 @@ class Inspector(ttk.Frame):
         self.head_lbl.pack(side="left")
         self.path_lbl = ttk.Label(self, text="", style="Crumb.TLabel", wraplength=520, justify="left")
         self.path_lbl.pack(fill="x", padx=14)
+        self.status_lbl = ttk.Label(self, text="", compound="left", style="Muted.TLabel")
+        self.status_lbl.pack(fill="x", padx=14, pady=(4, 2))
+        self.reopen_btn = ttk.Button(self, text="Redeschide taskul", command=app.toggle_done_selected)
         self.nb = ttk.Notebook(self, style="Inspector.TNotebook")
         self.nb.pack(fill="both", expand=True, padx=6, pady=6)
         self.bind("<Configure>", lambda e: (self.head_lbl.configure(wraplength=max(160,e.width-32)), self.path_lbl.configure(wraplength=max(160,e.width-32))))
@@ -76,6 +81,8 @@ class Inspector(ttk.Frame):
             self.node_id = None
             self.head_lbl.configure(text="Nimic selectat")
             self.path_lbl.configure(text="")
+            self.status_lbl.configure(text="", image="")
+            self.reopen_btn.pack_forget()
             self.nb.pack_forget()
             self.empty.place(relx=0.5, rely=0.4, anchor="center")
             return
@@ -83,14 +90,20 @@ class Inspector(ttk.Frame):
         if not self.nb.winfo_ismapped():
             self.nb.pack(fill="both", expand=True, padx=6, pady=6)
         node = self.app.ws.get(node_id)
-        self.head_lbl.configure(text=node.title)
+        self.head_lbl.configure(text=node.title, foreground=C.muted if node.status in CLOSED_STATUSES else C.text)
+        self.status_lbl.configure(text=node_label(node), image=node_icon(self,node))
+        self.reopen_btn.state(["disabled"] if self.app.ws.read_only else ["!disabled"])
+        if node.kind == Kind.TASK and node.status in CLOSED_STATUSES:
+            self.reopen_btn.pack(fill="x", padx=14, pady=4, before=self.nb)
+        else:
+            self.reopen_btn.pack_forget()
         anc = " › ".join(a.title for a in self.app.ws.ancestors(node_id))
         self.path_lbl.configure(text=f"{KIND_LABELS[node.kind]}  ·  {anc or 'Rădăcina workspace-ului'}")
         current = self.nb.select()
         for tab in self.tabs:
             state = "normal" if tab.applies_to(node) else "hidden"
             self.nb.tab(tab, state=state)
-            if state == "normal" and not (keep_dirty and same and tab.is_dirty()):
+            if state == "normal" and not (keep_dirty and same and (tab.is_dirty() or getattr(tab, "expanded", None) is not None)):
                 tab.load(node)
         if current and self.nb.tab(current, "state") == "hidden":
             self.nb.select(self.tabs[0])
