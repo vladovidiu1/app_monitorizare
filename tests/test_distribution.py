@@ -14,6 +14,7 @@ package=importlib.util.module_from_spec(spec);spec.loader.exec_module(package)
 def bundle(tmp_path):
     root=tmp_path/'FocusDesk';root.mkdir()
     (root/'FocusDesk.exe').write_bytes(b'not-an-executable-test-fixture')
+    (root/'build-info.json').write_text('{"model_included":true}')
     (root/'_internal').mkdir()
     (root/'_internal'/'runtime.dll').write_bytes(b'fixture')
     (root/'models').mkdir()
@@ -43,6 +44,7 @@ def test_distribution_zip64_round_trip_and_model_free_update(tmp_path):
     with zipfile.ZipFile(update) as archive:
         assert not any('.gguf' in name for name in archive.namelist())
         assert 'FocusDesk/FocusDesk.exe' in archive.namelist()
+        assert json.loads(archive.read('FocusDesk/build-info.json'))['model_included'] is False
     assert package.sha256(full) in full.with_suffix('.zip.sha256').read_text()
 
 

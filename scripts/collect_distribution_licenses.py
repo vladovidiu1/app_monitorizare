@@ -20,7 +20,10 @@ for dist in metadata.distributions():
             continue
         source=Path(dist.locate_file(entry))
         if source.is_file():
-            target=output/name/entry.name
+            # Preserve subdirectories: several wheels ship distinct LICENSE files
+            # with the same basename (including case-insensitive Windows names).
+            safe=Path(*[part for part in entry.parts if part not in ('.','..','/','\\')])
+            target=output/name/safe
             target.parent.mkdir(parents=True,exist_ok=True)
             target.write_bytes(source.read_bytes())
 (output/'THIRD-PARTY.json').write_text(json.dumps(summary,indent=2,ensure_ascii=False),encoding='utf-8')

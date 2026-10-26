@@ -47,7 +47,11 @@ jobs:
         shell: pwsh
         run: |
           python -m pytest -q --junitxml="$env:RUNNER_TEMP/tests.xml"
-          if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output '::error::Windows tests failed; inspect the JUnit verification artifact.'
+            throw 'Tests failed'
+          }
+          python -c "import xml.etree.ElementTree as E; r=E.parse(r'$env:RUNNER_TEMP/tests.xml').getroot(); print('::notice title=Windows tests::' + str([s.attrib for s in r.iter('testsuite')]))"
       - name: Resolve paths and cache identity
         id: paths
         shell: pwsh

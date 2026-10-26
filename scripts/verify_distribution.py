@@ -26,6 +26,11 @@ def main():
                 command += ['--ai-smoke',str(base/'absent.gguf')]
             result=subprocess.run(command,cwd=base,env=env,timeout=args.timeout+45)
             report=json.loads(output.read_text(encoding='utf-8'))
+            # Also expose small, non-personal reports as check annotations, so
+            # verification remains inspectable when artifact/log downloads are restricted.
+            data=json.dumps(report,ensure_ascii=True).replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+            level='notice' if result.returncode==0 and report.get('status')=='ok' else 'error'
+            print(f'::{level} title=Frozen {case} smoke::{data}',flush=True)
             if result.returncode!=0 or report.get('status')!='ok':
                 raise RuntimeError(f'Packaged {case} smoke failed: {report}')
             assert report['python_path']=='' and report['ai_child_stopped']

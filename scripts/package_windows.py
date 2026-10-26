@@ -43,8 +43,14 @@ def archive(bundle, destination, *, include_model):
             if not path.is_file() or (not include_model and path.is_relative_to(bundle/'models')):
                 continue
             info=zipfile.ZipInfo.from_file(path,arcname='FocusDesk/'+path.relative_to(bundle).as_posix())
-            with path.open('rb') as source, output.open(info,'w',force_zip64=True) as target:
-                shutil.copyfileobj(source,target,8*1024*1024)
+            if path.name=='build-info.json' and path.parent==bundle:
+                data=json.loads(path.read_text(encoding='utf-8-sig'))
+                data['model_included']=include_model
+                with output.open(info,'w',force_zip64=True) as target:
+                    target.write(json.dumps(data,indent=2).encode('utf-8'))
+            else:
+                with path.open('rb') as source, output.open(info,'w',force_zip64=True) as target:
+                    shutil.copyfileobj(source,target,8*1024*1024)
     with zipfile.ZipFile(destination) as check:
         bad=check.testzip()
         if bad:raise ValueError('Archive CRC mismatch: '+bad)
