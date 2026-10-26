@@ -1,0 +1,241 @@
+"""Modelele nodurilor din workspace (folder, proiect, task)."""
+
+from __future__ import annotations
+
+from datetime import date
+from enum import StrEnum
+from pathlib import PureWindowsPath
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from .common import UtcDateTime, is_uuid, new_id, utcnow
+from .colleagues import Colleague
+
+SCHEMA_VERSION = 1
+
+
+class Kind(StrEnum):
+    FOLDER = "folder"
+    PROJECT = "project"
+    TASK = "task"
+
+
+class Status(StrEnum):
+    INBOX = "inbox"
+    TODO = "todo"
+    IN_PROGRESS = "in_progress"
+    WAITING = "waiting"
+    TESTING = "testing"
+    DONE = "done"
+    CANCELLED = "cancelled"
+
+
+class Priority(StrEnum):
+    URGENT = "urgent"
+    HIGH = "high"
+    NORMAL = "normal"
+    LOW = "low"
+
+
+OPEN_STATUSES = frozenset({Status.INBOX, Status.TODO, Status.IN_PROGRESS, Status.WAITING, Status.TESTING})
+CLOSED_STATUSES = frozenset({Status.DONE, Status.CANCELLED})
+PRIORITY_ORDER = {Priority.URGENT: 0, Priority.HIGH: 1, Priority.NORMAL: 2, Priority.LOW: 3}
+
+# Nume rezervate pentru directoarele din interiorul unui nod (nu pot fi noduri).
+NODE_SPECIAL_DIRS = frozenset({"notes", "files", "snapshots", "children"})
+
+
+class _Base(BaseModel):
+    # extra="allow" pastreaza campurile necunoscute la rescriere (compatibilitate viitoare).
+    model_config = ConfigDict(extra="allow", validate_assignment=True, use_enum_values=False)
+
+
+def validate_managed_relpath(path: str) -> str:
+    p = PureWindowsPath(path)
+    if p.is_absolute() or p.drive or p.root:
+        raise ValueError("calea administrata trebuie sa fie relativa")
+    if any(part in ("..",) for part in p.parts):
+        raise ValueError("calea administrata nu poate contine '..'")
+    if not p.parts:
+        raise ValueError("calea administrata este goala")
+    return path.replace("\\", "/")
+
+
+def validate_external_path(path: str) -> str:
+    if not PureWindowsPath(path).is_absolute():
+        raise ValueError("calea externa trebuie sa fie absoluta")
+    return path
+
+
+class SourceWorkspace(_Base):
+    """Folderul de cod asociat unui nod: `external` (cale absoluta) sau `managed` (relativ la nod)."""
+
+    path: str
+    mode: Literal["external", "managed"] = "external"
+
+    @model_validator(mode="after")
+    def _check_path(self) -> "SourceWorkspace":
+        if self.mode == "managed":
+            validate_managed_relpath(self.path)
+        else:
+            validate_external_path(self.path)
+        return self
+
+
+class Attachment(_Base):
+    id: str = Field(default_factory=new_id)
+    name: str
+    mode: Literal["managed", "external"]
+    path: str
+    is_dir: bool = False
+    added_at: UtcDateTime = Field(default_factory=utcnow)
+
+    @field_validator("id")
+    @classmethod
+    def _id(cls, v: str) -> str:
+        if not is_uuid(v):
+            raise ValueError("id invalid")
+        return v
+
+    @model_validator(mode="after")
+    def _check_path(self) -> "Attachment":
+        if self.mode == "managed":
+            validate_managed_relpath(self.path)
+        else:
+            validate_external_path(self.path)
+        return self
+
+
+class ChecklistItem(_Base):
+    text: str
+    done: bool = False
+
+
+class Node(_Base):
+    schema_version: int = SCHEMA_VERSION
+    revision: int = 1
+    id: str = Field(default_factory=new_id)
+    kind: Kind
+    title: str
+    parent_id: str | None = None
+    status: Status | None = None
+    priority: Priority | None = None
+    created_at: UtcDateTime = Field(default_factory=utcnow)
+    updated_at: UtcDateTime = Field(default_factory=utcnow)
+    due_date: date | None = None
+    due_at: UtcDateTime | None = None
+    estimated_minutes: int | None = None
+    remaining_minutes: int | None = None
+    next_action: str | None = None
+    waiting_reason: str | None = None
+    requested_by: Colleague | None = None
+    review_at: UtcDateTime | None = None
+    tags: list[str] = Field(default_factory=list)
+    related_node_ids: list[str] = Field(default_factory=list)
+    depends_on_ids: list[str] = Field(default_factory=list)
+    sort_order: int = 0
+    archived_at: UtcDateTime | None = None
+    completed_at: UtcDateTime | None = None
+    pinned_today: date | None = None
+    source_workspace: SourceWorkspace | None = None
+    checklist: list[ChecklistItem] = Field(default_factory=list)
+    attachments: list[Attachment] = Field(default_factory=list)
+    recurrence_template_id: str | None = None
+    occurrence_date: date | None = None
+
+    @field_validator("id", "parent_id")
+    @classmethod
+    def _uuid(cls, v: str | None) -> str | None:
+        if v is not None and not is_uuid(v):
+            raise ValueError("UUID invalid")
+        return v
+
+    @field_validator("related_node_ids", "depends_on_ids")
+    @classmethod
+    def _uuid_list(cls, v: list[str]) -> list[str]:
+        for item in v:
+            if not is_uuid(item):
+                raise ValueError(f"UUID invalid: {item}")
+        return list(dict.fromkeys(v))
+
+    @field_validator("title")
+    @classmethod
+    def _title(cls, v: str) -> str:
+        v = " ".join(v.split())
+        if not v:
+            raise ValueError("titlul nu poate fi gol")
+        if len(v) > 300:
+            raise ValueError("titlul este prea lung (max 300)")
+        return v
+
+    @field_validator("tags")
+    @classmethod
+    def _tags(cls, v: list[str]) -> list[str]:
+        cleaned = [t.strip() for t in v if t and t.strip()]
+        return list(dict.fromkeys(cleaned))
+
+    @field_validator("estimated_minutes", "remaining_minutes")
+    @classmethod
+    def _minutes(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("durata nu poate fi negativa")
+        return v
+
+    @model_validator(mode="after")
+    def _kind_rules(self) -> "Node":
+        if self.kind == Kind.FOLDER:
+            forbidden = [
+                self.status, self.estimated_minutes, self.remaining_minutes,
+                self.due_date, self.due_at, self.waiting_reason,
+            ]
+            if any(x is not None for x in forbidden) or self.depends_on_ids:
+                raise ValueError("un folder nu are status, estimari, termen sau dependente")
+        elif self.kind == Kind.PROJECT:
+            if self.estimated_minutes is not None or self.remaining_minutes is not None:
+                raise ValueError("estimarile unui proiect sunt agregate, nu se seteaza direct")
+        if self.kind == Kind.TASK and self.status is None:
+            raise ValueError("un task are nevoie de status")
+        if self.parent_id is not None and self.parent_id == self.id:
+            raise ValueError("un nod nu poate fi propriul parinte")
+        if self.id in self.related_node_ids or self.id in self.depends_on_ids:
+            raise ValueError("un nod nu poate face referire la sine")
+        return self
+
+    @property
+    def is_open(self) -> bool:
+        return self.status in OPEN_STATUSES
+
+    @property
+    def is_task(self) -> bool:
+        return self.kind == Kind.TASK
+
+
+class WorkspaceMeta(_Base):
+    schema_version: int = SCHEMA_VERSION
+    id: str = Field(default_factory=new_id)
+    name: str = "FocusDesk"
+    created_at: UtcDateTime = Field(default_factory=utcnow)
+    demo: bool = False
+
+
+class NoteEntry(_Base):
+    """Notita datata din jurnal; fisier `notes/<uuid>.json`."""
+
+    schema_version: int = SCHEMA_VERSION
+    id: str = Field(default_factory=new_id)
+    node_id: str
+    at: UtcDateTime = Field(default_factory=utcnow)
+    kind: Literal["note", "progress", "action", "session"] = "note"
+    text: str
+    session_id: str | None = None
+    minutes: int | None = None
+
+
+class HistoryEvent(_Base):
+    schema_version: int = SCHEMA_VERSION
+    id: str = Field(default_factory=new_id)
+    node_id: str | None = None
+    at: UtcDateTime = Field(default_factory=utcnow)
+    type: str
+    data: dict = Field(default_factory=dict)
