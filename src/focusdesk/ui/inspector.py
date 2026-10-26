@@ -71,6 +71,7 @@ class Inspector(ttk.Frame):
                               ("Arhivează / restaurează",app.toggle_archive_selected),("Deschide folderul",lambda:app.open_node_folder(self.node_id))):
             menu.add_command(label=label,command=command)
         more.configure(menu=menu)
+        self.space_btn = ttk.Button(self,text="Deschide spațiul de lucru",command=lambda:app.open_task_space(self.node_id))
         self.nb = ttk.Notebook(self, style="Inspector.TNotebook")
         self.nb.pack(fill="both", expand=True, padx=6, pady=6)
         self.bind("<Configure>", lambda e: (self.head_lbl.configure(wraplength=max(160,e.width-32)), self.path_lbl.configure(wraplength=max(160,e.width-32))))
@@ -106,6 +107,7 @@ class Inspector(ttk.Frame):
             self.path_lbl.configure(text="")
             self.status_lbl.configure(text="", image="")
             self.actions.pack_forget()
+            self.space_btn.pack_forget()
             self.next_lbl.configure(text="")
             self.nb.pack_forget()
             self.empty.place(relx=0.5, rely=0.4, anchor="center")
@@ -123,11 +125,13 @@ class Inspector(ttk.Frame):
         self.status_lbl.configure(text=summary, image=node_icon(self,node))
         self.reopen_btn.state(["disabled"] if self.app.ws.read_only else ["!disabled"])
         if node.kind == Kind.TASK:
+            self.space_btn.pack(fill="x",padx=10,pady=(0,4),before=self.nb)
             self.actions.pack(fill="x",padx=10,pady=4,before=self.nb)
             self.reopen_btn.configure(text="Redeschide taskul" if node.status in CLOSED_STATUSES else "Finalizează")
             self.next_lbl.configure(text="Următorul pas: " + (node.next_action or "Completează în Detalii"))
             self.start_btn.update_state()
         else:
+            self.space_btn.pack_forget()
             self.actions.pack_forget()
             self.next_lbl.configure(text="")
         anc = " › ".join(a.title for a in self.app.ws.ancestors(node_id))

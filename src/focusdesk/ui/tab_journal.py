@@ -10,6 +10,7 @@ from ..domain.labels import STATUS_LABELS, format_seconds, SESSION_STATUS_LABELS
 from ..domain.models import Node, Status
 from .common import muted_color
 from .inspector import InspectorTab
+from .markdown_editor import PeerText
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -21,18 +22,19 @@ KIND_NAMES = {"note": "Notiță", "progress": "Progres", "action": "Acțiune", "
 class JournalTab(InspectorTab):
     title = "Activitate"
 
-    def __init__(self, parent: tk.Misc, app: "FocusDeskApp") -> None:
+    def __init__(self, parent: tk.Misc, app: "FocusDeskApp", *, source_entry=None, source_kind=None) -> None:
         super().__init__(parent, app)
         top = ttk.Frame(self)
         top.pack(fill="x", padx=8, pady=(8, 2))
-        self.kind_var = tk.StringVar(value="Notiță")
+        self.kind_var = source_kind if source_kind is not None else tk.StringVar(value="Notiță")
         ttk.Combobox(top, textvariable=self.kind_var, values=list(KIND_CHOICES), state="readonly",
                      width=10).pack(side="left")
         self.total_lbl = ttk.Label(top, text="", style="Muted.TLabel")
         self.total_lbl.pack(side="right")
-        self.entry = tk.Text(self, height=4, wrap="word", font="TkTextFont", borderwidth=1, relief="solid",
-                             highlightthickness=0)
+        self.entry = PeerText(self, source_entry) if source_entry is not None else tk.Text(self)
+        self.entry.configure(height=4, wrap="word", font="TkTextFont", borderwidth=1, relief="solid", highlightthickness=0)
         self.entry.pack(fill="x", padx=8, pady=4)
+        self.entry.bind("<<Modified>>", self._draft_changed)
         self.entry.bind("<Control-Return>", lambda _e: (self._add(), "break")[1])
         self.add_btn = ttk.Button(self, text="Adaugă în jurnal (Ctrl+Enter)", command=self._add)
         self.add_btn.pack(anchor="e", padx=8)
@@ -46,6 +48,9 @@ class JournalTab(InspectorTab):
         sb.pack(side="right", fill="y")
         self.text.tag_configure("when", font=("Segoe UI", 9, "bold"))
         self.text.tag_configure("muted", foreground=muted_color(self), font=("Segoe UI", 9))
+
+    def _draft_changed(self,event=None):
+        if self.entry.edit_modified(): self.entry.edit_modified(False)
 
     def load(self, node: Node) -> None:
         same = self.node_id == node.id

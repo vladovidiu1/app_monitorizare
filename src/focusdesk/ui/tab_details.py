@@ -158,6 +158,7 @@ class DetailsTab(InspectorTab):
 
     # ---- load -------------------------------------------------------
     def load(self, node: Node) -> None:
+        same = self.node_id == node.id
         super().load(node)
         self._loaded_node = node.model_copy(deep=True)
         ws, q = self.app.ws, self.app.q
@@ -185,9 +186,10 @@ class DetailsTab(InspectorTab):
                 self._orig_desc = ""
                 show_error(self, str(exc))
             self.desc.configure(state="normal")
-            self.desc.delete("1.0", "end")
-            self.desc.insert("1.0", self._orig_desc)
-            self.desc.edit_reset()
+            if not same or self.desc.get("1.0", "end-1c") != self._orig_desc:
+                self.desc.delete("1.0", "end")
+                self.desc.insert("1.0", self._orig_desc)
+                self.desc.edit_reset()
             self.desc.edit_modified(False)
             self.editor.schedule_preview()
         finally:
@@ -220,14 +222,18 @@ class DetailsTab(InspectorTab):
             self.expanded = ExpandedDescription(self)
 
     def _set_state_recursive(self, widget: tk.Misc, state: str | None) -> None:
-        if state is None:
-            return
         try:
-            widget.configure(state=state)
+            if state is not None:
+                if not hasattr(widget, '_writable_state'):
+                    widget._writable_state = widget.cget('state')
+                widget.configure(state=state)
+            elif hasattr(widget, '_writable_state'):
+                widget.configure(state=widget._writable_state)
+                del widget._writable_state
         except tk.TclError:
             pass
-        for c in widget.winfo_children():
-            self._set_state_recursive(c, state)
+        for child in widget.winfo_children():
+            self._set_state_recursive(child,state)
 
     def _apply_visibility(self, node: Node) -> None:
         is_task = node.kind == Kind.TASK

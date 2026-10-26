@@ -4,7 +4,32 @@ Revizia curentă elimină motorul local și toate funcțiile AI, precum și citi
 monitorizarea și analiza inboxului Outlook. Nu s-a construit executabilul și nu
 s-a pornit workflow-ul de distribuție în această etapă, conform cererii.
 
-## Navigare și experiență zilnică — versiunea curentă
+## Spațiul de lucru al taskului — verificarea curentă
+
+Pagina centrală reutilizează editorul Markdown, ciornele inspectorului și serviciile
+existente. Include navigare Înapoi/subtask, panou secundar redimensionabil, F11 pentru
+Concentrare și stare explicită a salvării. Nu schimbă formatul workspace-ului.
+
+Verificări executate în Linux/Python 3.12/Tk 9, fără AI și fără Outlook:
+
+- **18 teste noi trec** (`tests/test_task_space.py`): salvare și revenire, ciornă comună,
+  scroll, subtaskuri, focus/layout exact, Ctrl+S, timer în navigare, anularea plecării,
+  doar citire, task dispărut/restaurat, arhivare, eroare la salvare, dublu clic existent,
+  fereastră minimă, multe subtaskuri și schimbarea workspace-ului fără scurgere de undo.
+- Suita completă: **225 trec, 14 eșecuri preexistente, 1 omis**. Setul eșecurilor a fost
+  comparat cu raportul reviziei precedente: identic. Sunt cazuri de căi Windows pe
+  Linux (stage3, stage7 și files/checkpoint UI); regulile Windows nu au fost relaxate.
+- Smoke din surse: pornire fără AI/Outlook, cele patru destinații, editare/salvare în
+  spațiul taskului, intrare/ieșire Concentrare și revenire, redeschiderea datelor.
+- Capturi reale Tk pe date demonstrative temporare: 1440×900, 1100×700 și scalare Tk
+  125% (1800×1125). Inspectate pagina și Concentrare; fără erori callback în script.
+  Vezi [ghidul și capturile](SPATIU-DE-LUCRU.md).
+
+Nu s-a construit executabilul și nu s-a pornit workflow-ul. Outlook Classic real și
+DPI nativ Windows rămân verificări manuale pe calculatorul țintă. Toate integrările
+existente sunt păstrate; nu există AI sau citire/analiză de inbox.
+
+## Navigare și experiență zilnică — verificarea precedentă
 
 Patru destinații: Astăzi, Proiecte și taskuri, Calendar, Activitate. Așteptare,
 restante și finalizate sunt filtre rapide. Inspectorul are Detalii/Subtaskuri/

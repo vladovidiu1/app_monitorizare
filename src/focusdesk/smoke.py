@@ -62,6 +62,16 @@ def _run(base: Path) -> dict:
         for view in ('today', 'tasks', 'calendar', 'activity'):
             app.show_view(view, select_sidebar=True)
             app.root.update()
+        app.select_node(task.id, reveal=True)
+        assert app.open_task_space(task.id)
+        app.task_space.editor.text.insert('end', '\nTask space smoke')
+        assert app.task_space.save()
+        before_timer = app.timer.active
+        app.task_space.toggle_focus()
+        app.root.update()
+        app.task_space.exit_focus()
+        assert app.timer.active == before_timer
+        assert app.task_space.back()
         assert not callbacks, callbacks
         assert app.config.theme == 'light'
         assert not app.ws.settings.outlook.enabled
@@ -72,6 +82,7 @@ def _run(base: Path) -> dict:
     with_workspace = Workspace.open(root)
     try:
         assert set(with_workspace.nodes) == {project.id, task.id, child.id}
+        assert 'Task space smoke' in with_workspace.get_description(task.id)
         assert with_workspace.list_notes(task.id)[0].text == 'Saved note'
         assert with_workspace.repo.sessions.get(session.id).node_id == task.id
         assert with_workspace.settings.model_extra['mail_monitor']['enabled'] is True
@@ -81,6 +92,6 @@ def _run(base: Path) -> dict:
     assert loaded.model_extra['legacy_marker'] == 'preserve-user-settings'
     assert loaded.model_extra['ai']['enabled'] is True
     return {'status': 'ok', 'gui_started': True, 'workspace_preserved': True,
-            'settings_preserved': True, 'legacy_settings_ignored': True,
+            'task_space_verified': True, 'settings_preserved': True, 'legacy_settings_ignored': True,
             'outlook_disabled': True, 'python_path': os.environ.get('PATH', ''),
             'frozen': bool(getattr(sys, 'frozen', False))}

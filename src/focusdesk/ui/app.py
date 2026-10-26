@@ -53,6 +53,7 @@ from .tab_versions import VersionsTab
 from .tasklist import TaskList
 from .today import TodayPage
 from .activity_page import ActivityPage
+from .task_space import TaskSpace
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +99,7 @@ class FocusDeskApp:
         self._search_job = None
         self._gap_dialog_open = False
         self._tick_job = None
+        self._layout_generation = 0
         self._initial_path = workspace_path
         self._build_menu()
         self._build_layout()
@@ -163,14 +165,23 @@ class FocusDeskApp:
         self.inspector.add_tab(FilesTab(self.inspector.nb, self))
         self.inspector.add_tab(PlanTab(self.inspector.nb, self))
         self.inspector.add_tab(VersionsTab(self.inspector.nb, self))
-        self.root.after(80, self._apply_sashes)
+        self.task_space = TaskSpace(self.center,self)
+        self._schedule_sashes(80)
 
-    def _apply_sashes(self, attempt: int = 0) -> None:
+    def _schedule_sashes(self, delay=0):
+        generation = self._layout_generation
+        callback = lambda: self._apply_sashes(generation=generation)
+        if delay: self.root.after(delay,callback)
+        else: self.root.after_idle(callback)
+
+    def _apply_sashes(self, attempt: int = 0, generation=None) -> None:
+        if generation is None: generation = self._layout_generation
+        if generation != self._layout_generation: return
         try:
             self.root.update_idletasks()
             total = self.paned.winfo_width()
             if total < 600 and attempt < 10:
-                self.root.after(100, lambda: self._apply_sashes(attempt + 1))
+                self.root.after(100, lambda: self._apply_sashes(attempt + 1,generation))
                 return
             panes = self.paned.panes()
             from .design import px
@@ -265,6 +276,7 @@ class FocusDeskApp:
 
     def _bind_keys(self) -> None:
         r = self.root
+        r.bind("<F11>",self.toggle_task_focus)
         r.bind("<Control-n>", lambda _e: self.new_node(Kind.TASK))
         r.bind("<Control-f>", lambda _e: (self.search_entry.focus_set(), self.search_entry.select_range(0, "end")))
         r.bind("<Control-s>", lambda _e: self.save_current())
@@ -333,6 +345,9 @@ class FocusDeskApp:
     def _attach(self, ws: Workspace, path: Path) -> None:
         self.ws = ws
         self.q = Queries(ws)
+        self.tasklist._source = lambda: self.q.tasks()
+        self.tasklist.scope_id = None
+        self.tasklist._source_key = None
         self.timer = TimerService(ws)
         self.files = FileService(ws)
         self.checkpoints = CheckpointService(ws)
@@ -414,6 +429,11 @@ class FocusDeskApp:
                     return False
             elif ans != "keep":
                 return False
+        self.task_space.leave_route()
+        self.task_space.positions.clear()
+        self.inspector.node_id = None
+        for tab in self.inspector.tabs: tab.node_id = None
+        self.inspector.tab_by_title("Detalii").desc.edit_reset()
         self.ws.close()
         self.ws = None  # type: ignore[assignment]
         self.q = None  # type: ignore[assignment]
@@ -442,7 +462,7 @@ class FocusDeskApp:
     # ================================================================
     def _on_ws_event(self, event: str, data: dict) -> None:
         if event in ("node_created", "node_updated", "node_moved", "node_trashed", "node_restored", "reloaded",
-                     "sessions_changed", "trash_changed"):
+                     "sessions_changed", "trash_changed", "notes_changed"):
             self._schedule_refresh()
         elif event == "timer_gap":
             self.root.after(0, self._handle_timer_gap)
@@ -489,7 +509,10 @@ class FocusDeskApp:
 
     def _reload_center(self) -> None:
         v = self.current_view
-        if v == "today":
+        if v == "task_space":
+            self._show_center(self.task_space)
+            self.task_space.refresh()
+        elif v == "today":
             self._show_center(self.today)
             self.today.refresh()
         elif v == "calendar":
@@ -504,7 +527,7 @@ class FocusDeskApp:
     def _show_center(self, widget: tk.Misc) -> None:
         self._sync_inspector()
         self.sidebar.show_hierarchy(self.current_view.startswith(("tasks","tree:","search:")) or self.current_view == "archive")
-        for w in (self.tasklist, self.today, self.calendar_page, self.activity_page):
+        for w in (self.tasklist, self.today, self.calendar_page, self.activity_page, self.task_space):
             if w is not None and w is not widget:
                 w.pack_forget()
         if not widget.winfo_ismapped():
@@ -535,11 +558,11 @@ class FocusDeskApp:
                                      show_closed=(v == 'archive'), empty_hint=VIEW_HINTS.get(v,''))
 
     def _sync_inspector(self):
-        visible = self.config.show_inspector and self.selected_id is not None
+        visible = self.config.show_inspector and self.selected_id is not None and self.current_view != "task_space"
         attached = str(self.inspector) in self.paned.panes()
         if visible and not attached:
             self.paned.add(self.inspector,weight=0)
-            self.root.after_idle(self._apply_sashes)
+            self._schedule_sashes()
         elif not visible and attached:
             self.paned.forget(self.inspector)
 
@@ -560,20 +583,29 @@ class FocusDeskApp:
     # ================================================================
     # Navigation
     # ================================================================
+    def open_task_space(self,node_id=None):
+        return self.task_space.open(node_id or self.selected_id)
+
+    def toggle_task_focus(self,event=None):
+        if self.current_view == 'task_space': self.task_space.toggle_focus()
+        return 'break'
+
     def confirm_leave(self) -> bool:
         details = self.inspector.tab_by_title("Detalii")
         expanded = getattr(details, "expanded", None)
         if expanded is not None and expanded.winfo_exists():
             expanded.lift()
             return False
-        if self.ws is None or not self.inspector.is_dirty():
+        if self.ws is None or not (self.inspector.is_dirty() or (self.current_view == "task_space" and self.task_space.is_dirty())):
             return True
         ans = ask_choice(self.root, "Modificări nesalvate",
-                         "Ai modificări nesalvate în inspector.",
+                         "Există modificări nesalvate în task.",
                          [("save", "Salvează"), ("discard", "Renunță la modificări"), ("cancel", "Rămâi aici")])
         if ans == "save":
-            return self.inspector.save()
+            return self.task_space.save() if self.current_view == "task_space" else self.inspector.save()
         if ans == "discard":
+            if self.current_view == "task_space" and self.task_space.node_id not in self.ws.nodes:
+                self.task_space.discard_missing()
             self.inspector.revert()
             return True
         return False
@@ -588,6 +620,7 @@ class FocusDeskApp:
         if not self.confirm_leave():
             self._restore_selection_widgets()
             return
+        if self.current_view == "task_space": self.task_space.leave_route()
         self.current_view = key
         self.config.last_view = key if key in ("today","tasks","calendar","activity") else "tasks"
         self.config.save()
@@ -603,6 +636,7 @@ class FocusDeskApp:
         if not self.confirm_leave():
             self._restore_selection_widgets()
             return
+        if self.current_view == "task_space": self.task_space.leave_route()
         self.config.last_view = "tasks"
         self.current_view = f"tree:{node_id}"
         self.current_scope = node_id
@@ -616,6 +650,13 @@ class FocusDeskApp:
     def select_node(self, node_id: str, source: str = "program", reveal: bool = False) -> None:
         if self.ws is None or node_id not in self.ws.nodes:
             return
+        if self.current_view == 'task_space' and node_id != self.task_space.node_id:
+            if self.ws.get(node_id).kind == Kind.TASK:
+                self.open_task_space(node_id)
+                return
+            if not self.confirm_leave(): return
+            self.task_space.leave_route()
+            self.current_view='tasks'
         if node_id == self.selected_id and source == "list":
             return
         if not self.confirm_leave():
@@ -634,7 +675,7 @@ class FocusDeskApp:
             self.tasklist.select(node_id)
         else:
             self.selected_id = node_id
-        self.inspector.load(node_id)
+        self.inspector.load(node_id,keep_dirty=self.current_view == "task_space")
         self._sync_inspector()
         self.update_session_buttons()
 
@@ -671,6 +712,7 @@ class FocusDeskApp:
         self.tasklist.refresh()
         if self.today.winfo_ismapped():
             self.today.refresh()
+        if self.current_view == "task_space": self.task_space.refresh()
 
     # ================================================================
     # Search
@@ -692,6 +734,7 @@ class FocusDeskApp:
         if self.current_view != f"search:{text}":
             if not self.confirm_leave():
                 return
+            if self.current_view == "task_space": self.task_space.leave_route()
             self.config.last_view = "tasks"
             self.current_view = f"search:{text}"
             self.current_scope = None
@@ -743,6 +786,9 @@ class FocusDeskApp:
             self.refresh_all()
 
     def save_current(self) -> None:
+        if self.current_view == "task_space":
+            self.task_space.save()
+            return
         if self.ws is None:
             return
         if self.inspector.is_dirty():
@@ -978,6 +1024,7 @@ class FocusDeskApp:
             menu.add_command(label="Proiect nou", command=lambda: self.new_node(Kind.PROJECT, parent_id=None), state=state)
         else:
             if node.kind == Kind.TASK:
+                menu.add_command(label="Deschide spațiul de lucru",command=lambda:self.open_task_space(node.id))
                 menu.add_command(label="Subtask nou", command=lambda: self.new_node(Kind.TASK, parent_id=node.id),
                                  state=state)
                 if self.timer_active():
@@ -1160,10 +1207,11 @@ class FocusDeskApp:
         if self.config.show_inspector:
             if str(self.inspector) not in self.paned.panes():
                 self.paned.add(self.inspector, weight=0)
-                self.root.after(50, self._apply_sashes)
+                self._schedule_sashes(50)
         else:
             if str(self.inspector) in self.paned.panes():
                 self.paned.forget(self.inspector)
+        self._sync_inspector()
         self.config.save()
 
     def toggle_completed(self) -> None:
@@ -1407,6 +1455,7 @@ class FocusDeskApp:
         self.sidebar.refresh()
         if self.today.winfo_ismapped():
             self.today.refresh()
+        if self.current_view == "task_space": self.task_space.refresh()
 
     def schedule_session(self, node_id: str | None = None) -> None:
         if self.ws is None or self.ws.read_only:
@@ -1576,6 +1625,7 @@ class FocusDeskApp:
     def update_session_buttons(self) -> None:
         for b in self.session_buttons:
             b.update_state()
+        if self.current_view == "task_space": self.task_space.update_timer()
 
     def _handle_timer_gap(self) -> None:
         t = self.timer

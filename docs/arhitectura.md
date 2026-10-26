@@ -92,3 +92,18 @@ rollup-urilor. Paginile Astăzi și Activitate păstrează widgeturile, selecți
 viewportul. Maparea legacy inbox → etichetă/filtru todo nu este o migrare pe disc.
 Configurația aplicației normalizează destinațiile și taburile vechi. Jurnalul este
 acum tabul Activitate, cu protecție și pentru notițele încă nesalvate.
+
+## Pagina taskului și starea comună
+
+`ui/task_space.py` este o pagină centrală persistentă, fără servicii sau format de
+date nou. Reutilizează MarkdownEditor prin peer Tk al bufferului DetailsTab și
+aceleași StringVar pentru următorul pas și adăugările rapide. JournalTab poate
+partaja bufferul notei și tipul acesteia. Salvarea este delegată Inspector.save,
+apoi Workspace pe firul UI. Secțiunile reutilizează SubtasksTab, FilesTab, JournalTab,
+PlanTab și VersionsTab. Un singur serviciu timer rămâne autoritar.
+
+Istoricul paginii păstrează filtre, selecții, viewporturi și panouri; concentrarea
+păstrează separat layoutul de revenire. Generația callbackurilor de sash invalidează
+repoziționările amânate după restaurarea explicită a layoutului. Selecțiile arborelui
+ascuns nu declanșează navigare. Schimbarea workspace-ului golește istoricul, pozițiile
+și proprietarul bufferelor, inclusiv undo, după rezolvarea ciornelor nesalvate.

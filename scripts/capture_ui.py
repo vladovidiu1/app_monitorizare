@@ -90,12 +90,25 @@ def main():
             window.cancel()
             app.show_view('tasks');app.tasklist.reset_filters();shot('13-proiecte-taskuri')
             app.show_view('activity');shot('14-activitate')
+            work = app.ws.create_node(Kind.TASK,'Pregătește raportul lunar',project.id,description=sample,
+                                      next_action='Verifică lista de rezultate',estimated_minutes=90,remaining_minutes=90)
+            app.ws.toggle_checklist(work.id,[('Verifică datele',True),('Completează explicațiile',False),('Revizuiește raportul',False)])
+            for i in range(4):app.ws.create_node(Kind.TASK,f'Pas de documentare {i+1}',work.id)
+            app.select_node(work.id,reveal=True)
+            assert app.open_task_space(work.id)
+            app.timer.start(work.id)
+            app.update_session_buttons()
+            shot('15-spatiu-lucru')
+            app.task_space.toggle_focus();shot('16-concentrare')
+            app.task_space.exit_focus();app.timer.discard();app.task_space.back()
             if errors:
                 raise RuntimeError('Erori callback Tk: '+ '; '.join(errors))
             report={'scale_simulated':args.scale,'size':args.size,'platform':sys.platform,'theme':app.config.theme,
                 'real_tk':True,'windows_dpi_verified':False,'captures':sorted(captured)}
             (args.output/'manifest.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
-        finally:app.on_close()
+        finally:
+            if app.timer and app.timer.active:app.timer.discard()
+            app.on_close()
     return 0
 
 

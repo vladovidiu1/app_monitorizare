@@ -189,6 +189,8 @@ class Sidebar(ttk.Frame):
             self.app.show_view(sel[0])
 
     def _on_tree_select(self, _e=None) -> None:
+        if not self.tree.winfo_ismapped():
+            return
         if self._suppress:
             return
         sel = self.tree.selection()

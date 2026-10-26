@@ -113,3 +113,11 @@ Vezi [ghidul editorului și al statusurilor](docs/DESCRIERE-MARKDOWN.md).
 Patru destinații: **Astăzi**, **Proiecte și taskuri**, **Calendar**, **Activitate**.
 Filtre rapide înlocuiesc paginile separate de restante/așteptare; taskurile vechi sunt
 afișate compatibil ca De făcut. [Ghidul navigării](docs/NAVIGARE.md).
+
+## Spațiul de lucru al taskului
+
+Din inspector sau meniul contextual, **Deschide spațiul de lucru** oferă descriere
+amplă și panou redimensionabil cu pași, fișiere, activitate, planificare și versiuni.
+**Înapoi** păstrează contextul; **F11** comută Concentrare fără să schimbe timerul.
+Editorul și inspectorul împart ciorna; Ctrl+S salvează contextul activ.
+Vezi [ghidul spațiului de lucru](docs/SPATIU-DE-LUCRU.md).

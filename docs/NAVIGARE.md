@@ -101,3 +101,10 @@ persistente. Descrierile și notițele nesalvate nu sunt înlocuite de refresh.
 Capturi reale pe date demonstrative: [Astăzi](capturi-ui/01-astazi.png),
 [task](capturi-ui/03-inspector.png), [toate taskurile](capturi-ui/13-proiecte-taskuri.png),
 [Activitate](capturi-ui/14-activitate.png).
+
+## Spațiul de lucru al taskului
+
+Inspectorul și meniul contextual oferă **Deschide spațiul de lucru**: pagină centrală
+cu descriere amplă, Pași, Fișiere, Activitate, Planificare și Versiuni. Înapoi păstrează
+contextul de navigare. **F11** intră/iese din Concentrare, cu timerul neschimbat.
+[Detalii și salvare comună cu inspectorul](SPATIU-DE-LUCRU.md).
