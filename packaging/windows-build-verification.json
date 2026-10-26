@@ -1,0 +1,47 @@
+{
+  "run_url": "https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139",
+  "build_commit": "e505a01f6cffa5330199fe63d01f74360534f560",
+  "conclusion": "success",
+  "python": "3.12.10 x64",
+  "platform": "Windows 2025",
+  "tests": {
+    "passed": 282,
+    "skipped": 1,
+    "failed": 0
+  },
+  "frozen_checks": {
+    "real_gguf_inference": true,
+    "task_proposal_applied": true,
+    "missing_model_controlled": true,
+    "ai_child_stopped": true,
+    "workspace_preserved": true,
+    "settings_preserved": true,
+    "launcher_path_empty": true,
+    "runtime_paths_bundled_only": true,
+    "outbound_firewall_block": true
+  },
+  "outlook_classic_real_test": "manual, not executed",
+  "artifacts": [
+    {
+      "id": 12665522388,
+      "name": "FocusDesk-Windows-x64-fara-model",
+      "size_in_bytes": 110598912,
+      "digest": "sha256:aa8206c10e6a93da5ae64c8102c020353835ecda8ab68163f669f2859aacacfb",
+      "expires_at": "2026-10-27T16:00:05Z"
+    },
+    {
+      "id": 12665321880,
+      "name": "FocusDesk-Windows-x64-verificari",
+      "size_in_bytes": 8091,
+      "digest": "sha256:99c23734a1998b7614dc7c7cbc22e9127a98115edb7344ebdabfea1d65252d4c",
+      "expires_at": "2026-11-02T16:00:07Z"
+    },
+    {
+      "id": 12664103443,
+      "name": "FocusDesk-Windows-x64-cu-model",
+      "size_in_bytes": 5138382795,
+      "digest": "sha256:ef68667df60a1be9007ea0780609f1cf58f232bd76c96f694cf82efcf3ce201f",
+      "expires_at": "2026-10-27T15:59:20Z"
+    }
+  ]
+}

@@ -137,3 +137,9 @@ Modelul verificat se află în `models/` lângă executabil. Outlook Classic est
 [Pași exacți, verificări, actualizări fără model și limitele de stocare](docs/DISTRIBUTIE-WINDOWS.md).
 Build-ul este validat numai dacă jobul Windows și smoke-ul GGUF real au reușit;
 starea efectivă este în [raport](docs/RAPORT.md).
+
+**Build Windows verificat (26 octombrie 2026):**
+[Descarcă pachetul complet cu model, ~5,14 GB](https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139/artifacts/12664103443).
+Retenție o zi; după expirare folosește Run workflow. Verificare efectivă pe EXE:
+GGUF real offline, propunere aplicată temporar, proces AI oprit corect; testele
+Windows au 282 trecute și unul omis. Outlook Classic real rămâne verificare manuală.

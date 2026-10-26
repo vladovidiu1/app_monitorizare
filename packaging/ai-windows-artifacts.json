@@ -1,11 +1,11 @@
 {
-  "python": "CPython 3.12 x64",
+  "python": "CPython 3.12.10 x64",
   "platform": "win_amd64",
   "llama_cpp_python": "0.3.36",
   "llama_release_digest": "sha256:ae5e88a2cf464e5a2dde7c8898c2d5c71cc24d03cac6396bf7509456bde0b9fb",
   "llama_release_metadata": "https://api.github.com/repos/abetlen/llama-cpp-python/releases/tags/v0.3.36",
   "index": "https://abetlen.github.io/llama-cpp-python/whl/cpu",
-  "verification": "Downloaded wheels and inspected PE imports on Linux; execution on Windows remains required.",
+  "verification": "Verified onedir Windows executable with real GGUF inference, empty launcher PATH, bundled DLL paths, offline firewall and task proposal application: https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139",
   "artifacts": [
     {
       "filename": "diskcache-5.6.3-py3-none-any.whl",

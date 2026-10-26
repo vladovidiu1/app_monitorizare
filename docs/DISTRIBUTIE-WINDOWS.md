@@ -1,5 +1,8 @@
 # Distribuție Windows x64 cu AI și model
 
+[Ultima distribuție verificată cu succes](https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139)
+(Windows x64, GGUF real, inferență offline și aplicare temporară de task).
+
 Workflow manual: **Actions → FocusDesk Windows x64 cu model → Run workflow**.
 Alege ramura `main`, lasă bifată opțiunea pentru pachetul mic dacă dorești și apasă
 **Run workflow**. Nu sunt necesare secrete Hugging Face sau date Outlook.
@@ -148,3 +151,5 @@ Măsurarea spațiului, mărimile pachetelor și concluzia fiecărui test sunt î
 rulării. Starea construcției efective, inclusiv orice blocaj de acces sau cotă, este
 consemnată în [RAPORT.md](RAPORT.md). Nu se declară verificat Windows numai pe baza
 unui test Linux sau a backendurilor false.
+
+Semnarea digitală a executabilului nu este configurată în acest workflow.

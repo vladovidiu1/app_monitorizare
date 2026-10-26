@@ -1,5 +1,51 @@
 # Raport de verificare
 
+## Distribuție Windows x64 — CONSTRUITĂ ȘI VERIFICATĂ, 2026-10-26
+
+[Job GitHub Actions reușit](https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139),
+commit de build `e505a01f6cffa5330199fe63d01f74360534f560`, Windows 2025 x64,
+CPython **3.12.10**, llama-cpp-python **0.3.36 CPU**, GGUF-ul real din manifest.
+Toate modificările aplicației și configurația de build sunt publicate pe `main`.
+
+| Verificare executată pe Windows | Rezultat |
+|---|---|
+| Testele aplicației | **282 trecute, 1 omis, 0 eșecuri**, 283 în total |
+| Build PyInstaller | **onedir reușit**, modelul extern în `models/`, DLL-uri CPU și licențe incluse |
+| EXE real, lansat cu PATH gol | Pornit fără Python extern; pywin32 adaugă numai propriul director DLL din `_internal`, verificat explicit |
+| Inferență offline GGUF real | **Reușită**, cu firewall outbound blocat pentru EXE și procesul copil |
+| Propunere de task | Generată de modelul real și aplicată prin mecanismul comun într-un workspace temporar |
+| Proces copil / închidere | PID separat, procesul și supervisorul oprite la închiderea aplicației |
+| Model absent | Eroare controlată; UI rămâne utilizabilă și permite creare manuală de task |
+| Workspace / preferințe | Redeschidere și câmpuri păstrate în profilul temporar izolat; pachetul nu conține configurații personale |
+| ZIP64 | Audit, SHA256 model, CRC al arhivei și checksum ZIP reușite înainte de upload |
+| Artifact complet | **FocusDesk-Windows-x64-cu-model**, 5.138.382.795 octeți (aprox. 5,14 GB) |
+| Artifact update | **FocusDesk-Windows-x64-fara-model**, 110.598.912 octeți (aprox. 111 MB) |
+| Outlook Classic real | **Neexecutat**; integrarea rămâne opțională și verificarea manuală este documentată |
+
+Descărcare: [pachet complet](https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139/artifacts/12664103443),
+[update fără model](https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139/artifacts/12665522388),
+[rapoarte JUnit/JSON](https://github.com/vladovidiu1/app_monitorizare/actions/runs/40352492139/artifacts/12665321880).
+Pachetul complet expiră **27 octombrie 2026, 17:59, Europe/Bucharest** (retenție o zi).
+După expirare poate fi regenerat prin Run workflow. [Pași exacți](DISTRIBUTIE-WINDOWS.md).
+Metadatele și digest-urile oficiale ale artifactelor sunt versionate în
+`packaging/windows-build-verification.json`. Au fost inspectate concluzia jobului,
+rapoartele JSON din adnotările GitHub și metadatele artifactelor publicate.
+
+Cazul real a rulat cu PID părinte 5972 și PID copil 3348; cazul modelului absent cu
+PID părinte 5716 și PID copil 5288. Fiecare a confirmat închiderea copilului și
+păstrarea datelor temporare. Nu au fost folosite workspace-uri sau mailuri reale.
+
+Pregătirea a identificat două diferențe Windows: catalogul GitHub nu oferă 3.12.14
+pentru Windows (a fost ales 3.12.10 disponibil), iar hook-ul pywin32 adaugă legitim
+propriul folder DLL în PATH după lansare. Validatorul permite strict directoarele
+pachetului, fără a cere sau permite Python extern. Licențele cu același basename
+sunt păstrate în subdirectoare distincte. Rulările intermediare eșuate nu au publicat
+pachete de distribuție.
+
+Semnarea digitală nu este configurată. Verificarea manuală Outlook real și DPI pe
+monitoare Windows diferite rămâne separată de smoke-ul automat al executabilului.
+
+
 ## Distribuție Windows x64 — pregătire 2026-10-26
 
 Adăugate workflow manual Windows, lock cu 32 wheel-uri Windows verificate SHA256,
@@ -17,7 +63,7 @@ Verificări locale executate pe Linux:
   proces copil separat, închidere verificată și date/setări temporare păstrate.
 
 **Aceste verificări locale nu reprezintă un build Windows verificat.** Starea rulării
-GitHub Actions va fi consemnată mai jos după încercarea de publicare/lansare. Testul
+GitHub Actions este consemnată în secțiunea de rezultat reușit de mai sus. Testul
 Outlook Classic real rămâne manual. [Pași și limite](DISTRIBUTIE-WINDOWS.md).
 
 
