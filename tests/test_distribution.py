@@ -74,3 +74,12 @@ def test_distribution_diagnostics_always_isolate_profile(tmp_path,monkeypatch):
     assert os.environ['APPDATA']==str(parent)
     assert json.loads((parent/'app.json').read_text())=={'private':'keep'}
     assert socket.socket.connect is connect
+
+
+def test_frozen_path_allows_only_pyinstaller_private_dll_directory(tmp_path):
+    spec=importlib.util.spec_from_file_location('verify_distribution',ROOT/'scripts/verify_distribution.py')
+    verifier=importlib.util.module_from_spec(spec);spec.loader.exec_module(verifier)
+    verifier.validate_runtime_paths('',tmp_path)
+    verifier.validate_runtime_paths(str(tmp_path/'_internal'/'pywin32_system32'),tmp_path)
+    with pytest.raises(AssertionError,match='external PATH'):
+        verifier.validate_runtime_paths(str(tmp_path.parent/'external-python'),tmp_path)

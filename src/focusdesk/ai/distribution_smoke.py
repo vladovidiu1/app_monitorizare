@@ -92,7 +92,7 @@ def _run_distribution_smoke(model: Path, *, missing=False, timeout=600):
             assert loaded.ai.threads == 2
             report.update(workspace_preserved=True, settings_preserved=True, status='ok')
     except Exception as exc:
-        report['error'] = f'{type(exc).__name__}: {exc}'
+        report.update(status='error',error=f'{type(exc).__name__}: {exc}')
     finally:
         if app:
             try:

@@ -7,6 +7,14 @@ import subprocess
 import tempfile
 
 
+def validate_runtime_paths(value, bundle):
+    # The launcher supplies PATH="". PyInstaller's pywin32 hook legitimately adds
+    # its OWN DLL folder before our entry point. Permit only bundled directories.
+    for entry in value.split(os.pathsep):
+        if entry and not Path(entry).resolve().is_relative_to(bundle.resolve()):
+            raise AssertionError('Frozen runtime introduced an external PATH directory: '+entry)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--exe',type=Path,required=True)
@@ -33,7 +41,10 @@ def main():
             print(f'::{level} title=Frozen {case} smoke::{data}',flush=True)
             if result.returncode!=0 or report.get('status')!='ok':
                 raise RuntimeError(f'Packaged {case} smoke failed: {report}')
-            assert report['python_path']=='' and report['ai_child_stopped']
+            validate_runtime_paths(report['python_path'],args.exe.resolve().parent)
+            assert report['ai_child_stopped']
+            report.update(launcher_path_empty=True,runtime_path_internal_only=True)
+            output.write_text(json.dumps(report,indent=2),encoding='utf-8')
             print(json.dumps({'case':case,'status':'ok','report':str(output)}),flush=True)
     return 0
 

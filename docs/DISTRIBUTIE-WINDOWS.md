@@ -60,6 +60,8 @@ nu este considerat furnizor COM. După descărcare aplicația și AI funcționea
   modelul nu intră în EXE sau directorul temporar onefile.
 - Executabilul este lansat cu **PATH gol**, fără PYTHONPATH/PYTHONHOME și cu profil
   temporar; CLI-ul de diagnostic izolează suplimentar propriul profil și workspace.
+  Hook-ul pywin32 poate adăuga ulterior numai propriul folder DLL din `_internal`
+  la PATH; verificarea respinge orice cale externă. Nu este necesar Python extern.
 - Firewall Windows blochează traficul outbound al EXE-ului, inclusiv al procesului
   copil identic. Se cere succesul inferenței cu **modelul GGUF real**, nu un mock.
 - O propunere reală de subtask este validată și aplicată prin mecanismul comun,
