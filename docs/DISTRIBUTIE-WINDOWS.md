@@ -4,7 +4,7 @@ Workflow manual: **Actions → FocusDesk Windows x64 cu model → Run workflow**
 Alege ramura `main`, lasă bifată opțiunea pentru pachetul mic dacă dorești și apasă
 **Run workflow**. Nu sunt necesare secrete Hugging Face sau date Outlook.
 
-Workflow-ul folosește Windows 2025 x64 și CPython 3.12.14, cu versiunile exacte din
+Workflow-ul folosește Windows 2025 x64 și CPython 3.12.10, cu versiunile exacte din
 `packaging/requirements-windows.lock`. Cele 32 de wheel-uri Windows au fost descărcate
 și SHA256-urile lor sunt fixate în `packaging/windows-wheels.json`; se verifică înainte
 de instalare. Nu se compilează llama.cpp și nu se instalează CUDA. Acțiunile GitHub
@@ -88,7 +88,7 @@ care șterge workspace-ul sau setările.
 
 ## Build și test local pentru dezvoltatori
 
-Pe o mașină Windows x64 cu Python 3.12.14, runtime-ul redistribuibil MSVC pe hostul de
+Pe o mașină Windows x64 cu Python 3.12.10, runtime-ul redistribuibil MSVC pe hostul de
 build și Git:
 
 ```powershell
