@@ -104,8 +104,8 @@ Evenimentele sunt rezervări personale de timp, fără invitați sau Teams.
 ## Statusuri și descrieri
 
 Taskurile au pictograme locale distincte pentru fiecare status, etichete text și
-redeschidere explicită. Descrierea are editor Markdown redimensionabil, fereastră
-extinsă și previzualizare locală sigură; `description.md` rămâne autoritar.
+redeschidere explicită. Descrierea are un singur câmp editabil redimensionabil și fereastră
+extinsă, fără bară de formatare sau previzualizare; `description.md` rămâne autoritar.
 Vezi [ghidul editorului și al statusurilor](docs/DESCRIERE-MARKDOWN.md).
 
 ## Navigare simplificată

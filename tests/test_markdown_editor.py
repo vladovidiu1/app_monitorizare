@@ -1,4 +1,4 @@
-"""Real Tk editing/preview and shared-buffer save/cancel regressions."""
+"""Real Tk single-field editing and shared-buffer save/cancel regressions."""
 import tkinter as tk
 from datetime import timedelta, datetime, timezone
 import pytest
@@ -68,19 +68,26 @@ def test_multiline_lists_indent_template_and_link(ui, monkeypatch):
     assert editor.get() == '[document](https://example.com)'
 
 
-def test_preview_has_formatted_tags_and_inert_html_code_urls(ui):
-    source = '# Titlu\n## Subtitlu\n- **bold** și *italic*\n1. pas\n- [x] făcut\n[link](https://example.com)\n`inline`\n```python\nprint("never executed")\n```\n<script>alert(1)</script>\n![imagine](https://example.com/image.png)'
+def test_single_editable_field_preserves_literal_content(ui):
+    from tkinter import ttk
+    source = '# Titlu\n- **text**\n<script>alert(1)</script>\nhttps://example.com'
     editor = details(ui, source).editor
-    editor.render()
-    view = editor.preview
-    for tag in ('h1','h2','bold','italic','list','link','code'):
-        assert view.tag_ranges(tag), tag
-    visible = view.get('1.0','end-1c')
-    assert '<script>alert(1)</script>' in visible
-    assert 'print("never executed")' in visible
-    assert 'https://example.com/image.png' in visible
-    assert editor.get() == source
-    assert str(view.cget('state')) == 'disabled'
+    def descendants(widget):
+        for child in widget.winfo_children():
+            yield child
+            yield from descendants(child)
+    widgets = list(descendants(editor))
+    assert [w for w in widgets if isinstance(w, tk.Text)] == [editor.text]
+    assert not any(isinstance(w, (ttk.Notebook, ttk.Menubutton)) for w in widgets)
+    assert [w.cget('text') for w in widgets if isinstance(w, ttk.Button)] == ['Extinde descrierea']
+    assert str(editor.text.cget('state')) == 'normal'
+    editor.text.insert('end-1c', '\nAdăugare')
+    ui.root.update()
+    assert editor.get() == source + '\nAdăugare'
+    assert editor.text.bind('<Control-b>') == ''
+    assert editor.text.bind('<Return>') == ''
+    assert ui.inspector.tab_by_title('Detalii').save()
+    assert ui.ws.get_description(ui.selected_id) == source + '\nAdăugare'
 
 
 def test_old_description_roundtrip_paste_and_selection_guard(ui, monkeypatch):

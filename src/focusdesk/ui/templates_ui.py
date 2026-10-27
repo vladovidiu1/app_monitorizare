@@ -182,7 +182,7 @@ class TemplateEditor(TemplateWindow):
             value=getattr(item,name);var.set(', '.join(value) if isinstance(value,list) else (value if value is not None else ''))
         self.editor.text.delete('1.0','end');self.editor.text.insert('1.0',item.description)
         self.checklist.delete('1.0','end');self.checklist.insert('1.0','\n'.join(item.checklist))
-        self.editor.schedule_preview();self.tree.selection_set(key);self.loading=False
+        self.tree.selection_set(key);self.loading=False
     def apply_item(self):
         if not self.active_key:return
         original=next(i for i in self.template.items if i.key==self.active_key)

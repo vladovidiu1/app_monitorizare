@@ -1,7 +1,7 @@
 # Descriere Markdown și statusuri vizuale
 
 FocusDesk păstrează Tkinter + ttkbootstrap, tema luminoasă și fișierele locale.
-Nu este necesară nicio dependență nouă pentru editor sau previzualizare.
+Nu este necesară nicio dependență nouă pentru editor.
 
 ## Statusuri
 
@@ -39,17 +39,13 @@ agregat, fără a finaliza automat statusul părintelui.
 zonei de documentare. Câmpurile de sus au scroll separat. Descrierea ocupă spațiul
 rămas, are word wrap, scroll propriu și salvarea rămâne în subsolul fix.
 
-**Editează Markdown** afișează sintaxa sursă; acesta nu este un editor WYSIWYG.
-Toolbarul aplică titluri (nivelurile 1–3 din meniu), bold, italic, liste cu bulleturi/numerotate, căsuțe
-Markdown, linkuri și blocuri de cod. Formatarea folosește selecția sau poziția
-cursorului și readuce focusul în text. Formatarea unui text este o operație Undo.
+Descrierea este un singur câmp editabil, fără bară de formatare și fără file de
+editare/previzualizare. Aceeași interfață simplă este folosită în spațiul de lucru,
+fereastra extinsă și editorul de șabloane. Textul Markdown existent rămâne intact,
+afișat ca text obișnuit; Enter nu continuă automat listele.
 
-- Ctrl+B / Ctrl+I: bold / italic.
 - Ctrl+Z: Undo; Ctrl+Y sau Ctrl+Shift+Z: Redo.
 - Ctrl+A: selectare integrală; Ctrl+C/X/V: copiere/tăiere/lipire native.
-- Tab / Shift+Tab: indentare/dezindentare a liniilor selectate cu patru spații.
-- Enter: continuă lista și incrementarea numărului; un element gol încheie lista.
-  Căsuțele noi sunt nebifate, chiar dacă elementul anterior era bifat.
 - Ctrl+S: salvează detaliile și descrierea prin Workspace.
 
 Lipirea multilinie nu este reformulată automat. Diacriticele și textele vechi rămân
@@ -72,28 +68,8 @@ Undo/Redo al descrierii, astfel încât textul abandonat să nu reapară acciden
 În afara ferestrei extinse, schimbarea selecției cu modificări nesalvate păstrează
 întrebarea existentă: Salvează, Renunță sau Rămâi aici.
 
-## Previzualizare sigură
+## Conținutul existent
 
-Tabul **Previzualizare** folosește exclusiv etichete de formatare într-un widget Tk
-Text read-only. Redă titluri ATX (nivelurile 1–6), liste și indentare, căsuțe
-Markdown, bold/italic, linkuri cu adresa vizibilă, cod inline și blocuri delimitate
-cu trei backtick-uri. Este un subset Markdown practic, nu un parser CommonMark
-complet (de exemplu nu oferă tabele sau interpretarea tuturor combinațiilor imbricate).
-
-HTML-ul rămâne text inert; codul nu se execută. Linkurile se afișează fără accesare
-automată. Imaginile nu se încarcă, iar resursele externe nu se descarcă. Nu este
-folosit un browser pentru previzualizare. Editarea nu reface previzualizarea ascunsă
-la fiecare tastă; aceasta se calculează când este afișată.
-
-## Șablon și checklist
-
-**Descriere structurată** inserează numai la cerere, într-o descriere goală:
-Obiectiv, Context, Pași / cerințe, Rezultat așteptat, Criterii de finalizare, Observații.
-Nu înlocuiește descrieri existente.
-
-Căsuțele `- [ ]` / `- [x]` sunt exclusiv documentare Markdown. Nu schimbă checklistul
-funcțional din **Subtaskuri**, progresul sau statusul taskului. Toolbarul și
-secțiunea checklist precizează diferența.
-
-Exemple capturate din Tk real: [statusuri](capturi-ui/11-statusuri.png),
-[previzualizare extinsă](capturi-ui/12-descriere-previzualizare.png).
+HTML-ul, codul și linkurile rămân text inert. Nu se execută cod și nu se descarcă
+resurse externe. Descrierile existente nu sunt convertite sau rescrise automat.
+Căsuțele `- [ ]` / `- [x]` din text nu schimbă checklistul funcțional din Subtaskuri.

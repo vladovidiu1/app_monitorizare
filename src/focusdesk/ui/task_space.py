@@ -104,7 +104,7 @@ class TaskSpace(ttk.Frame):
             self._split=True;self.body.sashpos(0,max(330,event.width-365))
 
     def changed(self):
-        self.details._desc_changed();self.update_state();self.editor.schedule_preview()
+        self.details._desc_changed();self.update_state()
 
     def is_dirty(self):
         if self.node_id not in self.app.ws.nodes:
@@ -145,15 +145,15 @@ class TaskSpace(ttk.Frame):
 
     def remember_position(self):
         if self.node_id:
-            self.positions[self.node_id]={'edit':self.editor.text.yview()[0],'preview':self.editor.preview.yview()[0],
-                'insert':self.editor.text.index('insert'),'mode':self.editor.notebook.index(self.editor.notebook.select()),
+            self.positions[self.node_id]={'edit':self.editor.text.yview()[0],
+                'insert':self.editor.text.index('insert'),
                 'section':self.nb.index(self.nb.select())}
 
     def restore_position(self):
         value=self.positions.get(self.node_id)
         if value:
-            self.editor.notebook.select(value['mode']);self.nb.select(value['section'])
-            self.editor.text.yview_moveto(value['edit']);self.editor.preview.yview_moveto(value['preview'])
+            self.nb.select(value['section'])
+            self.editor.text.yview_moveto(value['edit'])
             self.editor.text.mark_set('insert',value['insert'])
 
     def layout(self):

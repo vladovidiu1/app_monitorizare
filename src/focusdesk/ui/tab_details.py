@@ -191,7 +191,6 @@ class DetailsTab(InspectorTab):
                 self.desc.insert("1.0", self._orig_desc)
                 self.desc.edit_reset()
             self.desc.edit_modified(False)
-            self.editor.schedule_preview()
         finally:
             self._loading = False
         self._apply_visibility(node)
