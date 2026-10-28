@@ -32,7 +32,10 @@ class Progress:
 class Queries:
     def __init__(self, ws: Workspace) -> None:
         self.ws = ws
-        self._desc_cache: dict[str, tuple[float, str]] = {}
+        self._task_cache = (None,{})
+        self._progress_cache = (-1, {})
+        self._worked_cache = (None, {})
+        self._desc_cache: dict[str, tuple[tuple[int, ...], str]] = {}
 
     # ---- helpers ----------------------------------------------------
     def tz(self) -> ZoneInfo:
@@ -46,11 +49,15 @@ class Queries:
             return True
         return any(a.archived_at is not None for a in self.ws.ancestors(node.id))
 
-    def tasks(self, include_archived: bool = False) -> list[Node]:
-        out = [n for n in self.ws.nodes.values() if n.kind == Kind.TASK]
-        if not include_archived:
-            out = [n for n in out if not self.is_archived(n)]
-        return out
+    def tasks(self, include_archived: bool = False, *, open_only=False) -> list[Node]:
+        key = self.ws.repo.generation
+        if self._task_cache[0] != key: self._task_cache = (key,{})
+        groups = self._task_cache[1]
+        group = (include_archived,open_only)
+        if group not in groups:
+            ids = self.ws.repo.active_task_ids if open_only else self.ws.repo.task_ids
+            groups[group] = [self.ws.nodes[nid] for nid in ids if include_archived or not self.is_archived(self.ws.nodes[nid])]
+        return list(groups[group])
 
     def tasks_in(self, node_id: str | None, include_archived: bool = False) -> list[Node]:
         """Task-urile din subarborele nodului (toate nivelurile) plus cele referite prin legaturi."""
@@ -117,6 +124,8 @@ class Queries:
 
     def progress_map(self) -> dict[str, Progress]:
         """`progress` pentru toate nodurile intr-o singura trecere (acelasi rezultat, fara cost patratic)."""
+        if self._progress_cache[0] == self.ws.repo.aggregate_generation:
+            return self._progress_cache[1]
         cmap = self.ws.children_map()
         out: dict[str, Progress] = {}
 
@@ -150,17 +159,21 @@ class Queries:
 
         for root in cmap.get(None, []):
             visit(root)
+        self._progress_cache = (self.ws.repo.aggregate_generation, out)
         return out
 
     # ---- worked time --------------------------------------------------
     def worked_map(self, live: tuple[str, float] | None = None, *, sessions=None) -> dict[str, int]:
-        """Secunde lucrate pe nod, inclusiv sesiunile subtask-urilor; `live` = sesiunea activa (nod, secunde)."""
-        own: dict[str, float] = {}
-        for s in sessions if sessions is not None else self.ws.repo.sessions.list_all():
-            if s.actual_seconds > 0:
-                own[s.node_id] = own.get(s.node_id, 0) + s.actual_seconds
-        if live is not None and live[1] > 0:
-            own[live[0]] = own.get(live[0], 0) + live[1]
+        """Saved seconds rolled up per node. Legacy `live` is accepted but kept separate."""
+        store = self.ws.repo.sessions
+        key = (self.ws.repo.aggregate_generation, store.revision)
+        if sessions is None and self._worked_cache[0] == key:
+            return self._worked_cache[1]
+        own = store.worked_totals() if sessions is None else {}
+        if sessions is not None:
+            for record in sessions:
+                if record.actual_seconds > 0:
+                    own[record.node_id] = own.get(record.node_id,0) + record.actual_seconds
         total: dict[str, int] = {}
         for node_id, secs in own.items():
             cur = node_id if node_id in self.ws.nodes else None
@@ -169,44 +182,30 @@ class Queries:
                 cur = self.ws.nodes[cur].parent_id
                 if cur not in self.ws.nodes:
                     cur = None
+        if sessions is None: self._worked_cache = (key,total)
         return total
 
     def worked_by_day(self, first: date, last: date,
                       live: tuple[str, float] | None = None) -> dict[date, dict[str, int]]:
         """Secunde lucrate pe zi si pe task (doar sesiunile proprii ale task-ului), pentru zilele [first, last]."""
-        tz = self.tz()
-        out: dict[date, dict[str, int]] = {}
-
-        def add(node_id: str, when: datetime, secs: float) -> None:
-            if secs <= 0 or node_id not in self.ws.nodes:
-                return
-            day = when.astimezone(tz).date()
-            if first <= day <= last:
-                bucket = out.setdefault(day, {})
-                bucket[node_id] = bucket.get(node_id, 0) + int(secs)
-
-        for s in self.ws.repo.sessions.list_all():
-            if s.actual_seconds > 0:
-                add(s.node_id, s.started_actual_at or s.start_at, s.actual_seconds)
-        if live is not None:
-            add(live[0], utcnow(), live[1])
-        return out
+        from .activity import activity_model, ActivityFilters
+        return activity_model(self.ws).report(ActivityFilters(first,last),live=live).saved_by_day()
 
     # ---- smart views ------------------------------------------------
     def view_inbox(self) -> list[Node]:
         return self._sorted(n for n in self.tasks() if n.status == Status.INBOX)
 
     def view_waiting(self) -> list[Node]:
-        return self._sorted(n for n in self.tasks() if n.status == Status.WAITING)
+        return self._sorted(n for n in self.tasks(open_only=True) if n.status == Status.WAITING)
 
     def view_overdue(self) -> list[Node]:
-        return self._sorted(n for n in self.tasks() if n.status in OPEN_STATUSES and self.is_overdue(n))
+        return self._sorted(n for n in self.tasks(open_only=True) if n.status in OPEN_STATUSES and self.is_overdue(n))
 
     def view_today(self) -> list[Node]:
         day = self.today()
         session_nodes = {s.node_id for s in self.sessions_on(day)}
         out = []
-        for n in self.tasks():
+        for n in self.tasks(open_only=True):
             if n.status not in OPEN_STATUSES:
                 continue
             if n.pinned_today == day or n.id in session_nodes or self.due_day(n) == day:
@@ -221,7 +220,7 @@ class Queries:
         start = datetime(day.year, day.month, day.day, tzinfo=tz)
         end = start + timedelta(days=1)
         return sorted(
-            (s for s in self.ws.repo.sessions.list_all()
+            (s for s in self.ws.repo.sessions.in_period(start,end, statuses=("planned","active"))
              if s.status in ("planned", "active") and start <= s.start_at.astimezone(tz) < end),
             key=lambda s: s.start_at,
         )
@@ -242,7 +241,8 @@ class Queries:
     def description_text(self, node_id: str) -> str:
         path = self.ws.node_dir(node_id) / "description.md"
         try:
-            mtime = os.stat(path).st_mtime
+            stat = os.stat(path)
+            mtime = (stat.st_mtime_ns, stat.st_size, stat.st_ctime_ns, self.ws.repo.reload_generation)
         except OSError:
             return ""
         cached = self._desc_cache.get(node_id)
@@ -319,7 +319,7 @@ class Queries:
         """Perechi de task-uri cu titluri similare (euristica deterministica, fara merge)."""
         from difflib import SequenceMatcher
 
-        tasks = [n for n in self.tasks() if n.status in OPEN_STATUSES]
+        tasks = [n for n in self.tasks(open_only=True) if n.status in OPEN_STATUSES]
         out = []
         for i, a in enumerate(tasks):
             for b in tasks[i + 1:]:

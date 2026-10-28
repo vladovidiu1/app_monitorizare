@@ -130,3 +130,36 @@ Meniul contextual oferă **Salvează ca șablon…**, iar **Instrumente → Gest
 Automatizare SAP, Investigare incident, Dezvoltare aplicație Python și Task simplu.
 Șabloanele personale sunt locale și incluse în backup; nu copiază istoricul sau
 metadatele personale. Vezi [ghidul șabloanelor](docs/SABLOANE.md).
+
+## Performanță și istoric local
+
+Indexuri JSON reconstructibile, încărcare la cerere, păstrarea contextului și
+benchmarkuri înainte/după: [raportul de performanță](docs/PERFORMANTA.md).
+F5 reconciliază modificările externe și păstrează ciornele și conflictele lor.
+
+## Dashboard Activitate
+
+Carduri, grafice Canvas, filtre de perioadă/proiect, calendar lunar și export CSV
+folosesc același model local de calcul. Timpul live și situația curentă sunt
+separate de istoricul salvat. [Ghid și capturi reale](docs/ACTIVITATE-DASHBOARD.md).
+
+## Ghid pentru descriere
+
+**Completează cu ghid…** oferă Scop, pași reordonabili și Rezultat așteptat în
+inspector, spațiul taskului și editorul extins. Aplică numai în ciorna comună,
+într-o singură operație Undo; salvarea rămâne explicită prin Salvează/Ctrl+S.
+[Ghid de utilizare și captură reală](docs/DESCRIERE-MARKDOWN.md#completează-cu-ghid).
+
+Cerințe apărute ulterior pentru același script: [Redeschidere și cerințe noi](docs/CERINTE-ULTERIOARE.md).
+
+## Sesiuni și rezervări clare
+
+Un timer curent, inclusiv în pauză, indicator permanent și recuperare explicită fără timp offline presupus. Corecții auditate și rezervări distincte de lucrat: [ghidul sesiunilor](docs/SESIUNI.md).
+
+## Întâlniri și notițe
+
+Calendar → Întâlniri importă explicit metadate dintr-un calendar Outlook Classic ales, doar pentru citire. Notițe locale cu autosalvare, acțiuni și creare explicită de taskuri/proiecte/cerințe noi, fără timer automat sau timp lucrat presupus. Întâlnirile manuale și datele deja importate funcționează offline. [Ghid, capturi și limite](docs/INTALNIRI.md).
+
+## Verificare integrată
+
+[Raport final](docs/VERIFICARE-INTEGRATA.md): flux complet pe date temporare, teste, capturi la scalare 100%/125%/150%, benchmark final comparat cu 7708de2 și limitele reale de performanță/Outlook.

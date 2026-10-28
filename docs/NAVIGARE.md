@@ -46,18 +46,25 @@ Teams. Outlook Classic este opțional; New Outlook nu oferă COM.
 
 ## Activitate
 
-Tabele pentru zile, proiecte și sesiunile individuale, cu perioade de 7/30/90 zile sau
-întregul istoric. **Dashboard lunar** deschide dashboardul existent; Ctrl+D rămâne activ.
-Dublu-clic pe o sesiune deschide taskul său.
+Dashboard local cu perioade de 7/30/90 zile, Luna curentă, interval personalizat și
+Tot istoricul; filtru de proiect (inclusiv Fără proiect), resetare și CSV UTF-8.
+Carduri: Lucrat înregistrat, Programat, Taskuri finalizate distincte din istoric,
+Restante acum. Statusurile și restantele sunt etichetate ca **Situație curentă**.
 
-- **Lucrat înregistrat** însumează direct `actual_seconds` salvat, o dată per sesiune.
-  Nu însumează rollup-urile părinților și nu include timerul încă nesalvat.
-- Ziua lucrată este `started_actual_at`, cu fallback `start_at`, în fusul workspace-ului,
-  la fel ca în calculele existente; sesiunea nu este împărțită artificial la miezul nopții.
-- **Programat** este durata rezervată, inclusiv pentru sesiuni realizate, exclusiv
-  anulările și sesiunile ratate. Durata programată nu reprezintă muncă efectuată.
-- Proiectul se calculează din apartenența actuală a taskului. Mutarea taskului schimbă
-  gruparea lui, fără a rescrie sesiunile. Fișierele sesiunilor rămân autoritare.
+Graficele native compară lucrat/programat și Top 5 proiecte + Restul. Intervalele
+lungi se grupează pe săptămâni sau luni, cu granularitatea afișată. Click pe o
+bară sau Enter în tabelele de zile/proiecte aplică un detaliu vizibil, eliminabil.
+Enter/dublu-click pe sesiune deschide taskul; revenirea păstrează filtrele și scrollul.
+Calendarul lunar existent rămâne secundar, accesibil prin **Ctrl+D**.
+
+Lucratul salvat se numără o dată pe sesiune, inclusiv pentru taskuri închise,
+arhivate sau dispărute. Timpul live este separat și nu dublează timpul salvat.
+Finalizările vin exclusiv din tranzițiile done din istoricul disponibil, nu din
+updated_at; refinalizările se numără implicit distinct. Proiectele sunt cele din
+apartenența actuală. Exportul respectă aceleași filtre, include definițiile și
+protejează textele care ar putea fi interpretate ca formule Excel.
+
+[Definiții, limite, tastatură, capturi reale și reproducere](ACTIVITATE-DASHBOARD.md).
 
 ## Inspectorul taskului
 
@@ -115,3 +122,15 @@ contextul de navigare. **F11** intră/iese din Concentrare, cu timerul neschimba
 unui proiect/task existent folosește **Salvează ca șablon…** în meniul contextual.
 Catalogul complet este în **Instrumente → Gestionare șabloane…**.
 [Editare, variabile și protecția datelor](SABLOANE.md).
+
+## Cerințe ulterioare
+
+Inspectorul, spațiul taskului și meniul contextual oferă Adaugă cerință nouă…; zona contextuală permite navigarea în ambele sensuri. Redeschide continuă solicitarea inițială. [Comportament și limite](CERINTE-ULTERIOARE.md).
+
+## Timer permanent
+
+Indicatorul de jos rămâne vizibil inclusiv în Concentrare. Astăzi separă rezervările de lucru; Calendar/Planificare oferă meniul Sesiune ▾, iar Activitate permite corectarea timpului selectat. [Flux și recuperare](SESIUNI.md).
+
+## Întâlniri în Calendar
+
+Calendar are taburile Agenda și Întâlniri; cele patru destinații principale rămân aceleași. Întâlniri oferă filtre, istoric paginat și un spațiu de notițe cu Înapoi care păstrează lista. Nodurile legate au un meniu contextual compact Întâlniri legate. [Ghid](INTALNIRI.md).

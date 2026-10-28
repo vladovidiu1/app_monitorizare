@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import tkinter as tk
+from datetime import datetime
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-from ..domain.labels import STATUS_LABELS, format_seconds, SESSION_STATUS_LABELS
+from ..domain.labels import STATUS_LABELS, format_seconds, SESSION_STATUS_LABELS, session_status_text
 from ..domain.models import Node, Status
 from .common import muted_color
 from .inspector import InspectorTab
@@ -62,11 +63,14 @@ class JournalTab(InspectorTab):
         for n in ws.list_notes(node.id):
             entries.append((n.at, KIND_NAMES.get(n.kind, n.kind), n.text, n.minutes))
         total = 0
-        for s in ws.repo.sessions.list_all():
+        for s in ws.repo.sessions.select(node_ids={node.id}):
             if s.node_id != node.id:
                 continue
             total += s.actual_seconds
-            txt = f"{SESSION_STATUS_LABELS[s.status]} · Lucrat: {format_seconds(s.actual_seconds)} · Durată programată: {s.planned_minutes} min"
+            txt = f"{session_status_text(s, self.app.timer)} · Lucrat: {format_seconds(s.actual_seconds)} · Durată programată: {s.planned_minutes} min"
+            for correction in s.corrections:
+                entries.append((datetime.fromisoformat(correction['at']), 'Corecție timp',
+                    f"{correction['before']['seconds']} s → {correction['after']['seconds']} s. " + correction.get('reason',''), None))
             if s.summary:
                 txt += f"\n{s.summary}"
             entries.append((s.stopped_actual_at or s.start_at, "Sesiune", txt, None))
@@ -74,16 +78,32 @@ class JournalTab(InspectorTab):
             if e.type == "status_changed":
                 new = Status(e.data.get("to")) if e.data.get("to") else None
                 entries.append((e.at, "Status", f"Status schimbat în {STATUS_LABELS.get(new, '?')}", None))
+            elif e.type=='reopened':
+                entries.append((e.at,'Redeschidere','Continuarea cerinței inițiale.'+('\nMotiv: '+e.data['reason'] if e.data.get('reason') else ''),None))
+            elif e.type in ('followup_created','followup_linked'):
+                text=('Cerință ulterioară creată: ' if e.type=='followup_created' else 'Continuare a: ')+e.data.get('title','Task indisponibil')
+                entries.append((e.at,'Cerință nouă',text,None))
         entries.sort(key=lambda x: x[0], reverse=True)
-        self.text.configure(state="normal")
-        self.text.delete("1.0", "end")
-        if not entries:
-            self.text.insert("end", "Nicio înregistrare încă.", "muted")
-        for at, kind, body, _m in entries:
-            self.text.insert("end", f"{at.astimezone(tz):%d.%m.%Y %H:%M}  ·  {kind}\n", "when")
-            self.text.insert("end", body + "\n\n")
-        self.text.configure(state="disabled")
-        self.text.yview_moveto(scroll)
+        if getattr(self,'_render_job',None):
+            self.after_cancel(self._render_job)
+            self._render_job = None
+        generation = getattr(self,'_render_generation',0)+1
+        self._render_generation = generation
+        self.text.configure(state='normal');self.text.delete('1.0','end')
+        if not entries: self.text.insert('end','Nicio înregistrare încă.','muted')
+        self.text.configure(state='disabled')
+        def append(offset=0):
+            if generation != self._render_generation: return
+            self._render_job = None
+            self.text.configure(state='normal')
+            for at,kind,body,_m in entries[offset:offset+100]:
+                self.text.insert('end',f'{at.astimezone(tz):%d.%m.%Y %H:%M}  ·  {kind}\n','when')
+                self.text.insert('end',body+'\n\n')
+            self.text.configure(state='disabled')
+            if offset == 0: self.text.yview_moveto(scroll)
+            if offset+100 < len(entries):
+                self._render_job = self.after(1,lambda:append(offset+100))
+        append()
         self.total_lbl.configure(text=f"Timp lucrat: {format_seconds(total)}" if total else "Timp lucrat: 0:00:00")
         state = "disabled" if ws.read_only else "normal"
         self.add_btn.configure(state=state)

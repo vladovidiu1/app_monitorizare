@@ -20,7 +20,7 @@ from ..storage.repository import LoadIssue, WorkspaceRepository
 log = logging.getLogger(__name__)
 
 Listener = Callable[[str, dict], None]
-_IMMUTABLE_FIELDS = {"id", "kind", "parent_id", "created_at", "revision", "updated_at", "schema_version"}
+_IMMUTABLE_FIELDS = {"id", "kind", "parent_id", "created_at", "revision", "updated_at", "schema_version", "creation_operation_id"}
 
 
 class Workspace:
@@ -28,9 +28,17 @@ class Workspace:
         self.repo = repo
         self.settings: Settings = repo.load_settings()
         self.recovery_messages: list[str] = []
+        self._project_cache = (-1,{})
+        self._active_cache = (-1, set())
+        self._children_generation = -1
+        self._children_cache = {}
         self._listeners: list[Listener] = []
         from .templates import TemplateService
         self.templates = TemplateService(self)
+        from .followups import FollowupService
+        self.followups = FollowupService(self)
+        from .meetings import MeetingService
+        self.meetings = MeetingService(self)
 
     # ---- life cycle -------------------------------------------------
     @classmethod
@@ -46,14 +54,33 @@ class Workspace:
                 f"Structura fizică a fost actualizată: {moved} directoare de task-uri au fost scoase din "
                 "foldere imbricate (ierarhia rămâne neschimbată; acum poate avea orice adâncime).")
         repo.load()
+        from ..storage.followup_operations import recover_followups
+        followup_recovery=recover_followups(repo)
+        ws.recovery_messages.extend(followup_recovery)
+        if any(message.startswith("Cerința nouă întreruptă a fost recuperată") for message in followup_recovery):repo.load(force=True)
+        meeting_recovery=ws.meetings.recover()
+        ws.recovery_messages.extend(meeting_recovery)
+        if any(message.startswith('Operația întâlnirii a fost recuperată') for message in meeting_recovery):repo.load(force=True)
+        ws.meetings.store.summaries()
+        for path,error in ws.meetings.store.issues:
+            repo.issues.append(LoadIssue('error','meeting_corrupt',error,path))
         repo.write_index()
         return ws
 
     def close(self) -> None:
+        self.meetings.store.flush()
         self.repo.close()
 
-    def reload(self) -> None:
-        self.repo.load()
+    def reload(self, *, protect_node_ids=()) -> None:
+        baselines = {key:value for key,value in (self.repo._hashes | self.repo._edit_baselines).items() if key[0] in protect_node_ids}
+        self.repo.invalidate_records()
+        self.meetings.store.invalidate()
+        self.settings = self.repo.load_settings()
+        self.repo.load(force=True)
+        self.meetings.store.summaries()
+        for path,error in self.meetings.store.issues:
+            self.repo.issues.append(LoadIssue('error','meeting_corrupt',error,path))
+        self.repo._edit_baselines = baselines
         self.repo.write_index()
         self.emit("reloaded")
 
@@ -105,6 +132,8 @@ class Workspace:
 
     def children_map(self) -> dict[str | None, list[Node]]:
         """Copii grupati dupa parinte; orfanii (parinte lipsa/ciclu) apar la radacina."""
+        if self._children_generation == self.repo.generation:
+            return self._children_cache
         nodes = self.repo.nodes
         cmap: dict[str | None, list[Node]] = {}
         for n in nodes.values():
@@ -132,7 +161,29 @@ class Workspace:
                         stack.extend(c.id for c in cmap.get(cur, []))
         for lst in cmap.values():
             lst.sort(key=lambda n: (n.sort_order, n.title.lower()))
+        self._children_generation = self.repo.generation
+        self._children_cache = cmap
         return cmap
+
+    def active_context_ids(self):
+        if self._active_cache[0] != self.repo.aggregate_generation:
+            visible = {n.id for n in self.nodes.values() if n.kind != Kind.TASK or n.status not in CLOSED_STATUSES}
+            for nid in tuple(visible):
+                current = self.nodes[nid].parent_id
+                while current in self.nodes and current not in visible:
+                    visible.add(current); current = self.nodes[current].parent_id
+            self._active_cache = (self.repo.aggregate_generation,visible)
+        return self._active_cache[1]
+
+    def active_children_map(self):
+        # Only active tasks and their context, ordered without visiting closed siblings.
+        groups = {}
+        for nid in self.active_context_ids():
+            node = self.nodes[nid]
+            pid = node.parent_id if node.parent_id in self.nodes else None
+            groups.setdefault(pid,[]).append(node)
+        for nodes in groups.values(): nodes.sort(key=lambda n:(n.sort_order,n.title.lower()))
+        return groups
 
     def children(self, parent_id: str | None) -> list[Node]:
         return self.children_map().get(parent_id, [])
@@ -154,13 +205,35 @@ class Workspace:
         return " › ".join(parts)
 
     def subtree_ids(self, node_id: str, include_self: bool = True) -> list[str]:
-        return ops.descendants(self.repo, node_id, include_self)
+        cmap = self.children_map()
+        out, seen = [], set()
+        stack = [node_id]
+        while stack:
+            current = stack.pop()
+            if current in seen: continue
+            seen.add(current)
+            if include_self or current != node_id: out.append(current)
+            stack.extend(n.id for n in cmap.get(current, []))
+        return out
 
     def nearest_project(self, node_id: str) -> Node | None:
-        for anc in reversed(self.ancestors(node_id)):
-            if anc.kind == Kind.PROJECT:
-                return anc
-        return None
+        if self._project_cache[0] != self.repo.aggregate_generation:
+            membership = {}
+            for nid in self.nodes:
+                current = self.nodes[nid].parent_id
+                chain, seen = [], {nid}
+                while current in self.nodes and current not in seen:
+                    seen.add(current)
+                    if self.nodes[current].kind == Kind.PROJECT: break
+                    if current in membership:
+                        current = membership[current]; break
+                    chain.append(current); current = self.nodes[current].parent_id
+                pid = current if current in self.nodes and self.nodes[current].kind == Kind.PROJECT else None
+                membership[nid] = pid
+                for item in chain: membership[item] = pid
+            self._project_cache = (self.repo.aggregate_generation,membership)
+        pid = self._project_cache[1].get(node_id)
+        return self.nodes.get(pid)
 
     # ---- validation -------------------------------------------------
     def check_parent(self, kind: Kind, parent_id: str | None) -> None:
@@ -215,6 +288,8 @@ class Workspace:
             raise ValidationError(msgs.replace("Value error, ", "")) from exc
 
     def _check_references(self, data: dict[str, Any], self_id: str | None = None) -> None:
+        if "continuation_of" in data:
+            self.followups.validate_relation(self_id,data["continuation_of"])
         for key in ("related_node_ids", "depends_on_ids"):
             for ref in data.get(key, []) or []:
                 if ref not in self.repo.nodes:
@@ -256,8 +331,20 @@ class Workspace:
         if "title" in changes and changes["title"] != old.title:
             self.record_event("renamed", node_id, {"from": old.title, "to": stored.title})
         self._after_change()
-        self.emit("node_updated", node_id=node_id)
+        self.emit("node_updated", node_id=node_id, fields=list(changes))
         return stored
+
+    def reopen_task(self,node_id,reason=''):
+        self._check_writable()
+        node=self.get(node_id)
+        if node.kind != Kind.TASK or node.status not in CLOSED_STATUSES:
+            raise ValidationError('Selectează un task finalizat sau anulat pentru redeschidere.')
+        stored=self.update_node(node_id,status=Status.TODO)
+        self.record_event('reopened',node_id,{'reason':reason,'from':node.status.value,'previous_completed_at':node.completed_at.isoformat() if node.completed_at else None})
+        return stored
+
+    def create_followup(self,source_id,**options):
+        return self.followups.create(source_id,**options)
 
     def rename(self, node_id: str, title: str) -> Node:
         """Schimba titlul; directorul fizic si UUID-ul raman neschimbate."""
@@ -280,7 +367,7 @@ class Workspace:
     def set_description(self, node_id: str, text: str) -> None:
         self._check_writable()
         self.repo.write_description(node_id, text)
-        self.emit("node_updated", node_id=node_id)
+        self.emit("node_updated", node_id=node_id, fields=["description"])
 
     def get_description(self, node_id: str) -> str:
         return self.repo.read_description(node_id)
@@ -429,7 +516,7 @@ class Workspace:
     def future_sessions(self, node_id: str) -> list:
         now = utcnow()
         ids = set(self.subtree_ids(node_id))
-        return [s for s in self.repo.sessions.list_all()
+        return [s for s in self.repo.sessions.select(node_ids=ids)
                 if s.node_id in ids and s.status == "planned" and s.start_at > now]
 
     def cancel_sessions(self, sessions: list) -> None:
@@ -466,9 +553,7 @@ class Workspace:
             log.exception("Evenimentul de istoric nu a putut fi scris")
 
     def list_history(self, node_id: str | None = None, *, check=None) -> list[HistoryEvent]:
-        events = self.repo.history.list_all(check=check)
-        if node_id is not None:
-            events = [e for e in events if e.node_id == node_id]
+        events = self.repo.history.select(node_ids={node_id} if node_id is not None else None, check=check)
         events.sort(key=lambda e: e.at, reverse=True)
         return events
 
@@ -480,7 +565,7 @@ class Workspace:
 
     # ---- internals --------------------------------------------------
     def _after_change(self) -> None:
-        self.repo.write_index()
+        self.repo.mark_index_dirty()
 
     # ---- reusable local structures (UI writes enter through this facade) ----
     def save_template(self, template, *, expected_hash=None):

@@ -28,9 +28,9 @@ KIND_LABELS: dict[Kind, str] = {
 }
 
 SESSION_STATUS_LABELS = {
-    "planned": "Planificată",
-    "active": "Activă",
-    "done": "Realizată",
+    "planned": "Programată",
+    "active": "În lucru",
+    "done": "Încheiată",
     "cancelled": "Anulată",
     "missed": "Ratată",
 }
@@ -80,3 +80,14 @@ def format_worked(seconds: float) -> str:
     if seconds < 60:
         return "< 1 min"
     return format_minutes(round(seconds / 60))
+
+
+def session_status_text(session, timer=None):
+    """The persisted active flag is qualified by the unique current timer."""
+    if session.status == 'active':
+        if timer and timer.state and timer.state.session_id == session.id:
+            if timer.recovered: return 'De recuperat — ultima stare: ' + ('În pauză' if timer.state.state == 'paused' else 'În lucru')
+            return '▶ În lucru' if timer.running else 'Ⅱ În pauză'
+        return '⚠ De verificat (fără timer curent)'
+    label = SESSION_STATUS_LABELS[session.status]
+    return '▦ Rezervare · ' + label if session.status == 'planned' else label

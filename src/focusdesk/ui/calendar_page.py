@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from tkinter import filedialog, ttk
 from typing import TYPE_CHECKING
 
-from ..domain.labels import SESSION_STATUS_LABELS, format_seconds
+from ..domain.labels import SESSION_STATUS_LABELS, format_seconds, session_status_text
 from ..domain.models import Kind, Node
 from ..domain.session import SessionRecord
 from ..domain.timeutil import local_day_bounds_utc, utc_to_local
@@ -51,7 +51,15 @@ class PlanTab(InspectorTab):
         self.detail = ttk.Label(self, text="", style="Muted.TLabel", wraplength=400, justify="left")
         self.detail.pack(anchor="w", padx=8, pady=8)
         self.tv.bind("<<TreeviewSelect>>", self._on_select)
+        PlanTab._session_menu(self,self.extra_row if isinstance(self,PlanTab) else self.extra_bar)
         self._build_extra()
+
+    def _session_menu(self,parent):
+        button=ttk.Menubutton(parent,text='Sesiune ▾')
+        menu=tk.Menu(button,tearoff=False)
+        for text,command in [('Începe rezervarea',self._start),('Recuperează sesiunea…',self._recover),('Corectează timpul…',self._correct)]:
+            menu.add_command(label=text,command=command)
+        button.configure(menu=menu);button.pack(side='left',padx=2)
 
     def _build_extra(self) -> None:
         ttk.Button(self.extra_row, text="Sincronizează cu Outlook",
@@ -74,7 +82,7 @@ class PlanTab(InspectorTab):
             if s.sync.state in ("failed", "conflict"):
                 tags.append("bad")
             self.tv.insert("", "end", iid=s.id, tags=tags, values=(
-                fmt_range(s, tz), SESSION_STATUS_LABELS.get(s.status, s.status),
+                fmt_range(s, tz), session_status_text(s, self.app.timer),
                 format_seconds(s.actual_seconds) if s.actual_seconds else "—", sync_state_text(s)))
         self.tv.selection_set([i for i in selected if self.tv.exists(i)])
         self.tv.yview_moveto(scroll)
@@ -103,6 +111,21 @@ class PlanTab(InspectorTab):
         if ManualSessionDialog(self, self.app, self.node_id).run():
             self._refresh()
 
+    def _recover(self):
+        s=self._selected()
+        if s and self.app.run_write(lambda:self.app.timer.recover_session(s.id)):
+            self.app._handle_recovered_timer()
+            self.app.refresh_all()
+
+    def _correct(self):
+        from .session_ui import correct_selected
+        correct_selected(self,self.app,self._selected())
+
+    def _start(self):
+        s=self._selected()
+        if s and s.status=='planned':self.app.start_session(s.node_id,s.id)
+        else:show_info(self,'Selectează o rezervare programată.')
+
     def _edit(self) -> None:
         s = self._selected()
         if s is None:
@@ -115,7 +138,7 @@ class PlanTab(InspectorTab):
 
     def _cancel(self) -> None:
         s = self._selected()
-        if s is None or s.status not in ("planned", "active"):
+        if s is None or s.status not in ("planned",):
             return
         if confirm(self, "Anulezi sesiunea? Dacă este în Outlook, anularea se va aplica la următoarea sincronizare."):
             if self.app.run_write(lambda: self.app.sessions.cancel(s.id)):
@@ -161,13 +184,14 @@ class CalendarPage(ttk.Frame):
         bar.pack(fill="x", padx=12, pady=6)
         self.action_btns: list[ttk.Button] = []
         for text, cmd in (("Programare manuală…", self._manual), ("Planificare asistată…", self._assist),
-                          ("Modifică…", self._edit), ("Anulează sesiunea", self._cancel),
+                          ("Modifică…", self._edit), ("Anulează rezervarea", self._cancel),
                           ("Exportă ICS…", self._export), ("Task-uri recurente…", self._recurrence)):
             b = ttk.Button(bar, text=text, command=cmd)
             b.pack(side="left", padx=2)
             self.action_btns.append(b)
         self.extra_bar = ttk.Frame(self)
         self.extra_bar.pack(fill="x",padx=12)
+        PlanTab._session_menu(self,self.extra_row if isinstance(self,PlanTab) else self.extra_bar)
         self._build_extra()
         wrap = ttk.Frame(self)
         wrap.pack(fill="both", expand=True, padx=12, pady=(0, 10))
@@ -254,7 +278,7 @@ class CalendarPage(ttk.Frame):
         by_day: dict[date, list[SessionRecord]] = {}
         for s in sessions:
             by_day.setdefault(utc_to_local(s.start_at, tz).date(), []).append(s)
-        own_session_ids = {s.id for s in app.sessions.all()}
+        own_session_ids = app.ws.repo.sessions.ids()
         outlook_by_day = {}
         for event in self._outlook_events if self._outlook_key == outlook_key else []:
             if event.session_id in own_session_ids:
@@ -291,7 +315,7 @@ class CalendarPage(ttk.Frame):
                         a, b = utc_to_local(s.start_at, tz), utc_to_local(s.end_at, tz)
                         self.tv.insert(node, "end", iid=s.id, tags=tags, values=(
                             f"{a:%H:%M}–{b:%H:%M}", n.title if n else "?",
-                            SESSION_STATUS_LABELS.get(s.status, s.status), sync_state_text(s)))
+                            session_status_text(s, self.app.timer), sync_state_text(s)))
                     else:
                         event = item
                         a, b = utc_to_local(event.start, tz), utc_to_local(event.end, tz)
@@ -328,6 +352,21 @@ class CalendarPage(ttk.Frame):
         if PlannerDialog(self, self.app).run():
             self._changed()
 
+    def _recover(self):
+        s=self._selected()
+        if s and self.app.run_write(lambda:self.app.timer.recover_session(s.id)):
+            self.app._handle_recovered_timer()
+            self.app.refresh_all()
+
+    def _correct(self):
+        from .session_ui import correct_selected
+        correct_selected(self,self.app,self._selected())
+
+    def _start(self):
+        s=self._selected()
+        if s and s.status=='planned':self.app.start_session(s.node_id,s.id)
+        else:show_info(self,'Selectează o rezervare programată.')
+
     def _edit(self) -> None:
         s = self._selected()
         if s is None or s.status != "planned":
@@ -338,7 +377,7 @@ class CalendarPage(ttk.Frame):
 
     def _cancel(self) -> None:
         s = self._selected()
-        if s is None or s.status not in ("planned", "active"):
+        if s is None or s.status not in ("planned",):
             show_info(self, "Selectează o sesiune planificată.")
             return
         if confirm(self, "Anulezi sesiunea selectată?"):

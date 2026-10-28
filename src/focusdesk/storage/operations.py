@@ -338,7 +338,7 @@ def recover_pending(repo: WorkspaceRepository) -> list[str]:
     messages: list[str] = []
     if repo.read_only:
         return messages
-    for op in repo.operations.list_all():
+    for op in repo.operations.select(predicate=lambda row:row.get('state')=='pending' and row.get('type') in {'move_node','trash_node','restore_node','rename_dir'}):
         if op.state != "pending":
             continue
         if op.type not in {"move_node", "trash_node", "restore_node", "rename_dir"}:

@@ -291,9 +291,11 @@ class SessionButton(tb.Button):
         nid = self._node_getter()
         if app.timer_active():
             same = app.timer.node_id == nid
-            mode = "pause" if app.timer.running else "continue"
-            text = ("Pauză" if app.timer.running else "Continuă") if same else "Alt task este activ"
-            enabled = same and not app.timer.recovered
+            mode = ("pause" if app.timer.running else "continue") if same else "start"
+            text = ("Pauză" if app.timer.running else "Continuă") if same else "Începe"
+            node=ws.nodes.get(nid) if nid else None
+            enabled = bool(node and node.kind==Kind.TASK and node.status not in CLOSED_STATUSES and not ws.read_only
+                           and not app.timer.recovered and not app.timer.state.finalization)
         else:
             mode = "start"
             text = "Începe"

@@ -174,3 +174,46 @@ Outlook Classic real: calendar de test, disponibilitate, conflicte, ciornă,
 rezolvarea destinatarilor și trimitere cu confirmare. Aceste verificări nu au fost
 executate în mediul Linux. Evenimentele sunt rezervări personale, fără invitați sau
 Teams. Vezi [diagnostic-integrari.md](diagnostic-integrari.md).
+
+## Etapa de performanță locală
+
+Validare Linux/Xvfb: 291 teste trecute, 14 eșecuri preexistente de compatibilitate
+pentru căi Windows, 1 test junction Windows omis. Smoke-testul real Tk trece.
+Indexuri reconstructibile, ciorne/conflicte, read-only, recuperare și măsurători
+înainte/după pentru 1.000 și 5.000 de taskuri:
+[raport de performanță și rezultate brute](PERFORMANTA.md).
+Nu s-a efectuat validare Windows, push, merge sau release.
+
+## Dashboardul Activitate
+
+Dashboard local cu model comun pentru carduri, grafice, calendar lunar, tabele și
+CSV. Validare Linux/Xvfb: 309 teste trecute, aceleași 14 eșecuri preexistente pentru
+căi Windows, 1 test Windows omis; cele 18 teste noi de dashboard trec. Smoke-testul
+real trece. Capturi reale la 100% și la minimul scalat 125%/150%:
+[ACTIVITATE-DASHBOARD.md](ACTIVITATE-DASHBOARD.md).
+Fără dependențe noi, fără validare Windows, fără push/merge/release.
+
+## Ghidul opțional pentru descriere
+
+Formular modal cu ciornă proprie, Scop/pași/Rezultat așteptat, aplicare atomică în
+Undo și alegere explicită pentru text existent. Același buffer PeerText și același
+Salvează/Ctrl+S; fără scrieri implicite sau checklist/subtaskuri generate.
+Validare Linux/Xvfb: 339 teste trecute, aceleași 14 eșecuri preexistente pentru căi
+Windows și 1 omis. Cele 30 de cazuri noi ale ghidului trec; smoke-testul trece.
+[Ghid și captură reală](DESCRIERE-MARKDOWN.md). Fără push, merge sau release.
+
+## Cerințe ulterioare
+
+Implementate redeschiderea cu motiv opțional și crearea idempotentă a cerințelor independente, cu relație navigabilă, cod comun explicit și checkpointuri separate. Validare Linux/Xvfb: 382 passed, 1 skipped (specific Windows). [Detalii și limite](CERINTE-ULTERIOARE.md).
+
+## Sesiuni — verificare finală
+
+Rezervări distincte de lucrul început explicit, timer unic inclusiv în pauză, indicator permanent în toate paginile/Concentrare, alegere explicită la schimbarea taskului, recuperare fără muncă offline presupusă și corecții atomice cu audit. Întreruperile dintre scrieri sunt recuperabile, rezumatul și evenimentul nu se dublează la retry. Rapoartele exclud intervalul tehnic al timerelor directe din Programat și separă live de timpul salvat.
+
+Validare finală Linux/Xvfb: **427 passed, 1 skipped**; smoke test GUI, compileall, pip check și diff --check reușite. Testele folosesc exclusiv date temporare, cu repaus/crash simulate. Nu s-au validat Windows, suspendarea Windows sau Outlook real. Nu s-a făcut push, merge sau release. [Investigație, comportament și limite](SESIUNI.md).
+
+## Verificarea integrată finală
+
+**473 teste trecute, 1 test Windows omis**, smoke test GUI reușit, compileall/pip check/diff --check reușite. Fluxul cap-coadă acoperă toate etapele, inclusiv restart, reconstrucția cache-urilor și backup/restore. Corectate footerul întâlnirilor la fereastra minimă și selecțiile întârziate din lista ascunsă de taskuri. Verificare Tk/Xvfb la 100%/125%/150%, cu timer activ: 45 verificări geometrice. Benchmarkul final include 5.000 taskuri și 2.000 întâlniri; sunt raportate și costul primului dashboard fără index și creșterea memoriei. [Rezultate complete și limite](VERIFICARE-INTEGRATA.md). Fără validare Windows/Outlook real sau build/release.
+
+Corecție suplimentară de integrare: operațiile locale de fundal și callbackurile lor păstrează workspace-ul/lockul până la finalizare. Teste dedicate verifică și checkpointul pornit de încheierea sesiunii. Rezultat final: **473 passed, 1 skipped**, 36,38 s.

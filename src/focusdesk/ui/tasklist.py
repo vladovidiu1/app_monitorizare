@@ -17,6 +17,7 @@ from ..services.queries import Progress
 from .common import BASE_SIZE, FONT_FAMILY, SessionButton, error_color, muted_color
 from .formats import format_date
 from .status_visuals import node_icon
+from .tree_rows import sync_rows
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -25,7 +26,7 @@ ALL = "Toate"
 DUE_FILTERS = {"Orice termen": None, "Restante": "overdue", "Azi": "today", "Următoarele 7 zile": "week",
                "Fără termen": "none"}
 COLUMNS = [("status", "Status", 120), ("priority", "Prioritate", 76), ("due", "Termen", 84),
-           ("progress", "Progres", 68), ("remaining", "Timp rămas", 150), ("worked", "Timp lucrat", 90),
+           ("progress", "Progres", 68), ("remaining", "Timp rămas", 150), ("worked", "Lucrat salvat", 100),
            ("loc", "Locație", 150)]
 TREE_COLUMNS = ("status", "priority", "due", "progress", "remaining", "worked")
 
@@ -218,7 +219,7 @@ class TaskList(ttk.Frame):
     # ---- data -------------------------------------------------------
     def _project_options(self) -> dict[str, str]:
         ws = self.app.ws
-        projects = [n for n in ws.nodes.values() if n.kind == Kind.PROJECT]
+        projects = [ws.nodes[nid] for nid in ws.repo.project_ids]
         from collections import Counter
         counts = Counter(n.title for n in projects)
         return {(n.title if counts[n.title] == 1 else n.title + ' · ' + n.id[:6]): n.id
@@ -236,7 +237,7 @@ class TaskList(ttk.Frame):
         scope = self.scope_id if self.scope_id in ws.nodes else None
         self._cmap = ws.children_map()
         self._prog = q.progress_map()
-        self._worked = q.worked_map(self.app.live_session())
+        self._worked = q.worked_map()
         nodes = self._source()
         status = None if self.status_var.get() in (ALL,"Orice status") else STATUS_FROM_LABEL[self.status_var.get()]
         prio = None if self.prio_var.get() in (ALL,"Orice prioritate") else PRIORITY_FROM_LABEL[self.prio_var.get()]
@@ -255,14 +256,13 @@ class TaskList(ttk.Frame):
         selected = self.tv.selection()
         self._suppress = True
         try:
-            self.tv.delete(*self.tv.get_children())
+            rendered = []
             for parent_iid, n in rows:
                 is_open = self._expand_all or n.id in open_ids or n.id in self._force_open
-                self.tv.insert(parent_iid, "end", iid=n.id, tags=self._tags_for(n, n.id in matched_ids),
-                               text=self._title_text(n), image=node_icon(self,n), open=is_open, values=self._values(n, scope is not None))
-            keep = [s for s in selected if self.tv.exists(s)]
-            if keep:
-                self.tv.selection_set(keep)
+                rendered.append((parent_iid,n.id,dict(tags=self._tags_for(n,n.id in matched_ids),
+                    text=self._title_text(n),image=(str(node_icon(self,n)),),open=is_open,
+                    values=self._values(n,scope is not None))))
+            sync_rows(self.tv,rendered)
         finally:
             self._suppress = False
         self.tv.yview_moveto(scroll)
@@ -431,7 +431,8 @@ class TaskList(ttk.Frame):
         return sel[0] if sel else None
 
     def _on_select(self, _e=None) -> None:
-        if self._suppress:
+        view=self.app.current_view
+        if self._suppress or not (view in ('tasks','archive') or view.startswith(('tree:','search:'))):
             return
         nid = self.selected_id()
         if nid:

@@ -32,6 +32,9 @@ class ResolvedSource:
     owner_id: str  # nodul care defineste folderul (poate fi un parinte)
     mode: str
     inherited: bool
+    code_owner_id: str | None = None
+    source_mode: str | None = None
+    source_path: str | None = None
 
 
 class FileService:
@@ -200,13 +203,48 @@ class FileService:
             sw = n.source_workspace
             if sw is None:
                 continue
+            if sw.mode == 'disabled': return None
+            if sw.mode == 'shared':
+                if sw.shared_mode == 'managed':
+                    if sw.owner_node_id not in self.ws.nodes:
+                        raise NotFoundError('Folder de cod comun indisponibil: nodul care păstrează codul este în coș sau lipsește. Restaurează-l sau alege alt folder.')
+                    path = resolve_inside(self.ws.node_dir(sw.owner_node_id),sw.path)
+                else: path = Path(sw.path)
+                # Checkpoints belong to the referencing requirement, not the code owner.
+                return ResolvedSource(path,n.id,'shared',i>0,sw.owner_node_id,sw.shared_mode,sw.path)
             if sw.mode == "managed":
                 path = resolve_inside(self.ws.node_dir(n.id), sw.path)
             else:
                 path = Path(sw.path)
-            return ResolvedSource(path, n.id, sw.mode, inherited=i > 0)
+            return ResolvedSource(path,n.id,sw.mode,i>0,n.id,sw.mode,sw.path)
         return None
 
+    def checkpoint_owner(self,node_id):
+        # Saved versions remain accessible even when the shared live folder disappears.
+        for node in (self.ws.get(node_id),*reversed(self.ws.ancestors(node_id))):
+            if node.source_workspace is not None:
+                return node.id if node.source_workspace.mode!='disabled' else node_id
+        return node_id
+
     def usable_source_dir(self, node_id: str) -> Path | None:
-        src = self.effective_source(node_id)
+        from ..errors import FocusDeskError
+        try: src = self.effective_source(node_id)
+        except FocusDeskError: return None
         return src.path if src and src.path.is_dir() else None
+
+    def shared_access(self,node_id):
+        """Snapshot a code location without copying it or inheriting its checkpoint owner."""
+        src=self.effective_source(node_id)
+        if src is None: raise ValidationError('Sursa nu are folder de cod. Alege un folder sau continuă fără acces la cod.')
+        return SourceWorkspace(mode='shared',path=src.source_path,owner_node_id=src.code_owner_id,shared_mode=src.source_mode)
+
+    def shared_users(self,node_id):
+        src=self.effective_source(node_id)
+        if src is None:return []
+        key=os.path.normcase(str(src.path))
+        result=[]
+        for node in self.ws.nodes.values():
+            try: other=self.effective_source(node.id)
+            except (NotFoundError,ValidationError):continue
+            if other and os.path.normcase(str(other.path))==key:result.append(node.id)
+        return result

@@ -72,7 +72,13 @@ class ColleagueField(ttk.Frame):
     def _pick(self) -> None:
         if self.ws_getter().read_only:
             return
-        person = ColleaguePickerDialog(self, self.ws_getter()).run()
+        previous = self.grab_current()
+        try:
+            person = ColleaguePickerDialog(self, self.ws_getter()).run()
+        finally:
+            if previous is not None and previous.winfo_exists():
+                previous.grab_set()
+                self.pick_btn.focus_set()
         if person is not None:
             self.set(person)
             if self.on_change:

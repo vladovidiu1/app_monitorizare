@@ -143,14 +143,15 @@ class FilesTab(InspectorTab):
             return
         if src is None:
             self.code_lbl.configure(text="Niciun folder de cod asociat.")
-            self.code_note.configure(text="Un folder de cod asociat unui proiect este moștenit de subtask-uri, "
-                                          "fără a copia sursele.")
+            self.code_note.configure(text="Accesul la cod nu a fost preluat. Poți alege un folder explicit." if node.source_workspace and node.source_workspace.mode=='disabled' else
+                                     "Un folder de cod asociat unui proiect este moștenit de subtask-uri, fără a copia sursele.")
             return
         owner = self.app.ws.nodes.get(src.owner_id)
         exists = src.path.is_dir()
         self.code_lbl.configure(text=str(src.path), foreground=None if exists else error_color(self))
-        note = ("Moștenit de la „" + owner.title + "”. " if src.inherited and owner else "")
-        note += ("Mod: " + ("administrat (în workspace)" if src.mode == "managed" else "extern") + ". ")
+        common = src.mode == "shared" or len(self.fs.shared_users(node.id)) > 1
+        note = ("Folder de cod comun. " if common else "") + ("Moștenit de la „" + owner.title + "”. " if src.inherited and owner else "")
+        note += ("Mod: " + ("administrat (în workspace)" if (src.source_mode or src.mode) == "managed" else "extern") + ". ")
         if not exists:
             note += "Folderul nu mai există — alege din nou folderul (nu s-a șters nicio referință)."
         self.code_note.configure(text=note)

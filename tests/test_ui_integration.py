@@ -80,6 +80,8 @@ def app(tmp_path_factory):
         a.inspector.revert()  # un test esuat poate lasa formular murdar -> dialog modal la inchidere
         if a.timer and a.timer.state is not None:
             a.timer.discard()
+        pump(a, lambda: not a._pending_workspace_jobs(), 5)
+        assert not a._pending_workspace_jobs()
         a.on_close()
     except tk.TclError:
         pass

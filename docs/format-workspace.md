@@ -164,3 +164,29 @@ catalogul; restaurarea obișnuită îl recuperează. Șabloanele implicite răm�
 aplicației, nu fișiere personale. Crearea lotului folosește jurnalul existent
 `_system/operations`, tip `template_create`, cu UUID-urile noi și stările
 pending/done/rolled_back; nu este o copie a istoricului sursei.
+
+## Cache-uri de performanță (reconstructibile)
+
+`_system/index.json` își păstrează schema veche. Noua schemă de navigare, versiunea 1,
+este în `_system/cache/nodes.json`; fiecare catalog de înregistrări poate avea
+`.cache/index.json`, versiunea 1. Markerii `nodes-dirty.json` / `dirty.json` cer
+reconcilierea după crash. Niciunul nu este autoritar; eliminarea cache-urilor nu
+șterge taskuri sau sesiuni. Nu elimina directoarele care conțin înregistrările
+autoritare. Detalii despre compatibilitate, read-only și F5:
+[PERFORMANTA.md](PERFORMANTA.md).
+
+Indexul reconstructibil `history/.cache/index.json` are acum versiunea 2 pentru
+câmpul minimal `transition_to`. La cerere se reconstruiește un index v1, inclusiv
+în memorie în modul read-only. Schema fișierelor autoritare de istoric nu se schimbă.
+
+## Relații între cerințe
+
+Node adaugă opțional `continuation_of` (UUID sursă imediată) și `creation_operation_id` (UUID operație stabilă). `source_workspace.mode` acceptă `shared` cu `owner_node_id`, `shared_mode` și calea originală, respectiv `disabled` pentru oprirea moștenirii. Operația `followup_create` este recuperabilă și păstrează la final doar o chitanță compactă. [Detalii](CERINTE-ULTERIOARE.md).
+
+## Ciclul sesiunilor
+
+`SessionRecord.corrections` este un audit opțional atomic al corecțiilor de timp. Indexul sesiunilor v3 include `origin`; `timer.json` păstrează temporar intenția de pornire și planul de încheiere pentru retry/restart. Pauza rămâne în timer, fără migrarea statusurilor vechi. [Contract și recuperare](SESIUNI.md).
+
+## Întâlniri locale
+
+`_system/meetings/<uuid>/source.json`, `local.json` și `notes.md` separă sursa importată de acțiunile/legăturile și textul utilizatorului. `_system/meeting-source.json` păstrează alegerea explicită și starea importului. `.cache/index.json` v2 este reconstructibil, fără textul notițelor. `Node.meeting_ids` este o listă opțională de UUID-uri, cu valoare implicită goală pentru nodurile vechi. Operațiile `meeting_convert`, `meeting_node_seed` și `meeting_link` permit recuperare și retry. [Schema comportamentală](INTALNIRI.md).

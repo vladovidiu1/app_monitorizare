@@ -14,6 +14,17 @@ from focusdesk.services.activity import activity_ledger
 from focusdesk.ui.status_visuals import node_icon
 
 
+def wait_activity(ui):
+    import time
+    deadline=time.monotonic()+5
+    while True:
+        ui.root.update()
+        job=ui.activity_page._job
+        if job is None or job.done:return
+        assert time.monotonic()<deadline,'Activity report did not finish'
+        time.sleep(.01)
+
+
 def test_legacy_status_display_filter_no_move_or_rewrite(ws):
     folder=ws.create_node(Kind.FOLDER,'Categorie')
     old=ws.create_node(Kind.TASK,'Vechi',folder.id,status=Status.INBOX)
@@ -97,6 +108,10 @@ def test_old_inbox_ui_save_is_inert_and_only_one_todo_option(ui):
 
 
 def test_independent_to_project_subtask_timer_finish_reopen_archive(ui,monkeypatch):
+    from types import SimpleNamespace
+    import focusdesk.ui.app as app_module
+    gesture_time=[100.0]
+    monkeypatch.setattr(app_module,'time',SimpleNamespace(monotonic=lambda:gesture_time[0]))
     ui.show_view('tasks');ui.tasklist.add_var.set('Independent nou')
     ui.tasklist._quick_add(False)
     task=next(n for n in ui.ws.nodes.values() if n.title=='Independent nou')
@@ -109,6 +124,7 @@ def test_independent_to_project_subtask_timer_finish_reopen_archive(ui,monkeypat
     assert ui.inspector.start_btn.cget('text')=='Pauză'
     ui.inspector.start_btn.invoke()
     assert not ui.timer.running and ui.inspector.start_btn.cget('text')=='Continuă'
+    gesture_time[0]+=1  # a distinct Continue gesture, after the double-click guard
     ui.inspector.start_btn.invoke()
     assert ui.timer.running
     ui.timer.stop(summary='Sesiune verificată',next_action='Continuă verificarea')
@@ -124,7 +140,7 @@ def test_independent_to_project_subtask_timer_finish_reopen_archive(ui,monkeypat
     ui.ws.unarchive(task.id)
     ui.ws.trash(child.id);ui.ws.restore(child.id)
     assert child.id in ui.ws.nodes
-    ui.show_view('activity');ui.activity_page.period.set('Tot istoricul');ui.activity_page.refresh()
+    ui.show_view('activity');ui.activity_page.period.set('Tot istoricul');ui.activity_page.refresh();wait_activity(ui)
     assert ui.activity_page.tables['Sesiuni'].get_children()
 
 
@@ -175,15 +191,20 @@ def test_quick_filters_and_readable_empty_states(ui):
     ui.quick_tasks('waiting');assert [n.id for n in ui.tasklist._shown]==[waiting.id]
     ui.quick_tasks('done');assert [n.id for n in ui.tasklist._shown]==[done.id]
     ui.quick_tasks('all');assert all(n.status!=Status.DONE for n in ui.tasklist._shown)
-    ui.show_view('activity');assert 'Nu există sesiuni' in ui.activity_page.empty.cget('text')
+    ui.show_view('activity');wait_activity(ui);assert 'Nu există sesiuni' in ui.activity_page.empty.cget('text')
 
 
-def test_today_controls_actual_timer_and_cancelled_session_cannot_start(ui):
+def test_today_controls_actual_timer_and_cancelled_session_cannot_start(ui,monkeypatch):
+    from types import SimpleNamespace
+    import focusdesk.ui.app as app_module
+    gesture_time=[100.0]
+    monkeypatch.setattr(app_module,'time',SimpleNamespace(monotonic=lambda:gesture_time[0]))
     task=ui.ws.get(ui.selected_id)
     ui.timer.start(task.id);ui.show_view('today');ui.today.update_timer()
     assert ui.today.timer_toggle.cget('text')=='Pauză'
     ui.today.timer_toggle.invoke()
     assert ui.today.timer_toggle.cget('text')=='Continuă' and not ui.timer.running
+    gesture_time[0]+=1  # a distinct Continue gesture
     ui.today.timer_toggle.invoke();assert ui.timer.running
     ui.timer.stop();ui.today.update_timer()
     assert str(ui.today.timer_toggle.cget('state'))=='disabled'

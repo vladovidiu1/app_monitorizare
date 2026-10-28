@@ -248,22 +248,29 @@ class VersionsTab(InspectorTab):
 
     def load(self, node: Node) -> None:
         super().load(node)
-        src = self.app.files.effective_source(node.id)
+        source_error=None
+        try: src = self.app.files.effective_source(node.id)
+        except FocusDeskError as exc: src=None;source_error=str(exc)
         self.tv.delete(*self.tv.get_children())
         self._manifests.clear()
         self._clear_diff()
         ro = self.app.ws.read_only
         if src is None:
-            self.info.configure(text="Asociază un folder de cod în tabul „Fișiere” pentru a salva versiuni. "
+            self.info.configure(text=source_error or "Asociază un folder de cod în tabul „Fișiere” pentru a salva versiuni. "
                                      "Proiectele fără Git funcționează complet cu checkpoint-uri.")
             self.save_btn.configure(state="disabled")
+            self._load_manifests(node)
             self._refresh_git()
             return
         self.save_btn.configure(state="disabled" if ro else "normal")
-        self.info.configure(text=(
+        self.info.configure(text=(("Folder de cod comun. Checkpointurile sunt ale acestei cerințe; Git arată istoricul repository-ului comun. " if src.mode=='shared' or len(self.app.files.shared_users(node.id))>1 else "") +
             "Checkpoint-ul vede doar fișierele SALVATE pe disc, nu textul nesalvat din VS Code. "
             "Poți activa Auto Save în VS Code (aplicația nu schimbă setările tale). "
             "Programarea funcționează doar cât timp FocusDesk rulează."))
+        self._load_manifests(node)
+        self._refresh_git()
+
+    def _load_manifests(self,node):
         tz = self.app.q.tz()
         for m in self.cs.list_for_node(node.id):
             self._manifests[m.id] = m
@@ -271,7 +278,6 @@ class VersionsTab(InspectorTab):
             self.tv.insert("", "end", iid=m.id, values=(
                 f"{m.created_at.astimezone(tz):%d.%m.%Y %H:%M}", n.title if n else "?",
                 TRIGGER_TEXT.get(m.trigger, m.trigger), len(m.files), human_size(m.total_size), m.description))
-        self._refresh_git()
 
     def _selected(self) -> CheckpointManifest | None:
         sel = self.tv.selection()
@@ -297,7 +303,9 @@ class VersionsTab(InspectorTab):
     def _preview(self) -> None:
         if not self.node_id:
             return
-        src = self.app.files.effective_source(self.node_id)
+        try: src = self.app.files.effective_source(self.node_id)
+        except FocusDeskError as exc:
+            show_error(self,str(exc));return
         if src is None or not src.path.is_dir():
             show_error(self, "Folderul de cod nu există.")
             return

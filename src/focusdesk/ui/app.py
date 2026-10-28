@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +14,7 @@ import ttkbootstrap as tb
 
 from .. import __version__
 from ..config import AppConfig, resource_path
+from ..domain.common import utcnow
 from ..domain.labels import format_seconds
 from ..domain.models import CLOSED_STATUSES, Kind, Node, Status
 from ..errors import (
@@ -33,7 +35,8 @@ from ..integrations import system as system_open
 from ..integrations.calendar import AvailabilityResult, LocalOnlyProvider
 from ..integrations.ics import IcsExportProvider, IcsItem, stable_uid
 from ..workers.bridge import Job, UiBridge
-from .calendar_page import CalendarPage, PlanTab
+from .calendar_page import PlanTab
+from .meetings import CalendarHub as CalendarPage
 from .common import (
     ModalDialog, THEMES, SessionButton, ask_choice, ask_string, apply_theme, confirm, show_error, show_info,
 )
@@ -90,12 +93,14 @@ class FocusDeskApp:
         self._tick_count = 0
         self.session_buttons: list[SessionButton] = []
         self.dashboard: DashboardWindow | None = None
+        self.followup_dialog = None
         self.calendar_provider = LocalOnlyProvider()
         self._busy = 0
         self.current_view = "today"
         self.current_scope: str | None = None
         self.selected_id: str | None = None
         self._refresh_pending = False
+        self._workspace_jobs=[]
         self._search_job = None
         self._gap_dialog_open = False
         self._tick_job = None
@@ -146,6 +151,11 @@ class FocusDeskApp:
         self.status.pack(side="bottom", fill="x")
         ttk.Separator(self.root).pack(side="bottom", fill="x")
 
+        from .session_ui import TimerIndicator
+        self.status._labels['timer'].pack_forget()
+        self.status._labels['workspace'].configure(width=18)
+        self.timer_indicator=TimerIndicator(self.status,self)
+        self.timer_indicator.pack(side='left',fill='x',expand=True)
         self.paned = ttk.PanedWindow(self.root, orient="horizontal")
         self.paned.pack(fill="both", expand=True, padx=8, pady=(0,8))
         self.sidebar = Sidebar(self.paned, self)
@@ -264,7 +274,7 @@ class FocusDeskApp:
         t.add_checkbutton(label="Arată taskurile închise în arbore", variable=self.completed_var,
                           command=self.toggle_completed)
         t.add_separator()
-        t.add_command(label="Dashboard timp lucrat\tCtrl+D", command=self.open_dashboard)
+        t.add_command(label="Calendar lunar de activitate\tCtrl+D", command=self.open_dashboard)
         t.add_separator()
         t.add_command(label="Verificare integritate workspace…", command=self.show_issues)
         t.add_command(label="Gestionare șabloane…", command=self.manage_templates)
@@ -283,7 +293,7 @@ class FocusDeskApp:
         r.bind("<Control-f>", lambda _e: (self.search_entry.focus_set(), self.search_entry.select_range(0, "end")))
         r.bind("<Control-s>", lambda _e: self.save_current())
         r.bind("<F2>", lambda _e: self.rename_selected())
-        r.bind("<F5>", lambda _e: self.refresh_all())
+        r.bind("<F5>", lambda _e: self.reload_preserving_context())
         r.bind("<Control-m>", lambda _e: self.compose_mail())
         r.bind("<Control-d>", lambda _e: self.open_dashboard())
         r.bind("<Alt-Right>", lambda _e: self.indent_selected())
@@ -381,17 +391,24 @@ class FocusDeskApp:
         errors = [i for i in ws.issues if i.severity == "error"]
         if ws.recovery_messages or errors:
             IssuesDialog(self.root, ws).run()
-        if self.timer and self.timer.recovered:
+        if self.timer and self.timer.recovered and not ws.read_only:
             self._handle_recovered_timer()
+        if self.timer and self.timer.recovery_error:
+            show_info(self.root,self.timer.recovery_error+' Nu pornesc alt timer peste acest fișier; verifică datele sau backupul.')
+        diagnostic=self.sessions.diagnostics(self.timer.state.session_id if self.timer and self.timer.state else None)
+        if diagnostic['orphan_active'] or diagnostic['overlapping_work']:
+            show_info(self.root, f"Diagnostic sesiuni: {len(diagnostic['orphan_active'])} înregistrări active fără timer curent; "
+                      f"{len(diagnostic['overlapping_work'])} suprapuneri de muncă încheiată. Nu sunt timere paralele. "
+                      "Verifică Planificare / Corectează timpul…; datele nu au fost rescrise.")
         if not ws.read_only:
             self._maintenance_on_open()
             self.root.after(3000, lambda: self.check_scheduled_checkpoints(startup=True))
         if not ws.read_only and ws.settings.backup.daily:
-            self.bridge.submit(lambda tok: backup_service.ensure_daily_backup(ws),
+            self._track_workspace_job(self.bridge.submit(lambda tok: backup_service.ensure_daily_backup(ws),
                                on_done=lambda r: self.status.set_message(
                                    f"Backup zilnic creat ({r.kind})" if r else ""),
                                on_error=lambda e: self.status.set_message(f"Backup zilnic eșuat: {e}"),
-                               name="daily-backup")
+                               name="daily-backup"))
 
     def _maintenance_on_open(self) -> None:
         """Sesiuni ratate, instante recurente de azi si zilele ratate (de ales de utilizator)."""
@@ -419,18 +436,27 @@ class FocusDeskApp:
     def _release_current(self) -> bool:
         if self.ws is None:
             return True
+        if self._pending_workspace_jobs():return False
         if not self.confirm_leave():
             return False
-        if self.timer and self.timer.active:
+        if self.timer and self.timer.recovered and not self.ws.read_only:
+            self._handle_recovered_timer()
+            if self.timer.recovered:return False
+        if self.timer and self.timer.active and not self.ws.read_only:
             ans = ask_choice(self.root, "Sesiune activă",
                              "Este o sesiune de lucru activă. Ce faci cu ea înainte de a schimba workspace-ul?",
-                             [("stop", "Oprește sesiunea"), ("keep", "Las-o (se reconciliază la redeschidere)"),
+                             [("stop", "Oprește sesiunea"), ("keep", "Salvează în pauză pentru recuperare la redeschidere"),
                               ("cancel", "Anulează")])
             if ans == "stop":
                 if not self.stop_session():
                     return False
-            elif ans != "keep":
+            elif ans == 'keep':
+                if not self.run_write(self.timer.pause):return False
+            else:
                 return False
+        # Stopping a coded task can enqueue its automatic checkpoint.
+        if self._pending_workspace_jobs():return False
+        self.calendar_page.meetings.cancel_import()
         self.task_space.leave_route()
         self.task_space.positions.clear()
         self.inspector.node_id = None
@@ -440,6 +466,9 @@ class FocusDeskApp:
         self.ws = None  # type: ignore[assignment]
         self.q = None  # type: ignore[assignment]
         self.timer = None
+        self.calendar_page.meetings.workspace=None
+        self.calendar_page.meetings.mid=None
+        self.timer_indicator.update_state()
         return True
 
     def on_close(self) -> None:
@@ -464,21 +493,48 @@ class FocusDeskApp:
     # ================================================================
     def _on_ws_event(self, event: str, data: dict) -> None:
         if event in ("node_created", "node_updated", "node_moved", "node_trashed", "node_restored", "reloaded",
-                     "sessions_changed", "trash_changed", "notes_changed"):
-            self._schedule_refresh()
+                     "sessions_changed", "trash_changed", "notes_changed", "timer_changed", "session_finished", "settings_changed"):
+            self._schedule_refresh(event, data)
+        elif event in ('meetings_changed','meeting_notes_changed'):
+            if self.current_view=='calendar':self.calendar_page.meetings.refresh()
         elif event == "timer_gap":
             self.root.after(0, self._handle_timer_gap)
 
-    def _schedule_refresh(self) -> None:
+    def _schedule_refresh(self, event="reloaded", data=None) -> None:
+        if not hasattr(self,"_pending_events"): self._pending_events = []
+        self._pending_events.append((event,data or {}))
         if not self._refresh_pending:
             self._refresh_pending = True
             self.root.after_idle(self._do_scheduled_refresh)
 
     def _do_scheduled_refresh(self) -> None:
         self._refresh_pending = False
-        self.refresh_all()
+        events = getattr(self,'_pending_events',[])
+        self._pending_events = []
+        if not events: return
+        kinds = {event for event,data in events}
+        if kinds & {'reloaded','node_created','node_moved','node_trashed','node_restored','trash_changed'}:
+            self.refresh_all()
+            return
+        if kinds == {'notes_changed'}:
+            if any(data.get('node_id') == self.selected_id for event,data in events):
+                self.inspector.refresh_current()
+                if self.current_view == 'task_space': self.task_space._load_section()
+            return
+        if any(event == 'node_updated' and data.get('fields') != ['description'] for event,data in events):
+            self.sidebar.refresh()
+        title_only = bool(events) and all(event == 'node_updated' and data.get('fields') == ['title'] for event,data in events)
+        if title_only and self.current_view == 'activity':
+            self.activity_page.refresh_labels()
+        elif not all(event == 'node_updated' and data.get('fields') == ['description'] for event,data in events):
+            self._reload_center()
+        if any(not data.get('node_id') or data.get('node_id') == self.selected_id for event,data in events):
+            self.inspector.refresh_current()
+        if self.dashboard is not None and self.dashboard.winfo_exists() and not title_only:
+            self.dashboard.refresh()
 
     def refresh_all(self) -> None:
+        self._pending_events = []
         if self.ws is None:
             return
         if self.selected_id and self.selected_id not in self.ws.nodes:
@@ -499,6 +555,8 @@ class FocusDeskApp:
         if self.ws is None:
             return
         if self.dashboard is not None and self.dashboard.winfo_exists():
+            self.dashboard.project_id = self.activity_page._project_options.get(self.activity_page.project.get(), "*")
+            self.dashboard.focus_projects = self.activity_page._focus_projects
             self.dashboard.deiconify()
             self.dashboard.lift()
             self.dashboard.refresh()
@@ -555,7 +613,7 @@ class FocusDeskApp:
                                      empty_hint="Niciun task aici. Scrie un titlu mai sus și apăsă Enter.",
                                      scope_id=nid)
         else:
-            loader = q.view_archive if v == 'archive' else q.tasks
+            loader = q.view_archive if v == 'archive' else lambda: q.tasks(open_only=not self.tasklist.closed_var.get())
             self.tasklist.set_source(VIEW_TITLES.get(v, 'Proiecte și taskuri'), loader, "Toate taskurile" if v != 'archive' else 'Elemente arhivate',
                                      show_closed=(v == 'archive'), empty_hint=VIEW_HINTS.get(v,''))
 
@@ -585,6 +643,11 @@ class FocusDeskApp:
     # ================================================================
     # Navigation
     # ================================================================
+    def open_meeting(self,mid):
+        if self.ws is None or not self.confirm_leave():return False
+        self.show_view('calendar')
+        return self.calendar_page.open_meeting(mid)
+
     def open_task_space(self,node_id=None):
         return self.task_space.open(node_id or self.selected_id)
 
@@ -593,7 +656,16 @@ class FocusDeskApp:
         return 'break'
 
     def confirm_leave(self) -> bool:
+        meetings=self.calendar_page.meetings
+        if not meetings.resolve():return False
+        if self.followup_dialog is not None and self.followup_dialog.winfo_exists():
+            self.followup_dialog.lift();return False
         details = self.inspector.tab_by_title("Detalii")
+        for editor in (details.editor, self.task_space.editor):
+            guide = getattr(editor, "guide_dialog", None)
+            if guide is not None and guide.winfo_exists():
+                guide.lift()
+                return False
         expanded = getattr(details, "expanded", None)
         if expanded is not None and expanded.winfo_exists():
             expanded.lift()
@@ -788,6 +860,9 @@ class FocusDeskApp:
             self.refresh_all()
 
     def save_current(self) -> None:
+        meetings=self.calendar_page.meetings
+        if self.current_view=='calendar' and meetings.mid and self.calendar_page.nb.select()==str(meetings):
+            meetings.save();return
         if self.current_view == "task_space":
             self.task_space.save()
             return
@@ -1001,7 +1076,25 @@ class FocusDeskApp:
                 return
             if ans == "cancel":
                 self.run_write(lambda: self.ws.cancel_sessions(self.ws.future_sessions(node.id)))
-        self.run_write(lambda: self.ws.update_node(node.id, status=new), refresh=True)
+        self.run_write(lambda: self.ws.reopen_task(node.id) if new==Status.TODO and node.kind==Kind.TASK else self.ws.update_node(node.id,status=new), refresh=True)
+
+    def add_followup(self,node_id=None):
+        node_id=node_id or self.selected_id
+        if not self.ws or self.ws.read_only or node_id not in self.ws.nodes or self.ws.get(node_id).kind!=Kind.TASK:return None
+        if self.followup_dialog is not None and self.followup_dialog.winfo_exists():
+            self.followup_dialog.lift();return self.followup_dialog
+        modal=self.root.grab_current()
+        if isinstance(modal,tk.Toplevel):modal.lift();return None
+        from .followups import FollowupDialog
+        self.followup_dialog=FollowupDialog(self,node_id)
+        return self.followup_dialog
+
+    def reopen_with_reason(self,node_id=None):
+        node_id=node_id or self.selected_id
+        if not self.ws or self.ws.read_only or node_id not in self.ws.nodes or self.ws.get(node_id).status not in CLOSED_STATUSES:return
+        if not self.confirm_leave():return
+        from .followups import ReopenReasonDialog
+        return ReopenReasonDialog(self,node_id)
 
     def toggle_archive_selected(self) -> None:
         node = self._selected_node()
@@ -1053,12 +1146,15 @@ class FocusDeskApp:
                 menu.add_command(label="Deschide spațiul de lucru",command=lambda:self.open_task_space(node.id))
                 menu.add_command(label="Subtask nou", command=lambda: self.new_node(Kind.TASK, parent_id=node.id),
                                  state=state)
-                if self.timer_active():
-                    menu.add_command(label="■ Oprește sesiunea", command=self.stop_session)
+                if self.timer_active() and self.timer.node_id==node.id:
+                    menu.add_command(label="■ Încheie sesiunea", command=self.stop_session)
                 else:
                     menu.add_command(label="▶ Începe sesiune", command=lambda: self.start_session(node.id),
                                      state=state)
                 menu.add_command(label="Redeschide taskul" if node.status in CLOSED_STATUSES else "Finalizează taskul", command=self.toggle_done_selected, state=state)
+                menu.add_command(label="Adaugă cerință nouă…",command=lambda:self.add_followup(node.id),state=state)
+                if node.status in CLOSED_STATUSES:
+                    menu.add_command(label="Redeschide cu motiv…",command=lambda:self.reopen_with_reason(node.id),state=state)
                 menu.add_command(label="Prioritate pentru azi (comută)", command=self.toggle_pin_selected, state=state)
             else:
                 menu.add_command(label="Task nou aici", command=lambda: self.new_node(Kind.TASK, parent_id=node.id),
@@ -1156,6 +1252,13 @@ class FocusDeskApp:
             return False
         return self.open_workspace(p)
 
+    def reload_preserving_context(self):
+        if self.ws is None: return
+        dirty = {tab.node_id for tab in self.inspector.tabs if tab.node_id and
+                 (tab.is_dirty() or getattr(tab,'expanded',None) is not None)}
+        self.ws.reload(protect_node_ids=dirty)
+        self.refresh_all()
+
     def rescan(self) -> None:
         if self.ws is None or not self.confirm_leave():
             return
@@ -1180,6 +1283,7 @@ class FocusDeskApp:
         if ws is None or ws.read_only:
             show_error(self.root, "Backup-ul necesită un workspace editabil.")
             return
+        if not self.calendar_page.meetings.resolve():return
         self.status.set_message("Se creează backup-ul…")
 
         def done(res) -> None:
@@ -1192,9 +1296,9 @@ class FocusDeskApp:
             self.status.set_message("Backup creat")
             show_info(self.root, msg, "Backup")
 
-        self.bridge.submit(lambda tok: backup_service.create_backup(ws, full=full), on_done=done,
+        self._track_workspace_job(self.bridge.submit(lambda tok: backup_service.create_backup(ws, full=full), on_done=done,
                            on_error=lambda e: (self.status.set_message(""), show_error(self.root, str(e))),
-                           name="backup")
+                           name="backup"))
 
     def restore_backup(self) -> None:
         zp = filedialog.askopenfilename(parent=self.root, title="Alege arhiva de backup",
@@ -1310,13 +1414,32 @@ class FocusDeskApp:
         self.start_session(node.id)
 
     def start_session(self, node_id: str, planned_session_id: str | None = None) -> None:
+        if getattr(self,'_starting_session',False) or getattr(self,'_stopping_session',False):return
+        self._starting_session=True
+        try:return self._start_session(node_id,planned_session_id)
+        finally:self._starting_session=False
+
+    def _start_session(self, node_id, planned_session_id=None):
         if not self.confirm_leave():
             return
         if self.ws is None or self.timer is None:
             return
-        if self.timer.active:
-            show_info(self.root, "Există deja o sesiune activă. Oprește-o înainte să începi alta.")
-            return
+        if self.ws.read_only:return
+        if self.timer.recovered:
+            self._handle_recovered_timer()
+            if self.timer.recovered:return
+        if self.timer.state:
+            if self.timer.node_id == node_id:
+                self.select_node(node_id,reveal=True)
+                return
+            choice=ask_choice(self.root,'Sesiune curentă',
+                'Există deja o sesiune de lucru, inclusiv în pauză. Ce dorești să faci?',
+                [('continue','Continuă sesiunea existentă'),('finish','Încheie sesiunea și începe taskul ales'),('cancel','Anulează')])
+            if choice=='continue':
+                if not self.timer.running:self.run_write(self.timer.resume)
+                self.select_node(self.timer.node_id,reveal=True)
+                return
+            if choice!='finish' or not self.stop_session():return
         node = self.ws.nodes.get(node_id)
         if node is None:
             return
@@ -1327,7 +1450,7 @@ class FocusDeskApp:
         open_opts = self._ask_session_open_options(node)
         if open_opts is False:
             return
-        ok = self.run_write(lambda: self.timer.start(node_id, planned_session_id), success_text="Sesiune pornită")
+        ok = self.run_write(lambda: self.timer.start(node_id, planned_session_id), success_text=f"În lucru: {node.title} · început {utcnow().astimezone(self.q.tz()):%H:%M}")
         if not ok:
             return
         self._tick()
@@ -1369,30 +1492,42 @@ class FocusDeskApp:
         self.config.save()
 
     def toggle_pause(self) -> None:
+        now=time.monotonic()
+        if now-getattr(self,'_last_pause_action',-1)<0.35:return
+        self._last_pause_action=now
         t = self.timer
         if t is None or not t.active:
             show_info(self.root, "Nu există o sesiune activă.")
             return
         if t.running:
-            t.pause()
+            self.run_write(t.pause)
         else:
             gap = t.pending_gap
             if gap > 0:
                 self._ask_gap(gap)
             else:
-                t.resume()
+                self.run_write(t.resume)
         self._tick()
 
     def stop_session(self) -> bool:
+        if getattr(self,'_stopping_session',False):return False
+        self._stopping_session=True
+        try:return self._stop_session()
+        finally:self._stopping_session=False
+
+    def _stop_session(self):
         t = self.timer
         if t is None or not t.active:
             return True
-        t.pause()
+        if t.state.finalization:
+            return self.run_write(t.stop,success_text='Sesiune încheiată')
+        was_running=t.running
+        if not self.run_write(t.pause):return False
         node = self.ws.nodes.get(t.node_id) if t.node_id else None
         res = StopSessionDialog(self.root, self, node, t.seconds).run()
         if res is None:
-            if t.state and t.state.state == "paused":
-                t.resume()
+            if was_running and t.state and t.state.state == "paused":
+                self.run_write(t.resume)
             return False
         ok = self.run_write(lambda: t.stop(**res), success_text="Sesiune încheiată")
         if ok:
@@ -1410,9 +1545,22 @@ class FocusDeskApp:
         self.create_checkpoint(node.id, "La finalul sesiunii", trigger="session_end", quiet_if_unchanged=True)
 
     # ---- jobs / checkpoints / openers ---------------------------------
+    def _track_workspace_job(self,job):
+        self._workspace_jobs=[(ws,j) for ws,j in self._workspace_jobs if not j.done]
+        self._workspace_jobs.append((self.ws,job))
+        return job
+
+    def _pending_workspace_jobs(self):
+        self._workspace_jobs=[(ws,j) for ws,j in self._workspace_jobs if not j.done]
+        pending=[j for ws,j in self._workspace_jobs if ws is self.ws]
+        if pending:
+            self.status.set_message('Workspace păstrat deschis: așteaptă finalizarea operației locale ('+pending[0].name+').')
+        return bool(pending)
+
     def run_job(self, work: Callable[..., Any], on_done: Callable[[Any], None] | None = None, *, name: str = "job",
                 busy_text: str = "Se lucrează…", on_error: Callable[[BaseException], None] | None = None) -> Job:
         """Ruleaza `work(token)` intr-un thread; callback-urile se executa pe thread-ul UI."""
+        workspace=self.ws
         self._busy += 1
         self.status.set_busy(busy_text)
 
@@ -1423,6 +1571,7 @@ class FocusDeskApp:
 
         def ok(res: Any) -> None:
             finish()
+            if self.ws is not workspace:return
             if on_done:
                 try:
                     on_done(res)
@@ -1432,6 +1581,7 @@ class FocusDeskApp:
 
         def err(exc: BaseException) -> None:
             finish()
+            if self.ws is not workspace:return
             if on_error:
                 on_error(exc)
             elif isinstance(exc, FocusDeskError):
@@ -1439,7 +1589,7 @@ class FocusDeskApp:
             else:
                 show_error(self.root, f"Eroare neașteptată: {exc}")
 
-        return self.bridge.submit(work, ok, err, name=name)
+        return self._track_workspace_job(self.bridge.submit(work, ok, err, name=name))
 
     def create_checkpoint(self, node_id: str, description: str = "", *, trigger: str = "manual",
                           session_id: str | None = None, on_finished: Callable[[], None] | None = None,
@@ -1596,7 +1746,7 @@ class FocusDeskApp:
             self._sched_running = False
             self.status.set_message(f"Checkpoint programat eșuat: {exc}")
 
-        self.bridge.submit(work, done, failed, name="scheduled-checkpoint")
+        self._track_workspace_job(self.bridge.submit(work, done, failed, name="scheduled-checkpoint"))
 
     def open_code_in_explorer(self, node_id: str | None) -> None:
         if not node_id:
@@ -1634,18 +1784,24 @@ class FocusDeskApp:
             return
         t = self.timer
         if t.recovered is None and t.state is not None:
-            t.tick()
+            try:t.tick()
+            except Exception as exc:
+                self.status.set_save_error(str(exc))
+                if t.state:t.state.state='paused'
             node = self.ws.nodes.get(t.node_id or "")
             label = f"{'Sesiune' if t.running else 'Pauză'}: {node.title if node else '?'} — {format_seconds(t.seconds)}"
             if t.state.state == "paused" and t.pending_gap:
                 label += " (nu a fost numărat intervalul de repaus)"
             self.status.set_timer(label, active=t.running)
         else:
-            self.status.set_timer("Sesiune: niciuna")
+            self.status.set_timer("Nicio sesiune de lucru pornită")
         if self.current_view == "today":
             self.today.update_timer()
         self.update_session_buttons()
+        self.timer_indicator.update_state()
+        if self.current_view == "activity": self.activity_page.update_live()
         self._tick_count += 1
+        if self._tick_count % 60 == 0 and self.current_view == "activity": self.activity_page.refresh()
         if self._tick_count % 30 == 0:
             self.check_scheduled_checkpoints()
         self._tick_job = self.root.after(1000, self._tick)
@@ -1685,40 +1841,40 @@ class FocusDeskApp:
                     add = min(mins * 60, gap)
                 except ValueError as exc:
                     show_error(self.root, str(exc))
-            t.resume(count_gap_seconds=add)
+            if ans is not None:self.run_write(lambda:t.resume(count_gap_seconds=add))
         finally:
             self._gap_dialog_open = False
 
-    def _handle_recovered_timer(self) -> None:
-        t = self.timer
-        if t is None or t.recovered is None:
-            return
-        rec = t.recovered
-        saved = rec.state.accumulated_seconds
-        ans = ask_choice(
-            self.root, "Sesiune întreruptă",
-            f"Ultima sesiune pentru „{rec.node_title}” nu a fost oprită corect (închidere, crash sau repaus).\n"
-            f"Timp înregistrat până la ultima salvare: {format_seconds(saved)}.\n"
-            "Timpul de după ultima salvare nu a fost numărat.",
-            [("keep", "Păstrează timpul înregistrat"), ("custom", "Introdu durata manual"),
-             ("discard", "Renunță la sesiune")])
-        if ans == "keep":
-            self.run_write(lambda: t.finalize_recovered(saved))
-        elif ans == "custom":
-            from .formats import parse_duration
-
-            val = ask_string(self.root, "Durată lucrată", "Cât ai lucrat efectiv (ex: 45, 1h30)?",
-                             str(int(saved // 60)), "Salvează")
-            try:
-                mins = parse_duration(val or "") if val else None
-            except ValueError as exc:
-                show_error(self.root, str(exc))
-                mins = None
-            if mins is not None:
-                self.run_write(lambda: t.finalize_recovered(mins * 60))
-        elif ans == "discard":
-            t.discard()
-        self.refresh_all()
+    def _handle_recovered_timer(self):
+        t=self.timer
+        if not t or not t.recovered or self.ws.read_only or getattr(self,'_recovering_session',False):return
+        self._recovering_session=True
+        try:
+            rec=t.recovered;st=t.state
+            if st.finalization:
+                if confirm(self.root,'Încheierea sesiunii a fost întreruptă. Reiau salvarea fără a adăuga timp?'):
+                    self.run_write(t.stop)
+                return
+            ans=ask_choice(self.root,'Sesiune de recuperat',
+                f'Task: {rec.node_title}\nUltima stare: {"În pauză" if st.state=="paused" else "În lucru"}\n'
+                f'Ultima salvare: {st.heartbeat_at.astimezone(self.q.tz()):%d.%m.%Y %H:%M:%S}\n'
+                f'Lucrat salvat: {format_seconds(t.seconds)}. Timpul cât aplicația a fost închisă NU este muncă.\n'
+                'Continuă păstrează timpul salvat; încheierea la o oră aleasă nu adaugă automat intervalul offline.',
+                [('continue','Continuă'),('end','Încheie la o oră aleasă…'),('discard','Renunță la intervalul nesalvat')])
+            if ans=='continue':self.run_write(t.continue_recovered)
+            elif ans=='end':
+                from .session_ui import parse_local_stamp
+                value=ask_string(self.root,'Ora încheierii','Data și ora efectivă ISO, cu offset pentru DST:',
+                    st.heartbeat_at.astimezone(self.q.tz()).isoformat(timespec='seconds'),'Încheie')
+                if value:
+                    try:stamp=parse_local_stamp(value,self.ws.settings.timezone)
+                    except ValueError as exc:show_error(self.root,str(exc));return
+                    self.run_write(lambda:t.finalize_recovered(t.seconds,stopped_at=stamp))
+            elif ans=='discard':
+                # Saved heartbeat work is preserved; only the unknown/offline interval is discarded.
+                self.run_write(lambda:t.finalize_recovered(t.seconds,stopped_at=st.heartbeat_at))
+            self.refresh_all();self.timer_indicator.update_state()
+        finally:self._recovering_session=False
 
 
 class StartSessionDialog(ModalDialog):

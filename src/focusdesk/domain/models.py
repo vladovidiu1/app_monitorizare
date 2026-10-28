@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from enum import StrEnum
-from pathlib import PureWindowsPath
+from pathlib import Path, PureWindowsPath
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -63,7 +63,7 @@ def validate_managed_relpath(path: str) -> str:
 
 
 def validate_external_path(path: str) -> str:
-    if not PureWindowsPath(path).is_absolute():
+    if not (PureWindowsPath(path).is_absolute() or Path(path).is_absolute()):
         raise ValueError("calea externa trebuie sa fie absoluta")
     return path
 
@@ -71,12 +71,21 @@ def validate_external_path(path: str) -> str:
 class SourceWorkspace(_Base):
     """Folderul de cod asociat unui nod: `external` (cale absoluta) sau `managed` (relativ la nod)."""
 
-    path: str
-    mode: Literal["external", "managed"] = "external"
+    path: str = ""
+    mode: Literal["external", "managed", "shared", "disabled"] = "external"
+    owner_node_id: str | None = None
+    shared_mode: Literal["external", "managed"] | None = None
 
     @model_validator(mode="after")
     def _check_path(self) -> "SourceWorkspace":
-        if self.mode == "managed":
+        if self.mode == 'disabled':
+            if self.path or self.owner_node_id or self.shared_mode: raise ValueError('Acces dezactivat cu referință invalidă')
+        elif self.mode == 'shared':
+            if not self.owner_node_id or not is_uuid(self.owner_node_id) or self.shared_mode is None:
+                raise ValueError('Sursa comună necesită proprietar UUID și mod explicit')
+            if self.shared_mode == 'managed': validate_managed_relpath(self.path)
+            else: validate_external_path(self.path)
+        elif self.mode == "managed":
             validate_managed_relpath(self.path)
         else:
             validate_external_path(self.path)
@@ -132,6 +141,9 @@ class Node(_Base):
     requested_by: Colleague | None = None
     review_at: UtcDateTime | None = None
     tags: list[str] = Field(default_factory=list)
+    continuation_of: str | None = None  # Typed follow-up relation, independent of hierarchy/dependencies.
+    creation_operation_id: str | None = None
+    meeting_ids: list[str] = Field(default_factory=list)
     related_node_ids: list[str] = Field(default_factory=list)
     depends_on_ids: list[str] = Field(default_factory=list)
     sort_order: int = 0
@@ -144,14 +156,14 @@ class Node(_Base):
     recurrence_template_id: str | None = None
     occurrence_date: date | None = None
 
-    @field_validator("id", "parent_id")
+    @field_validator("id", "parent_id", "continuation_of", "creation_operation_id")
     @classmethod
     def _uuid(cls, v: str | None) -> str | None:
         if v is not None and not is_uuid(v):
             raise ValueError("UUID invalid")
         return v
 
-    @field_validator("related_node_ids", "depends_on_ids")
+    @field_validator("related_node_ids", "depends_on_ids", "meeting_ids")
     @classmethod
     def _uuid_list(cls, v: list[str]) -> list[str]:
         for item in v:
@@ -198,6 +210,8 @@ class Node(_Base):
             raise ValueError("un task are nevoie de status")
         if self.parent_id is not None and self.parent_id == self.id:
             raise ValueError("un nod nu poate fi propriul parinte")
+        if self.continuation_of == self.id: raise ValueError('O cerință nu poate continua propriul task')
+        if self.continuation_of is not None and self.kind != Kind.TASK: raise ValueError('Numai taskurile pot fi cerințe ulterioare')
         if self.id in self.related_node_ids or self.id in self.depends_on_ids:
             raise ValueError("un nod nu poate face referire la sine")
         return self

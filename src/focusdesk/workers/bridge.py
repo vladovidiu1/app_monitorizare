@@ -79,21 +79,21 @@ class UiBridge:
                 log.exception("Job %s a esuat", name)
 
                 def fail(exc=exc) -> None:
-                    job.done = True
-                    if job.token.cancelled:
-                        return
-                    if on_error:
-                        on_error(exc)
+                    try:
+                        if not job.token.cancelled and on_error:
+                            on_error(exc)
+                    finally:
+                        job.done = True
                 self.post(fail)
                 return
 
             def ok() -> None:
-                job.done = True
-                # Un rezultat sosit dupa anulare nu se mai aplica.
-                if job.token.cancelled:
-                    return
-                if on_done:
-                    on_done(result)
+                try:
+                    # Keep the job pending through UI-side metadata registration/modal callbacks.
+                    if not job.token.cancelled and on_done:
+                        on_done(result)
+                finally:
+                    job.done = True
             self.post(ok)
 
         self._pool.submit(run)

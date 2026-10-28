@@ -106,8 +106,7 @@ class CheckpointService:
         return [m for m, _ in out]
 
     def list_for_node(self, node_id: str) -> list[CheckpointManifest]:
-        src = self.files.effective_source(node_id)
-        return self.list_for_owner(src.owner_id) if src else []
+        return self.list_for_owner(self.files.checkpoint_owner(node_id))
 
     def get(self, node_id: str, checkpoint_id: str) -> CheckpointManifest:
         for m in self.list_for_node(node_id):

@@ -13,6 +13,8 @@ import ttkbootstrap as tb
 from ..domain.labels import format_worked
 from .common import muted_color, ok_color
 from .design import C
+from ..services.activity import activity_model, ActivityFilters, live_snapshot
+from .tree_rows import sync_rows
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -33,7 +35,10 @@ class DashboardWindow(tk.Toplevel):
     def __init__(self, app: "FocusDeskApp") -> None:
         super().__init__(app.root)
         self.app = app
-        self.title("Dashboard — timp lucrat")
+        self.title("Activitate — calendar lunar")
+        self.project_id = app.activity_page._project_options.get(app.activity_page.project.get(), "*")
+        self.focus_projects = app.activity_page._focus_projects
+        self._focus_day = None
         self.geometry("1080x660")
         self.minsize(820, 520)
         today = app.q.today()
@@ -82,10 +87,11 @@ class DashboardWindow(tk.Toplevel):
         self.tv.grid(row=1, column=0, sticky="nsew")
         vbar.grid(row=1, column=1, sticky="ns")
         self.tv.bind("<Double-1>", self._open_task)
+        self.tv.bind("<Return>", self._open_task)
         self.total_lbl = ttk.Label(side, text="", style="Muted.TLabel")
         self.total_lbl.grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
         ttk.Label(side, text="Dublu-clic pe un task îl deschide în aplicație. Contează doar sesiunile pornite din "
-                  "timer, nu cele planificate.", style="Muted.TLabel", wraplength=380, justify="left"
+                  "actual_seconds; timpul live este separat, fără dublare.", style="Muted.TLabel", wraplength=380, justify="left"
                   ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 0))
         self.bind("<Escape>", lambda _e: self.destroy())
         self.refresh()
@@ -126,14 +132,15 @@ class DashboardWindow(tk.Toplevel):
         app = self.app
         first = date(self.year, self.month, 1)
         last = date(self.year, self.month, calendar.monthrange(self.year, self.month)[1])
-        self._data = app.q.worked_by_day(first, last, app.live_session())
+        self.report = activity_model(app.ws).report(ActivityFilters(first,last,self.project_id,focus_projects=self.focus_projects),live=live_snapshot(app))
+        self._data = self.report.saved_by_day()
         self.month_lbl.configure(text=f"{MONTHS[self.month - 1]} {self.year}")
         self._draw_grid(first, last)
         self._fill_list()
         total = sum(sum(d.values()) for d in self._data.values())
         tasks = {n for d in self._data.values() for n in d}
         self.summary_lbl.configure(
-            text=f"Luna: {format_worked(total) or '0 min'}  ·  {len(self._data)} zile lucrate  ·  {len(tasks)} task-uri")
+            text=f"Salvat: {format_worked(total) or '0 min'} · Live separat: {format_worked(self.report.live) or '0 min'}")
 
     def _draw_grid(self, first: date, last: date) -> None:
         for w in self.grid_frame.winfo_children():
@@ -171,8 +178,16 @@ class DashboardWindow(tk.Toplevel):
                     tk.Label(cell, text=f"{n} task-uri" if n != 1 else "1 task", background=bg, foreground=text_fg,
                              font=(self._root()._focusdesk_family, 8)).pack(side="bottom", pady=(0, 3))
                 if in_month:
+                    cell.configure(takefocus=True)
                     for w in (cell, *cell.winfo_children()):
                         w.bind("<Button-1>", lambda _e, d=day: self._select(d))
+                    def focus_in(event,d=day,w=cell):
+                        self._focus_day=d;w.configure(highlightbackground=C.accent,highlightcolor=C.accent)
+                    cell.bind('<FocusIn>',focus_in)
+                    cell.bind('<FocusOut>',lambda event,w=cell,border=border:w.configure(highlightbackground=border))
+                    if day==self._focus_day:cell.focus_set()
+                    cell.bind('<Return>',lambda event,d=day:self._select(d))
+                    cell.bind('<space>',lambda event,d=day:self._select(d))
 
     def _fill_list(self) -> None:
         ws = self.app.ws
@@ -187,13 +202,12 @@ class DashboardWindow(tk.Toplevel):
                     rows[nid] = rows.get(nid, 0) + s
             self.side_lbl.configure(text=f"{MONTHS[self.month - 1]} — toată luna")
             self.month_btn.state(["disabled"])
-        self.tv.delete(*self.tv.get_children())
+        rendered = []
         for nid, secs in sorted(rows.items(), key=lambda kv: kv[1], reverse=True):
             node = ws.nodes.get(nid)
-            if node is None:
-                continue
-            where = " › ".join(a.title for a in ws.ancestors(nid))
-            self.tv.insert("", "end", iid=nid, values=(node.title, where, format_worked(secs)))
+            where = " › ".join(a.title for a in ws.ancestors(nid)) if node else ''
+            rendered.append(('',nid,dict(values=(node.title if node else 'Task indisponibil',where,format_worked(secs)))))
+        sync_rows(self.tv,rendered)
         total = sum(rows.values())
         self.total_lbl.configure(text=f"Total: {format_worked(total) or '0 min'}" if rows else "Nicio sesiune lucrată.")
 

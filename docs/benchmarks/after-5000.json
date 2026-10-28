@@ -1,0 +1,106 @@
+{
+  "tasks": 5000,
+  "active_tasks": 50,
+  "sessions": 15000,
+  "history": 15000,
+  "first_open": {
+    "ui_construct": {
+      "ms": 273.93,
+      "reads": 0,
+      "bytes": 0
+    },
+    "cold_open": {
+      "ms": 9611.44,
+      "reads": 20003,
+      "bytes": 20631952
+    },
+    "navigation": {
+      "ms": 269.32,
+      "reads": 84,
+      "bytes": 93408
+    },
+    "select": {
+      "ms": 15.05,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "save_title": {
+      "ms": 2.36,
+      "reads": 1,
+      "bytes": 795
+    },
+    "refresh_after_save": {
+      "ms": 42.77,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "search": {
+      "ms": 776.46,
+      "reads": 5000,
+      "bytes": 11597680
+    },
+    "activity": {
+      "ms": 895.86,
+      "reads": 1174,
+      "bytes": 1305488
+    },
+    "totals": {
+      "worked": 1058400,
+      "planned": 2116800
+    },
+    "memory": {
+      "python_peak_mib": 78.8,
+      "rss_peak_mib": 215.54
+    }
+  },
+  "indexed_reopen": {
+    "ui_construct": {
+      "ms": 250.11,
+      "reads": 0,
+      "bytes": 0
+    },
+    "cold_open": {
+      "ms": 4888.58,
+      "reads": 5,
+      "bytes": 11022222
+    },
+    "navigation": {
+      "ms": 308.61,
+      "reads": 84,
+      "bytes": 93408
+    },
+    "select": {
+      "ms": 31.82,
+      "reads": 2,
+      "bytes": 3128
+    },
+    "save_title": {
+      "ms": 1.54,
+      "reads": 1,
+      "bytes": 808
+    },
+    "refresh_after_save": {
+      "ms": 81.79,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "search": {
+      "ms": 806.06,
+      "reads": 5000,
+      "bytes": 11597680
+    },
+    "activity": {
+      "ms": 846.84,
+      "reads": 1174,
+      "bytes": 1305488
+    },
+    "totals": {
+      "worked": 1058400,
+      "planned": 2116800
+    },
+    "memory": {
+      "python_peak_mib": 83.43,
+      "rss_peak_mib": 226.18
+    }
+  }
+}

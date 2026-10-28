@@ -24,7 +24,8 @@ from ..errors import (
 from .atomic import atomic_write_json, atomic_write_text, read_json, sha256_file
 from .lock import WorkspaceLock
 from .paths import ensure_path_fits, is_node_dirname, is_reparse_point, physical_dirname
-from .records import RecordStore
+from .records import RecordStore, signature, checksum, write_cache
+from .node_cache import NavigationNode, navigation_data
 
 log = logging.getLogger(__name__)
 
@@ -59,11 +60,22 @@ class WorkspaceRepository:
         self.dirs: dict[str, Path] = {}
         self.issues: list[LoadIssue] = []
         self._hashes: dict[tuple[str, str], str] = {}
+        self._stamps = {}
+        self._edit_baselines = {}
         self._mutex = threading.RLock()
-        self.sessions = RecordStore(self.system_dir / "sessions", SessionRecord)
-        self.history = RecordStore(self.system_dir / "history", HistoryEvent)
-        self.operations = RecordStore(self.system_dir / "operations", OperationRecord)
-        self.recurrences = RecordStore(self.system_dir / "recurrences", RecurrenceTemplate, keep_backup=True)
+        self.active_task_ids = set()
+        self.task_ids = set()
+        self.project_ids = set()
+        self.reload_generation = 0
+        self.generation = 0
+        self.aggregate_generation = 0
+        self._cache_entries = {}
+        self._notes = {}
+        self._index_dirty = False
+        self.sessions = RecordStore(self.system_dir / "sessions", SessionRecord, writable=lambda: not self.read_only)
+        self.history = RecordStore(self.system_dir / "history", HistoryEvent, writable=lambda: not self.read_only)
+        self.operations = RecordStore(self.system_dir / "operations", OperationRecord, writable=lambda: not self.read_only, before_write=self.mark_index_dirty)
+        self.recurrences = RecordStore(self.system_dir / "recurrences", RecurrenceTemplate, keep_backup=True, writable=lambda: not self.read_only)
 
     # ---- layout -----------------------------------------------------
     @property
@@ -137,7 +149,35 @@ class WorkspaceRepository:
                 d.mkdir(parents=True, exist_ok=True)
 
     def close(self) -> None:
+        self.write_index()
+        for store in (self.sessions, self.history, self.operations, self.recurrences, *self._notes.values()):
+            store.flush()
         self.lock.release()
+
+    @property
+    def cache_path(self):
+        return self.system_dir / 'cache' / 'nodes.json'
+
+    def mark_index_dirty(self):
+        if self.read_only:
+            return
+        marker = self.system_dir / 'cache' / 'nodes-dirty.json'
+        if not marker.exists():
+            atomic_write_json(marker, {'dirty': True}, keep_backup=False)
+        self._index_dirty = True
+
+    def index_node(self, node):
+        from ..domain.models import CLOSED_STATUSES
+        for collection in (self.task_ids,self.active_task_ids,self.project_ids): collection.discard(node.id)
+        if node.kind == Kind.TASK:
+            self.task_ids.add(node.id)
+            if node.status not in CLOSED_STATUSES: self.active_task_ids.add(node.id)
+        elif node.kind == Kind.PROJECT: self.project_ids.add(node.id)
+
+    def invalidate_records(self):
+        for store in (self.sessions, self.history, self.operations, self.recurrences, *self._notes.values()):
+            store.invalidate()
+
 
     def _require_writable(self) -> None:
         if self.read_only:
@@ -165,15 +205,34 @@ class WorkspaceRepository:
         atomic_write_json(self.settings_path, settings.model_dump(mode="json"))
 
     # ---- loading ----------------------------------------------------
-    def load(self) -> None:
+    def load(self, *, force=False) -> None:
         with self._mutex:
+            self.reload_generation += 1
+            self.generation += 1
+            self.aggregate_generation += 1
+            self._index_dirty = True
+            self._cache_entries = {}
+            if not force and not (self.system_dir / 'cache' / 'nodes-dirty.json').exists():
+                try:
+                    cached, _, _ = read_json(self.cache_path, allow_backup=False)
+                    if cached['version'] == 1 and cached['workspace_id'] == self.meta.id and cached['checksum'] == checksum(cached['nodes']) and isinstance(cached['nodes'],dict):
+                        self._cache_entries = cached['nodes']
+                        self._index_dirty = False
+                except (CorruptFileError, KeyError, TypeError):
+                    pass
             self.nodes.clear()
             self.dirs.clear()
             self._hashes.clear()
+            self._stamps.clear()
             self.issues = []
             if self.nodes_dir.exists():
                 self._scan(self.nodes_dir, None, parent_known=False)
+            self.task_ids.clear(); self.active_task_ids.clear(); self.project_ids.clear()
+            for node in self.nodes.values(): self.index_node(node)
             self._validate_graph()
+            if len(self._cache_entries) != len(self.nodes): self._index_dirty = True
+            self._cache_entries = {}
+            if not self.index_path.exists(): self._index_dirty = True
 
     def _issue(self, severity: str, code: str, message: str, path: Path | None = None,
                node_id: str | None = None) -> None:
@@ -199,14 +258,32 @@ class WorkspaceRepository:
                         f"Directorul {entry.name} nu conține node.json și a fost ignorat.", entry)
             return
         try:
-            data, digest, from_bak = read_json(njson)
-            node = Node.model_validate(migrate_node_data(data))
+            entry_data = self._cache_entries.get(str(entry.relative_to(self.root)))
+            if isinstance(entry_data, dict) and entry_data.get('stamp') == signature(njson):
+                try:
+                    digest = entry_data['digest']
+                    if set(entry_data['meta']) != set(Node.model_fields) - {'attachments','checklist'}:
+                        raise ValueError('metadate incomplete')
+                    node = NavigationNode.model_validate(entry_data['meta'])
+                    if not isinstance(digest, str) or len(digest) != 64:
+                        raise ValueError('hash invalid')
+                    node._loader = lambda path=njson: Node.model_validate(migrate_node_data(read_json(path)[0]))
+                    from_bak = False
+                except (KeyError, TypeError, ValueError):
+                    self._index_dirty = True
+                    data, digest, from_bak = read_json(njson)
+                    node = Node.model_validate(migrate_node_data(data))
+            else:
+                self._index_dirty = True
+                data, digest, from_bak = read_json(njson)
+                node = Node.model_validate(migrate_node_data(data))
         except (CorruptFileError, PydanticValidationError) as exc:
             self._issue("error", "node_corrupt", f"{njson}: {exc}", njson)
             # Copiii raman incarcabili; parintele fizic este necunoscut.
             self._scan(entry / "children", None, parent_known=False)
             return
         if from_bak:
+            self._stamps.pop(node.id,None)
             self._issue("warning", "node_from_backup",
                         f"node.json corupt, s-a folosit copia .bak: {entry.name}", njson, node.id)
         if node.id in self.nodes:
@@ -216,8 +293,10 @@ class WorkspaceRepository:
         if not is_node_dirname(entry.name):
             self._issue("warning", "unusual_dirname", f"Nume director neobișnuit: {entry.name}", entry, node.id)
         self.nodes[node.id] = node
+        self.index_node(node)
         self.dirs[node.id] = entry
         self._hashes[(node.id, "node.json")] = digest
+        if not from_bak: self._stamps[node.id] = signature(njson)
         if parent_known and node.parent_id != physical_parent:
             self._issue("warning", "parent_mismatch",
                         f"'{node.title}': parent_id nu corespunde locației fizice.", entry, node.id)
@@ -226,6 +305,9 @@ class WorkspaceRepository:
     def load_node_dir(self, entry: Path, physical_parent: str | None = None) -> None:
         """Incarca un singur director de nod (si eventualii copii din layout vechi), de ex. dupa restaurare din cos."""
         with self._mutex:
+            self.mark_index_dirty()
+            self.generation += 1
+            self.aggregate_generation += 1
             self._load_entry(entry, physical_parent, parent_known=False)
 
     def _validate_graph(self) -> None:
@@ -241,6 +323,14 @@ class WorkspaceRepository:
                 if ref not in self.nodes:
                     self._issue("warning", "dangling_dependency",
                                 f"'{node.title}': dependență către nod inexistent {ref}.", None, node.id)
+        for node in self.nodes.values():
+            if node.continuation_of and node.continuation_of not in self.nodes:
+                self._issue('warning','missing_continuation','Taskul sursă al cerinței este indisponibil.',None,node.id)
+            current=node.continuation_of;visited={node.id}
+            while current in self.nodes:
+                if current in visited:
+                    self._issue('error','continuation_cycle','Ciclu în lanțul cerințelor.',None,node.id);break
+                visited.add(current);current=self.nodes[current].continuation_of
         for node in self.nodes.values():
             seen = {node.id}
             cur = node.parent_id
@@ -263,6 +353,7 @@ class WorkspaceRepository:
             ensure_path_fits(target)
             if target.exists():
                 raise StorageError(f"Directorul există deja: {target.name}")
+            self.mark_index_dirty()
             try:
                 target.mkdir(parents=True)
                 for sub in NODE_SUBDIRS:
@@ -274,13 +365,17 @@ class WorkspaceRepository:
                 raise
             except OSError as exc:
                 raise StorageError(f"Crearea nodului a eșuat: {exc}") from exc
+            self.generation += 1
+            self.aggregate_generation += 1
             self.nodes[node.id] = node
+            self.index_node(node)
             self.dirs[node.id] = target
             self._hashes[(node.id, "node.json")] = digest
+            self._stamps[node.id] = signature(target / "node.json")
             return target
 
     def _check_unmodified(self, node_id: str, name: str, path: Path) -> None:
-        recorded = self._hashes.get((node_id, name))
+        recorded = self._edit_baselines.get((node_id,name),self._hashes.get((node_id, name)))
         if recorded is None:
             return
         if not path.exists():
@@ -300,9 +395,16 @@ class WorkspaceRepository:
             path = self.dirs[new.id] / "node.json"
             self._check_unmodified(new.id, "node.json", path)
             stored = new.model_copy(update={"revision": old.revision + 1, "updated_at": utcnow()})
+            self.mark_index_dirty()
             digest = atomic_write_json(path, stored.model_dump(mode="json"))
+            self.generation += 1
+            if any(getattr(old,k) != getattr(stored,k) for k in ('parent_id','status','estimated_minutes','remaining_minutes')):
+                self.aggregate_generation += 1
             self.nodes[new.id] = stored
+            self.index_node(stored)
+            self._edit_baselines.pop((new.id,"node.json"),None)
             self._hashes[(new.id, "node.json")] = digest
+            self._stamps[new.id] = signature(path)
             return stored
 
     def reload_node(self, node_id: str) -> Node:
@@ -310,13 +412,20 @@ class WorkspaceRepository:
             path = self.dirs[node_id] / "node.json"
             data, digest, _ = read_json(path)
             node = Node.model_validate(migrate_node_data(data))
+            self.generation += 1
+            self.aggregate_generation += 1
             self.nodes[node_id] = node
+            self.index_node(node)
             self._hashes[(node_id, "node.json")] = digest
+            self._stamps[node_id] = signature(path)
             return node
 
     def note_dir_relocated(self, node_id: str, new_dir: Path) -> None:
         """Actualizeaza caile in memorie pentru nod si descendentii lui dupa o mutare fizica."""
         with self._mutex:
+            self.mark_index_dirty()
+            self.generation += 1
+            self.aggregate_generation += 1
             old_dir = self.dirs[node_id]
             for nid, d in list(self.dirs.items()):
                 try:
@@ -327,15 +436,22 @@ class WorkspaceRepository:
 
     def forget_subtree(self, node_ids: list[str]) -> None:
         with self._mutex:
+            self.mark_index_dirty()
+            self.generation += 1
+            self.aggregate_generation += 1
             for nid in node_ids:
                 self.nodes.pop(nid, None)
+                self.task_ids.discard(nid); self.active_task_ids.discard(nid); self.project_ids.discard(nid)
                 self.dirs.pop(nid, None)
+                self._stamps.pop(nid,None)
                 self._hashes.pop((nid, "node.json"), None)
                 self._hashes.pop((nid, "description.md"), None)
 
     # ---- description ------------------------------------------------
     def read_description(self, node_id: str) -> str:
         path = self.dirs[node_id] / "description.md"
+        self._edit_baselines.pop((node_id,"description.md"),None)
+        self._edit_baselines.pop((node_id,"node.json"),None)
         if not path.exists():
             self._hashes.pop((node_id, "description.md"), None)
             return ""
@@ -351,31 +467,37 @@ class WorkspaceRepository:
             path = self.dirs[node_id] / "description.md"
             self._check_unmodified(node_id, "description.md", path)
             self._hashes[(node_id, "description.md")] = atomic_write_text(path, text)
+            self._edit_baselines.pop((node_id,"description.md"),None)
 
     # ---- notes ------------------------------------------------------
     def notes_store(self, node_id: str) -> RecordStore[NoteEntry]:
-        return RecordStore(self.dirs[node_id] / "notes", NoteEntry)
+        directory = self.dirs[node_id] / 'notes'
+        if node_id not in self._notes or self._notes[node_id].directory != directory:
+            self._notes[node_id] = RecordStore(directory, NoteEntry, writable=lambda: not self.read_only)
+        return self._notes[node_id]
 
     # ---- index ------------------------------------------------------
     def write_index(self) -> None:
-        """Cache reconstructibil; stergerea lui nu pierde date."""
-        if self.read_only:
+        """Checkpoint disposable indexes at close/reload, never on every field edit."""
+        if self.read_only or not self._index_dirty:
             return
-        entries: dict[str, Any] = {}
-        for nid, node in self.nodes.items():
-            try:
-                rel = str(self.dirs[nid].relative_to(self.root))
-            except ValueError:
-                rel = str(self.dirs[nid])
-            entries[nid] = {
-                "title": node.title, "kind": node.kind.value, "parent_id": node.parent_id,
-                "status": node.status.value if node.status else None,
-                "due_date": node.due_date.isoformat() if node.due_date else None,
-                "dir": rel,
-            }
+        entries = {}
+        legacy = {}
         try:
-            atomic_write_json(self.index_path, {
-                "schema_version": SCHEMA_VERSION, "generated_at": fmt_utc(utcnow()), "nodes": entries,
-            }, keep_backup=False)
-        except StorageError as exc:
-            log.warning("Index nescris: %s", exc)
+            for nid, node in self.nodes.items():
+                rel = str(self.dirs[nid].relative_to(self.root))
+                if nid not in self._stamps: continue
+                entries[rel] = {'meta':navigation_data(node),
+                                'stamp':self._stamps[nid],
+                                'digest':self._hashes[(nid,'node.json')]}
+                legacy[nid] = {'title':node.title,'kind':node.kind.value,'parent_id':node.parent_id,
+                               'status':node.status.value if node.status else None,
+                               'due_date':node.due_date.isoformat() if node.due_date else None,'dir':rel}
+            write_cache(self.cache_path, {'version':1,'workspace_id':self.meta.id,'nodes':entries,'checksum':checksum(entries)})
+            # Preserve legacy schema for backup/diagnostic consumers. Not a loading authority.
+            atomic_write_json(self.index_path, {'schema_version':SCHEMA_VERSION,
+                'generated_at':fmt_utc(utcnow()),'nodes':legacy}, keep_backup=False)
+            (self.system_dir / 'cache' / 'nodes-dirty.json').unlink(missing_ok=True)
+            self._index_dirty = False
+        except (StorageError, OSError, KeyError):
+            log.warning('Index nescris; va fi reconciliat la deschidere.',exc_info=True)

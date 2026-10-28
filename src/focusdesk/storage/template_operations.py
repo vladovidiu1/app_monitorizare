@@ -18,16 +18,14 @@ def rollback_template(repo, op):
                 data,_,_=read_json(path/'node.json',allow_backup=False)
                 if data.get('id')!=node.id:raise StorageError('Identitate schimbată; recuperare manuală necesară')
             shutil.rmtree(path)
-        repo.nodes.pop(node.id,None);repo.dirs.pop(node.id,None)
-        for key in list(repo._hashes):
-            if key[0]==node.id:repo._hashes.pop(key,None)
+        repo.forget_subtree([node.id])
     op.state='rolled_back';op.updated_at=utcnow();repo.operations.save(op)
 
 
 def recover_templates(repo):
     if repo.read_only:return []
     messages=[]
-    for op in repo.operations.list_all():
+    for op in repo.operations.select(predicate=lambda row:row.get('state')=='pending' and row.get('type')=='template_create'):
         if op.type!='template_create' or op.state!='pending':continue
         try:
             rollback_template(repo,op)

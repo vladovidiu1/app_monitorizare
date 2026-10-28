@@ -81,3 +81,7 @@ Auto Save din VS Code este recomandat, dar aplicația nu schimbă setările VS C
 Verifică pe un calculator fără Python: pornește `FocusDesk.exe`, creează un workspace gol, un proiect/task/subtask, închide
 și redeschide (datele și ordinea se păstrează), pornește o sesiune, salvează un checkpoint. Pictograma și resursele trebuie
 să se încarce; datele rămân în folderul workspace-ului.
+
+## Import de întâlniri, separat de rezervări
+
+Calendar → Întâlniri are propria alegere explicită a calendarului și import doar pentru citire, pe interval limitat, prin același ComWorker. Nu citește Body/HTMLBody, atașamente sau lista participanților și nu apelează Save/Send/Delete pe programări. Recurențele folosesc CleanGlobalObjectId/GlobalAppointmentID și ExceptionReplaceTime pentru slotul original. Limitările și lista verificărilor necesare pe Outlook Classic real sunt în [INTALNIRI.md](INTALNIRI.md). Testele curente folosesc backend fals; nu constituie validare Outlook real.

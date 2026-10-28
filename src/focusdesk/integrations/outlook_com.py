@@ -160,6 +160,10 @@ class OutlookComBackend:
             yield item, s, e
             item = coll.GetNext()
 
+    def read_meetings(self,store_id,folder_id,start_utc,end_utc):
+        from .meetings import read_outlook_meetings
+        return read_outlook_meetings(self,store_id,folder_id,start_utc,end_utc)
+
     def read_events(self, store_id: str, folder_id: str, start_utc: datetime, end_utc: datetime) -> list[RawEvent]:
         folder = self._folder(store_id, folder_id)
         out: list[RawEvent] = []

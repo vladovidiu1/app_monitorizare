@@ -79,7 +79,7 @@ def test_single_editable_field_preserves_literal_content(ui):
     widgets = list(descendants(editor))
     assert [w for w in widgets if isinstance(w, tk.Text)] == [editor.text]
     assert not any(isinstance(w, (ttk.Notebook, ttk.Menubutton)) for w in widgets)
-    assert [w.cget('text') for w in widgets if isinstance(w, ttk.Button)] == ['Extinde descrierea']
+    assert [w.cget('text') for w in widgets if isinstance(w, ttk.Button)] == ['Extinde descrierea', 'Completează cu ghid…']
     assert str(editor.text.cget('state')) == 'normal'
     editor.text.insert('end-1c', '\nAdăugare')
     ui.root.update()
@@ -158,6 +158,7 @@ def test_failed_expanded_save_stays_open_without_losing_text(ui, monkeypatch):
 
 
 def test_status_icons_are_distinct_live_and_parent_is_not_completed(ui):
+    ui.config.show_completed = True  # This test explicitly inspects every status in the tree.
     task = ui.ws.get(ui.selected_id)
     project = ui.ws.create_node(Kind.PROJECT,'Proiect')
     folder = ui.ws.create_node(Kind.FOLDER,'Folder')

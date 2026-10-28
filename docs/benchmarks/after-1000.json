@@ -1,0 +1,106 @@
+{
+  "tasks": 1000,
+  "active_tasks": 50,
+  "sessions": 3000,
+  "history": 3000,
+  "first_open": {
+    "ui_construct": {
+      "ms": 249.33,
+      "reads": 0,
+      "bytes": 0
+    },
+    "cold_open": {
+      "ms": 1910.0,
+      "reads": 4003,
+      "bytes": 4127952
+    },
+    "navigation": {
+      "ms": 151.78,
+      "reads": 18,
+      "bytes": 20016
+    },
+    "select": {
+      "ms": 10.96,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "save_title": {
+      "ms": 2.12,
+      "reads": 1,
+      "bytes": 795
+    },
+    "refresh_after_save": {
+      "ms": 21.86,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "search": {
+      "ms": 150.53,
+      "reads": 1000,
+      "bytes": 2317680
+    },
+    "activity": {
+      "ms": 174.27,
+      "reads": 241,
+      "bytes": 267992
+    },
+    "totals": {
+      "worked": 226800,
+      "planned": 453600
+    },
+    "memory": {
+      "python_peak_mib": 19.11,
+      "rss_peak_mib": 102.03
+    }
+  },
+  "indexed_reopen": {
+    "ui_construct": {
+      "ms": 293.58,
+      "reads": 0,
+      "bytes": 0
+    },
+    "cold_open": {
+      "ms": 966.62,
+      "reads": 5,
+      "bytes": 2206222
+    },
+    "navigation": {
+      "ms": 167.3,
+      "reads": 18,
+      "bytes": 20016
+    },
+    "select": {
+      "ms": 13.87,
+      "reads": 2,
+      "bytes": 3128
+    },
+    "save_title": {
+      "ms": 1.64,
+      "reads": 1,
+      "bytes": 808
+    },
+    "refresh_after_save": {
+      "ms": 32.43,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "search": {
+      "ms": 159.65,
+      "reads": 1000,
+      "bytes": 2317680
+    },
+    "activity": {
+      "ms": 177.04,
+      "reads": 241,
+      "bytes": 267992
+    },
+    "totals": {
+      "worked": 226800,
+      "planned": 453600
+    },
+    "memory": {
+      "python_peak_mib": 20.05,
+      "rss_peak_mib": 103.94
+    }
+  }
+}

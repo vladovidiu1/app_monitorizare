@@ -1,0 +1,127 @@
+{
+  "meetings": 2000,
+  "tasks": 5000,
+  "active_tasks": 50,
+  "sessions": 15000,
+  "history": 15000,
+  "first_open": {
+    "ui_construct": {
+      "ms": 282.75,
+      "reads": 0,
+      "bytes": 0
+    },
+    "cold_open": {
+      "ms": 12353.83,
+      "reads": 24004,
+      "bytes": 21914125
+    },
+    "navigation": {
+      "ms": 284.93,
+      "reads": 84,
+      "bytes": 95172
+    },
+    "select": {
+      "ms": 18.32,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "save_title": {
+      "ms": 2.69,
+      "reads": 1,
+      "bytes": 876
+    },
+    "refresh_after_save": {
+      "ms": 45.61,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "search": {
+      "ms": 784.29,
+      "reads": 5000,
+      "bytes": 11597680
+    },
+    "activity": {
+      "ms": 8018.03,
+      "reads": 15001,
+      "bytes": 3315261
+    },
+    "totals": {
+      "worked": 1058400,
+      "planned": 2116800
+    },
+    "meetings_list": {
+      "ms": 58.35,
+      "reads": 0,
+      "bytes": 0
+    },
+    "meeting_open": {
+      "ms": 13.92,
+      "reads": 4,
+      "bytes": 12037
+    },
+    "memory": {
+      "python_peak_mib": 115.32,
+      "rss_peak_mib": 326.93
+    }
+  },
+  "indexed_reopen": {
+    "ui_construct": {
+      "ms": 285.36,
+      "reads": 0,
+      "bytes": 0
+    },
+    "cold_open": {
+      "ms": 6319.41,
+      "reads": 6,
+      "bytes": 12777394
+    },
+    "navigation": {
+      "ms": 389.33,
+      "reads": 84,
+      "bytes": 95172
+    },
+    "select": {
+      "ms": 36.9,
+      "reads": 2,
+      "bytes": 3209
+    },
+    "save_title": {
+      "ms": 1.64,
+      "reads": 1,
+      "bytes": 889
+    },
+    "refresh_after_save": {
+      "ms": 91.92,
+      "reads": 1,
+      "bytes": 2320
+    },
+    "search": {
+      "ms": 802.87,
+      "reads": 5000,
+      "bytes": 11597680
+    },
+    "activity": {
+      "ms": 2512.4,
+      "reads": 1,
+      "bytes": 5265468
+    },
+    "totals": {
+      "worked": 1058400,
+      "planned": 2116800
+    },
+    "meetings_list": {
+      "ms": 133.14,
+      "reads": 0,
+      "bytes": 0
+    },
+    "meeting_open": {
+      "ms": 13.19,
+      "reads": 4,
+      "bytes": 12037
+    },
+    "memory": {
+      "python_peak_mib": 121.75,
+      "rss_peak_mib": 338.57
+    }
+  }
+}

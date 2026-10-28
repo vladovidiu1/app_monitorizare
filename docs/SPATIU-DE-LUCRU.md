@@ -67,3 +67,20 @@ Capturi reale din workspace demonstrativ temporar:
 [fereastră minimă](capturi-ui/task-space-min.png),
 [scalare Tk 125%](capturi-ui/task-space-125.png).
 Scalarea Tk pe Linux nu echivalează cu verificarea DPI nativă Windows.
+
+## Completarea asistată a descrierii
+
+Butonul **Completează cu ghid…**, lângă Descriere, folosește aceeași ciornă și
+același Undo/Redo ca inspectorul și editorul extins. Formularul are ciornă proprie;
+Aplică nu salvează taskul și nu transformă pașii în checklist sau subtaskuri.
+[Aplicare, adăugare/înlocuire și anulare](DESCRIERE-MARKDOWN.md#completează-cu-ghid).
+
+## Update-uri ulterioare ale scriptului
+
+Folosește Redeschide pentru continuarea cerinței inițiale sau Adaugă cerință nouă… pentru muncă independentă. Folderul de cod poate fi comun, cu checkpointuri proprii fiecărei cerințe. [Ghid](CERINTE-ULTERIOARE.md).
+
+Indicatorul permanent al sesiunii rămâne vizibil și în Concentrare. Începe pe alt task oferă continuarea sesiunii existente, încheierea ei înaintea noului task sau anulare. [Ghidul sesiunilor](SESIUNI.md).
+
+## Contextul întâlnirilor
+
+Taskurile legate de o întâlnire au meniul compact Întâlniri legate, navigabil spre notițe. Acțiunile se transformă numai explicit în taskuri/proiecte sau cerințe noi; deschiderea contextului nu pornește o sesiune. [Ghid](INTALNIRI.md).

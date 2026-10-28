@@ -137,7 +137,7 @@ class DetailsTab(InspectorTab):
         self._link_ids: list[str] = []
 
         self.editor = MarkdownEditor(self.panes, on_change=self._desc_changed,
-                                     on_save=self.save, expand=self.expand_description)
+                                     on_save=self.save, expand=self.expand_description, guide_context=self.description_context, on_guide_applied=self._mark_dirty)
         self.desc = self.editor.text
         self.panes.add(self.editor, weight=2)
         self._split_initialized = False
@@ -160,6 +160,7 @@ class DetailsTab(InspectorTab):
     def load(self, node: Node) -> None:
         same = self.node_id == node.id
         super().load(node)
+        self.editor.clear_guide_notice()
         self._loaded_node = node.model_copy(deep=True)
         ws, q = self.app.ws, self.app.q
         self._loading = True
@@ -211,6 +212,17 @@ class DetailsTab(InspectorTab):
             self.panes.sashpos(0, min(220, int(event.height * .4)))
         elif self.panes.sashpos(0) > max(100, event.height - 240):
             self.panes.sashpos(0, max(100, event.height - 240))
+
+    def description_context(self):
+        ws = self.app.ws
+        if ws is None or ws.read_only or self.node_id not in ws.nodes or self.app.inspector.node_id != self.node_id:
+            return None
+        try:
+            if not (ws.node_dir(self.node_id) / 'node.json').is_file():
+                return None
+        except (OSError, KeyError):
+            return None
+        return ws, self.node_id
 
     def expand_description(self):
         if self.app.ws.read_only or not self.node_id:

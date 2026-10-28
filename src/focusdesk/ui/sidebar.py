@@ -78,6 +78,7 @@ class Sidebar(ttk.Frame):
 
     # ---- population -------------------------------------------------
     def refresh(self) -> None:
+        from .tree_rows import sync_rows
         ws, q = self.app.ws, self.app.q
         self.show_hierarchy(self.app.current_view.startswith(("tasks", "tree:", "search:")) or self.app.current_view == "archive")
         self._suppress = True
@@ -86,18 +87,17 @@ class Sidebar(ttk.Frame):
             horizontal = self.tree.xview()[0]
             open_ids = {i for i in self._all_items() if self.tree.item(i, "open")}
             selected = self.tree.selection()
-            self.tree.delete(*self.tree.get_children())
-            cmap = ws.children_map()
+            rows = []
+            visible = ws.active_context_ids() if not self.app.config.show_completed else None
+            cmap = ws.active_children_map() if visible is not None else ws.children_map()
             show_archived = self.app.config.show_archived
 
             def add(parent_iid: str, n: Node) -> None:
                 archived = q.is_archived(n)
                 if archived and not show_archived:
                     return
-                if not self.app.config.show_completed and n.status in CLOSED_STATUSES:
-                    # Keep a closed ancestor as structure if it has visible open descendants.
-                    if not any(ws.nodes[k].status not in CLOSED_STATUSES for k in ws.subtree_ids(n.id, include_self=False)):
-                        return
+                if visible is not None and n.id not in visible:
+                    return
                 tags = []
                 if n.status in CLOSED_STATUSES:
                     tags.append("closed")
@@ -105,13 +105,14 @@ class Sidebar(ttk.Frame):
                     tags.append("archived")
                 kids = cmap.get(n.id, [])
                 is_open = n.id in open_ids or (self._first_fill and parent_iid == "")
-                self.tree.insert(parent_iid, "end", iid=n.id, text="  " + n.title + " · " + node_label(n), image=node_icon(self,n),
-                                 open=is_open, tags=tags)
+                rows.append((parent_iid,n.id,dict(text="  " + n.title + " · " + node_label(n), image=(str(node_icon(self,n)),),
+                                 open=is_open,tags=tags)))
                 for c in kids:
                     add(n.id, c)
 
             for n in cmap.get(None, []):
                 add("", n)
+            sync_rows(self.tree,rows)
             self.tree.yview_moveto(scroll)
             self.tree.xview_moveto(horizontal)
             self._first_fill = False

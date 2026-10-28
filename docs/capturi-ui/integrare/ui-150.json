@@ -1,0 +1,247 @@
+{
+  "platform": "Linux/Xvfb, not Windows",
+  "scale": 1.5,
+  "geometry": "1650x1050+0+0",
+  "checks": [
+    {
+      "name": "guide_apply",
+      "ok": true,
+      "widget": [
+        806,
+        963,
+        1002,
+        1010
+      ],
+      "container": [
+        0,
+        0,
+        1140,
+        1020
+      ]
+    },
+    {
+      "name": "task_save",
+      "ok": true,
+      "widget": [
+        808,
+        378,
+        1002,
+        429
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "task_description",
+      "ok": true,
+      "widget": [
+        344,
+        553,
+        1247,
+        1016
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "timer_in_focus",
+      "ok": true,
+      "widget": [
+        670,
+        1035,
+        1618,
+        1091
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "timer_pause",
+      "ok": true,
+      "widget": [
+        1230,
+        1037,
+        1324,
+        1088
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "timer_stop",
+      "ok": true,
+      "widget": [
+        1328,
+        1037,
+        1430,
+        1088
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "timer_open",
+      "ok": true,
+      "widget": [
+        1434,
+        1037,
+        1613,
+        1088
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "dashboard_export",
+      "ok": true,
+      "widget": [
+        1265,
+        130,
+        1402,
+        177
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "dashboard_cards",
+      "ok": true,
+      "widget": [
+        342,
+        391,
+        1614,
+        777
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "dashboard_filters",
+      "ok": true,
+      "widget": [
+        342,
+        229,
+        1614,
+        351
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "meetings_import",
+      "ok": true,
+      "widget": [
+        1393,
+        172,
+        1628,
+        223
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "meetings_manual",
+      "ok": true,
+      "widget": [
+        1005,
+        172,
+        1196,
+        223
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "meetings_open",
+      "ok": true,
+      "widget": [
+        531,
+        928,
+        656,
+        979
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "meeting_editor",
+      "ok": true,
+      "widget": [
+        340,
+        448,
+        1616,
+        702
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    },
+    {
+      "name": "meeting_actions",
+      "ok": true,
+      "widget": [
+        1523,
+        705,
+        1628,
+        752
+      ],
+      "container": [
+        0,
+        45,
+        1650,
+        1095
+      ]
+    }
+  ]
+}

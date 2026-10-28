@@ -129,3 +129,34 @@ Dacă rollbackul nu poate termina, jurnalul rămâne pending și eroarea este ex
 previn suprascrierea ciornelor concurente. Backupurile standard le includ fără alt
 format de restaurare. Resursele `resources/templates/*.json` sunt incluse în pachet
 prin setuptools și `collect_data_files` existent pentru PyInstaller; nu a fost construit EXE.
+
+## Indexuri și refresh incremental
+
+`storage/node_cache.py` păstrează metadatele de navigare și hidratează conținutul
+greu la cerere. `RecordStore` indexează proprietarul și datele înregistrărilor,
+cu modele complete limitate în memorie și copii independente pentru editare.
+Indexurile JSON sunt dispensabile; markerii de scriere întreruptă impun reconcilierea.
+`ui/tree_rows.py` aplică diferențe și loturi pe firul Tk. Inspectorul și pagina
+taskului încarcă numai secțiunile solicitate. Descrierea actuală este un câmp simplu,
+fără toolbar sau previzualizare; referințele anterioare la editorul asistat descriu
+implementarea veche. Contractul complet și măsurătorile: [PERFORMANTA.md](PERFORMANTA.md).
+
+## Modelul comun Activitate
+
+`services/activity.py` definește filtrele, rândurile și raportul canonic. Pagina
+Activitate, calendarul lunar, worked_by_day și CSV reutilizează acest model.
+Indexul istoricului versiunea 2 include ținta tranziției de status; fișierele
+autoritare nu se schimbă. `ui/activity_charts.py` desenează grafice native Canvas,
+cu alternative tabelare și tastatură. Detalii: [ACTIVITATE-DASHBOARD.md](ACTIVITATE-DASHBOARD.md).
+
+## Cerințe ulterioare
+
+`FollowupService` validează relația tipizată și destinația; `Workspace` expune mutațiile; `storage/followup_operations.py` aplică și recuperează planurile idempotente. Metadatele originale și sesiunile rămân autoritare. [Contract](CERINTE-ULTERIOARE.md).
+
+## Timer și corecții
+
+TimerService persistă intenția înaintea pornirii și planul înghețat înaintea încheierii; rezumatul și evenimentul au ID-uri deterministe. SessionService salvează atomic corecția împreună cu auditul în aceeași sesiune. Indicatorul Tk nu accesează widgeturi din workers. [Detalii](SESIUNI.md).
+
+## Întâlniri
+
+MeetingService gestionează importul, notițele, acțiunile și legăturile; MeetingStore separă JSON-ul sursei, JSON-ul local și Markdown-ul cu CAS și index reconstructibil. CalendarHub reutilizează Agenda și adaugă MeetingPage. Cititorul de metadate `integrations/meetings.py` rulează prin ComWorker; aplicarea locală este progresivă pe Tk, fără acces la widgeturi din workers. Conversiile reutilizează motorul recuperabil existent și FollowupService. [Contract și verificări](INTALNIRI.md).

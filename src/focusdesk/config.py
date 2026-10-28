@@ -40,7 +40,7 @@ class AppConfig(BaseModel):
     geometry: str | None = None
     show_inspector: bool = True
     show_archived: bool = False
-    show_completed: bool = True
+    show_completed: bool = False
     last_view: str = 'today'
     inspector_tab: str = 'Detalii'
 
@@ -60,6 +60,7 @@ class AppConfig(BaseModel):
 
     sash_left: int | None = None
     sash_right: int | None = None
+    long_session_minutes: int = Field(default=240, ge=0)
     session_open: dict[str, bool] = Field(default_factory=dict)
 
     @classmethod

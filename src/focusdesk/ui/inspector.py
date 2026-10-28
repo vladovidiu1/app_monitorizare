@@ -70,11 +70,19 @@ class Inspector(ttk.Frame):
         for label,command in (("Compune e-mail…",app.compose_mail),("Mută / asociază proiect…",app.move_selected),
                               ("Arhivează / restaurează",app.toggle_archive_selected),("Deschide folderul",lambda:app.open_node_folder(self.node_id))):
             menu.add_command(label=label,command=command)
+        self.more_menu=menu
+        menu.add_command(label="Adaugă cerință nouă…",command=lambda:app.add_followup(self.node_id))
+        menu.add_command(label="Redeschide cu motiv…",command=lambda:app.reopen_with_reason(self.node_id))
         more.configure(menu=menu)
         self.space_btn = ttk.Button(self,text="Deschide spațiul de lucru",command=lambda:app.open_task_space(self.node_id))
         self.nb = ttk.Notebook(self, style="Inspector.TNotebook")
         self.nb.pack(fill="both", expand=True, padx=6, pady=6)
+        from .meetings import MeetingLinks
+        self.meeting_links=MeetingLinks(self,app)
+        from .followups import FollowupContext
+        self.followup_context=FollowupContext(self,app)
         self.bind("<Configure>", lambda e: (self.head_lbl.configure(wraplength=max(160,e.width-32)), self.path_lbl.configure(wraplength=max(160,e.width-32))))
+        self._pending_tabs = {}
         self.tabs: list[InspectorTab] = []
         self.nb.bind('<<NotebookTabChanged>>', self._remember_tab)
         self.empty = ttk.Label(self, text="Selectează un folder, proiect sau task\npentru a vedea detaliile.",
@@ -86,12 +94,22 @@ class Inspector(ttk.Frame):
 
     def _remember_tab(self,event=None):
         current = self.nb.select()
+        for tab in self.tabs:
+            if str(tab) == current: self._load_pending(tab)
         if current and self.node_id is not None:
             self.app.config.inspector_tab = self.nb.tab(current,'text')
 
     def tab_by_title(self, title: str) -> InspectorTab | None:
         title = {'Jurnal':'Activitate','Subtask-uri':'Subtaskuri'}.get(title,title)
-        return next((t for t in self.tabs if t.title == title), None)
+        tab = next((t for t in self.tabs if t.title == title), None)
+        if tab is not None: self._load_pending(tab)
+        return tab
+
+    def _load_pending(self, tab):
+        nid = self._pending_tabs.pop(tab,None)
+        if nid is not None and self.app.ws and nid in self.app.ws.nodes:
+            if tab.node_id == nid and (tab.is_dirty() or getattr(tab,'expanded',None) is not None): return
+            tab.load(self.app.ws.get(nid))
 
     def show_tab(self, title: str) -> None:
         tab = self.tab_by_title(title)
@@ -109,6 +127,8 @@ class Inspector(ttk.Frame):
             self.actions.pack_forget()
             self.space_btn.pack_forget()
             self.next_lbl.configure(text="")
+            self.meeting_links.pack_forget()
+            self.followup_context.pack_forget()
             self.nb.pack_forget()
             self.empty.place(relx=0.5, rely=0.4, anchor="center")
             return
@@ -116,6 +136,7 @@ class Inspector(ttk.Frame):
         if not self.nb.winfo_ismapped():
             self.nb.pack(fill="both", expand=True, padx=6, pady=6)
         node = self.app.ws.get(node_id)
+        self.meeting_links.load(node,self.nb)
         self.head_lbl.configure(text=node.title, foreground=C.muted if node.status in CLOSED_STATUSES else C.text)
         summary = node_label(node)
         if node.kind == Kind.TASK:
@@ -124,13 +145,18 @@ class Inspector(ttk.Frame):
             summary += " · " + (format_date(day) if day else "Fără termen")
         self.status_lbl.configure(text=summary, image=node_icon(self,node))
         self.reopen_btn.state(["disabled"] if self.app.ws.read_only else ["!disabled"])
+        self.more_menu.entryconfigure('Adaugă cerință nouă…',state='normal' if node.kind==Kind.TASK and not self.app.ws.read_only else 'disabled')
+        self.more_menu.entryconfigure('Redeschide cu motiv…',state='normal' if node.kind==Kind.TASK and node.status in CLOSED_STATUSES and not self.app.ws.read_only else 'disabled')
         if node.kind == Kind.TASK:
+            self.followup_context.pack(fill='x',padx=6,before=self.nb)
+            self.followup_context.load(node)
             self.space_btn.pack(fill="x",padx=10,pady=(0,4),before=self.nb)
             self.actions.pack(fill="x",padx=10,pady=4,before=self.nb)
             self.reopen_btn.configure(text="Redeschide taskul" if node.status in CLOSED_STATUSES else "Finalizează")
             self.next_lbl.configure(text="Următorul pas: " + (node.next_action or "Completează în Detalii"))
             self.start_btn.update_state()
         else:
+            self.followup_context.pack_forget()
             self.space_btn.pack_forget()
             self.actions.pack_forget()
             self.next_lbl.configure(text="")
@@ -141,7 +167,11 @@ class Inspector(ttk.Frame):
             state = "normal" if tab.applies_to(node) else "hidden"
             self.nb.tab(tab, state=state)
             if state == "normal" and not (keep_dirty and same and (tab.is_dirty() or getattr(tab, "expanded", None) is not None)):
-                tab.load(node)
+                self._pending_tabs[tab] = node.id
+                if tab.title in ('Subtaskuri','Activitate'):
+                    tab.node_id = node.id  # Bind shared draft ownership without reading ledger/files.
+                if tab.title == 'Detalii' or str(tab) == current:
+                    self._load_pending(tab)
         if current and self.nb.tab(current, "state") == "hidden":
             self.nb.select(self.tabs[0])
         if not same:

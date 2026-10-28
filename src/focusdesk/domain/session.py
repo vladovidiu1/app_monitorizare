@@ -46,7 +46,8 @@ class SessionRecord(_Base):
     origin: Literal["manual", "assisted", "timer"] = "manual"
     note: str | None = None
     reserve_calendar: bool = False
-    actual_seconds: int = 0
+    actual_seconds: int = Field(default=0, ge=0)
+    corrections: list[dict] = Field(default_factory=list)
     started_actual_at: UtcDateTime | None = None
     stopped_actual_at: UtcDateTime | None = None
     summary: str | None = None

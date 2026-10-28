@@ -59,11 +59,17 @@ class TaskSpace(ttk.Frame):
                               ('Cod în VS Code',lambda:app.open_code_in_vscode(self.node_id)),
                               ('Copiază descrierea',self.copy_description)]:
             self.menu.add_command(label=label,command=command)
+        self.menu.add_command(label='Adaugă cerință nouă…',command=lambda:app.add_followup(self.node_id))
+        self.menu.add_command(label='Redeschide cu motiv…',command=lambda:app.reopen_with_reason(self.node_id))
         more.configure(menu=self.menu)
         self.timer_lbl=ttk.Label(self,style='Muted.TLabel');self.timer_lbl.pack(fill='x',pady=(4,0))
         self.state=ttk.Label(self,style='Muted.TLabel',wraplength=900);self.state.pack(fill='x',pady=(2,5))
+        from .meetings import MeetingLinks
+        self.meeting_links=MeetingLinks(self,app)
+        from .followups import FollowupContext
+        self.followup_context=FollowupContext(self,app);self.followup_context.pack(fill='x')
         self.body=ttk.PanedWindow(self,orient='horizontal');self.body.pack(fill='both',expand=True)
-        self.editor=MarkdownEditor(self.body,source=self.details.desc,on_change=self.changed,on_save=self.save)
+        self.editor=MarkdownEditor(self.body,source=self.details.desc,on_change=self.changed,on_save=self.save,guide_context=self.details.description_context,on_guide_applied=self.guide_applied)
         self.body.add(self.editor,weight=3)
         self.secondary=ttk.Frame(self.body,padding=(6,0))
         ttk.Label(self.secondary,text='Următorul pas',style='Section.TLabel').pack(anchor='w')
@@ -85,6 +91,7 @@ class TaskSpace(ttk.Frame):
                 tab.tv.column('status',width=90,minwidth=80,stretch=False)
                 tab.tv.column('progress',width=76,minwidth=70,stretch=False)
             self.sections[label]=tab;self.scrolls[label]=scroll
+        self.nb.bind("<<NotebookTabChanged>>",lambda event:self._load_section())
         self.body.add(self.secondary,weight=2)
         self._split=False
         self.body.bind('<Configure>',self._size_body)
@@ -105,6 +112,9 @@ class TaskSpace(ttk.Frame):
 
     def changed(self):
         self.details._desc_changed();self.update_state()
+
+    def guide_applied(self):
+        self.details._mark_dirty();self.update_state()
 
     def is_dirty(self):
         if self.node_id not in self.app.ws.nodes:
@@ -176,6 +186,7 @@ class TaskSpace(ttk.Frame):
         if str(self.secondary) in self.body.panes():self.body.forget(self.secondary)
         else:
             self.body.add(self.secondary,weight=2)
+            self._load_section()
             self.body.sashpos(0,max(330,self.body.winfo_width()-365))
         self.panel_btn.configure(text='Ascunde panoul taskului' if str(self.secondary) in self.body.panes() else 'Arată panoul taskului')
 
@@ -266,6 +277,9 @@ class TaskSpace(ttk.Frame):
             self.state.configure(text='Taskul a fost șters sau mutat în coș. Ciorna rămâne disponibilă în Mai multe → Copiază descrierea.',foreground=C.danger)
             self.editor.set_read_only(True);self.next_entry.configure(state='disabled')
             for b in (self.start_btn,self.stop_btn,self.done_btn,self.save_btn):b.state(['disabled'])
+            self.meeting_links.pack_forget()
+            self.followup_context.pack_forget()
+            self.menu.entryconfigure(5,state='disabled');self.menu.entryconfigure(6,state='disabled')
             self.nb.pack_forget();self.missing_help.pack(fill='x',pady=12)
             for i in range(4):self.menu.entryconfigure(i,state='disabled')
             return
@@ -280,15 +294,27 @@ class TaskSpace(ttk.Frame):
         self.breadcrumb.configure(text=' › '.join(n.title for n in [*app.ws.ancestors(node.id),node]))
         self.summary.configure(text=f'{node_label(node)} · {PRIORITY_LABELS.get(node.priority, "")} · {format_date(app.q.due_day(node)) or "Fără termen"}'+(' · Arhivat' if app.q.is_archived(node) else ''),image=node_icon(self,node))
         ro=app.ws.read_only
+        self.meeting_links.load(node,self.body)
+        self.followup_context.pack(fill='x',before=self.body);self.followup_context.load(node)
+        self.menu.entryconfigure(5,state='disabled' if ro else 'normal')
+        self.menu.entryconfigure(6,state='normal' if not ro and node.status in CLOSED_STATUSES else 'disabled')
         self.editor.set_read_only(ro);self.next_entry.configure(state='disabled' if ro else 'normal')
         self.save_btn.state(['disabled'] if ro else ['!disabled']);self.done_btn.state(['disabled'] if ro else ['!disabled'])
         self.done_btn.configure(text='Redeschide' if node.status in CLOSED_STATUSES else 'Finalizează')
         self.menu.entryconfigure(1,state='disabled' if ro else 'normal');self.menu.entryconfigure(2,state='disabled' if ro else 'normal')
-        for label,tab in self.sections.items():
-            if isinstance(tab,JournalTab) and tab.is_dirty() and tab.node_id==node.id:continue
-            tab.load(node)
-            if label=="Pași": tab.check_tv.configure(height=max(1,min(5,len(node.checklist))))
+        if not self.details.is_dirty():self.editor.clear_guide_notice()
+        self._load_section()
         self.update_state();self.update_timer()
+
+    def _load_section(self):
+        if not self.active or not self.node_id or self.node_id not in self.app.ws.nodes: return
+        selected = self.nb.select()
+        for label, tab in self.sections.items():
+            if str(self.scrolls[label]) != selected: continue
+            if tab.node_id == self.node_id and tab.is_dirty(): return
+            node = self.app.ws.get(self.node_id)
+            tab.load(node)
+            if label == 'Pași': tab.check_tv.configure(height=max(1,min(5,len(node.checklist))))
 
     def update_timer(self):
         if not self.active or not self.app.ws:return
@@ -300,4 +326,4 @@ class TaskSpace(ttk.Frame):
         if active:
             node=self.app.ws.nodes.get(t.node_id)
             self.timer_lbl.configure(text=f'{"În lucru" if t.running else "În pauză"} · {node.title if node else "Task"} · {format_seconds(t.seconds)}')
-        else:self.timer_lbl.configure(text='Nicio sesiune activă')
+        else:self.timer_lbl.configure(text='Nicio sesiune de lucru pornită')

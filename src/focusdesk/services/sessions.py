@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from ..domain.common import utcnow
 from ..domain.models import CLOSED_STATUSES, Kind, Node
 from ..domain.session import SessionRecord
-from ..errors import FocusDeskError, NotFoundError, ValidationError
+from ..errors import FocusDeskError, NotFoundError, ValidationError, ExternalModificationError
 from .workspace import Workspace
 
 log = logging.getLogger(__name__)
@@ -48,12 +48,11 @@ class SessionService:
         return self.ws.repo.sessions.list_all(check=check)
 
     def for_node(self, node_id: str, include_cancelled: bool = True) -> list[SessionRecord]:
-        out = [s for s in self.all() if s.node_id == node_id and (include_cancelled or s.status != "cancelled")]
+        out = [s for s in self.ws.repo.sessions.select(node_ids={node_id}) if include_cancelled or s.status != "cancelled"]
         return sorted(out, key=lambda s: s.start_at)
 
     def between(self, start: datetime, end: datetime, statuses: tuple[str, ...] = ("planned", "active")) -> list[SessionRecord]:
-        return sorted((s for s in self.all() if s.status in statuses and s.start_at < end and s.end_at > start),
-                      key=lambda s: s.start_at)
+        return sorted(self.ws.repo.sessions.overlapping(start,end,statuses), key=lambda s:s.start_at)
 
     def overlaps(self, start: datetime, end: datetime, ignore_id: str | None = None) -> list[SessionRecord]:
         return [s for s in self.between(start, end) if s.id != ignore_id]
@@ -118,8 +117,8 @@ class SessionService:
     def cancel(self, session_id: str) -> SessionRecord:
         self.ws.repo._require_writable()
         s = self.ws.repo.sessions.get(session_id)
-        if s.status not in ("planned", "active"):
-            raise ValidationError("Sesiunea nu mai poate fi anulată.")
+        if s.status not in ("planned",):
+            raise ValidationError("Doar rezervările programate pot fi anulate. Încheie sesiunea curentă din timer.")
         s.status = "cancelled"
         if s.sync.entry_id and s.sync.state in ("saved_locally", "pending", "conflict"):
             s.sync.state = "pending"
@@ -135,7 +134,7 @@ class SessionService:
             return 0
         now = now or utcnow()
         n = 0
-        for s in self.all():
+        for s in self.ws.repo.sessions.select(predicate=lambda r: r.get("status") == "planned"):
             if s.status == "planned" and s.end_at < now:
                 s.status = "missed"
                 self.ws.repo.sessions.save(s)
@@ -170,3 +169,54 @@ class SessionService:
             if desc:
                 lines.append("Descriere: " + desc[:500])
         return "\n".join(lines)
+
+
+    def correct_time(self, session_id, seconds, *, reason='', started_at=None, stopped_at=None, expected=None):
+        """One atomic authoritative write includes both values and their audit trail."""
+        from ..domain.common import new_id, fmt_utc
+        self.ws.repo._require_writable()
+        s = self.ws.repo.sessions.get(session_id)
+        if expected is not None and s!=expected:
+            raise ExternalModificationError('Sesiunea s-a modificat după deschiderea dialogului. Reîncarcă datele înainte de corecție.')
+        timer_path=self.ws.repo.system_dir/'timer.json'
+        if timer_path.exists():
+            from ..storage.atomic import read_json
+            state,_,_=read_json(timer_path)
+            if state.get('session_id')==session_id:
+                raise ValidationError('Încheie mai întâi recuperarea timerului acestei sesiuni.')
+        if s.status != 'done': raise ValidationError('Se corectează numai sesiuni încheiate.')
+        if isinstance(seconds, bool) or not isinstance(seconds, int) or seconds < 0:
+            raise ValidationError('Durata trebuie să fie un număr întreg de secunde, pozitiv sau zero.')
+        start = started_at if started_at is not None else s.started_actual_at
+        end = stopped_at if stopped_at is not None else s.stopped_actual_at
+        if any(value is not None and (value.tzinfo is None or value.utcoffset() is None) for value in (start,end)):
+            raise ValidationError('Intervalul trebuie să includă fusul orar.')
+        if (started_at is not None or stopped_at is not None) and end and end>utcnow():
+            raise ValidationError('Sfârșitul efectiv nu poate fi în viitor.')
+        if start and end and (end < start or seconds > (end-start).total_seconds()):
+            raise ValidationError('Durata lucrată nu poate depăși intervalul efectiv ales.')
+        if (started_at is not None or stopped_at is not None) and (not start or not end):
+            raise ValidationError('Specifică ambele capete ale intervalului efectiv.')
+        start=start.astimezone(timezone.utc) if start else None
+        end=end.astimezone(timezone.utc) if end else None
+        before = dict(seconds=s.actual_seconds,started_at=s.started_actual_at.isoformat() if s.started_actual_at else None,
+                      stopped_at=s.stopped_actual_at.isoformat() if s.stopped_actual_at else None)
+        after = dict(seconds=seconds,started_at=start.isoformat() if start else None,stopped_at=end.isoformat() if end else None)
+        if before == after: return s
+        s.corrections.append(dict(id=new_id(),at=fmt_utc(utcnow()),before=before,after=after,reason=reason.strip()))
+        s.actual_seconds=seconds;s.started_actual_at=start;s.stopped_actual_at=end
+        self.ws.repo.sessions.save(s)
+        self.ws.emit('sessions_changed',node_id=s.node_id)
+        return s
+
+    def diagnostics(self, current_session_id=None):
+        """Metadata only; never repairs old overlapping records implicitly."""
+        rows=self.ws.repo.sessions.summaries()
+        orphans=[r['id'] for r in rows if r['status']=='active' and r['id']!=current_session_id]
+        intervals=sorted((r.get('started_actual_at') or r['start_at'],r.get('stopped_actual_at'),r['id'])
+                         for r in rows if r['status']=='done' and r.get('actual_seconds',0)>0)
+        overlaps=[];latest=None
+        for start,end,rid in intervals:
+            if latest and start<latest[0]:overlaps.append((latest[1],rid))
+            if end and (latest is None or end>latest[0]):latest=(end,rid)
+        return dict(orphan_active=orphans,overlapping_work=overlaps)

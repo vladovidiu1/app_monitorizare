@@ -33,17 +33,32 @@ class PeerText(tk.Text):
 
 
 class MarkdownEditor(ttk.Frame):
-    def __init__(self, parent, *, on_change=lambda: None, on_save=lambda: None, source=None, expand=None):
+    def __init__(self, parent, *, on_change=lambda: None, on_save=lambda: None, source=None, expand=None, guide_context=None, on_guide_applied=lambda: None):
         super().__init__(parent, padding=6)
         self.on_change, self.on_save = on_change, on_save
         self.read_only = False
+        self.guide_context = guide_context
+        self.on_guide_applied = on_guide_applied
+        self.guide_dialog = None
+        self.guide_btn = None
         heading = ttk.Frame(self)
         heading.pack(fill='x')
-        ttk.Label(heading, text='Descriere', style='Section.TLabel').pack(side='left')
+        ttk.Label(heading, text='Descriere', style='Section.TLabel').grid(row=0,column=0,sticky='w')
         self.expand_btn = None
         if expand:
             self.expand_btn = ttk.Button(heading, text='Extinde descrierea', command=expand)
-            self.expand_btn.pack(side='right')
+            self.expand_btn.grid(row=0,column=2,sticky='e')
+        if guide_context is not None:
+            self.guide_btn = ttk.Button(heading,text='Completează cu ghid…',style='Quiet.TButton',command=self.open_guide)
+            self.guide_btn._focusdesk_accessible = True  # Keep the complete, intentional dialog label.
+            self.guide_btn.grid(row=0,column=1,sticky='w',padx=6)
+            def arrange(event):
+                compact=event.width<sum(widget.winfo_reqwidth() for widget in heading.winfo_children())+16
+                self.guide_btn.grid(row=1 if compact else 0,column=0 if compact else 1,columnspan=3 if compact else 1,sticky='w',padx=0 if compact else 6)
+            heading.bind('<Configure>',arrange)
+        heading.columnconfigure(1,weight=1)
+        self.guide_notice=ttk.Label(self,text='',style='Muted.TLabel',wraplength=500)
+        self.bind('<Configure>',lambda event:self.guide_notice.configure(wraplength=max(160,event.width-16)))
         edit = ttk.Frame(self)
         edit.pack(fill='both', expand=True, pady=(4, 0))
         self.text = PeerText(edit, source) if source is not None else tk.Text(edit, undo=True, autoseparators=True)
@@ -58,6 +73,25 @@ class MarkdownEditor(ttk.Frame):
         self.text.bind('<Control-Shift-Z>', lambda e: self.redo())
         self.text.bind('<Control-a>', self.select_all)
         self.text.bind('<Control-s>', lambda e: self.save())
+
+    def open_guide(self):
+        if self.read_only or self.guide_context is None:return None
+        context=self.guide_context()
+        if context is None:return None
+        if self.guide_dialog is not None and self.guide_dialog.winfo_exists():
+            self.guide_dialog.lift();return self.guide_dialog
+        from .description_guide import DescriptionGuide
+        self.guide_dialog=DescriptionGuide(self,context)
+        return self.guide_dialog
+
+    def show_guide_notice(self,message):
+        self.on_guide_applied()
+        self.guide_notice.configure(text=message)
+        self.guide_notice.pack(side='bottom',fill='x',pady=(4,0))
+
+    def clear_guide_notice(self):
+        self.guide_notice.configure(text='')
+        self.guide_notice.pack_forget()
 
     def save(self):
         self.on_save()
@@ -74,7 +108,7 @@ class MarkdownEditor(ttk.Frame):
     def set_read_only(self, value):
         self.read_only = value
         self.text.configure(state='disabled' if value else 'normal')
-        for button in ([self.expand_btn] if self.expand_btn else []):
+        for button in [button for button in (self.expand_btn,self.guide_btn) if button is not None]:
             button.state(['disabled'] if value else ['!disabled'])
 
     def select_all(self, event=None):
@@ -205,7 +239,7 @@ class ExpandedDescription(tk.Toplevel):
         self.geometry('1050x760')
         self.minsize(700, 500)
         self.transient(details.winfo_toplevel())
-        self.editor = MarkdownEditor(self, source=details.desc, on_change=details._desc_changed, on_save=self.save)
+        self.editor = MarkdownEditor(self, source=details.desc, on_change=details._desc_changed, on_save=self.save, guide_context=details.description_context, on_guide_applied=details._mark_dirty)
         self.editor.pack(fill='both', expand=True)
         ttk.Label(self, text='Salvează: scrie descrierea și detaliile taskului. Anulează: revine la textul de la deschidere.', style='Muted.TLabel', wraplength=800).pack(fill='x', padx=12)
         bar = ttk.Frame(self, padding=10)

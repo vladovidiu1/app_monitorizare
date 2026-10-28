@@ -39,4 +39,10 @@ def ui(ws, tmp_path, monkeypatch):
     app.inspector.revert()
     if app.timer and app.timer.state:
         app.timer.discard()
+    # Closing intentionally retains the workspace lock until local workers have finished.
+    import time
+    deadline=time.monotonic()+5
+    while app._pending_workspace_jobs() and time.monotonic()<deadline:
+        app.root.update();time.sleep(.01)
+    assert not app._pending_workspace_jobs(), 'Local worker did not finish during fixture cleanup'
     app.on_close()
