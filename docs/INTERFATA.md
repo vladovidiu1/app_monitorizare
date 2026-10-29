@@ -96,7 +96,7 @@ executabil în această etapă.
 
 Pictogramele originale MIT diferențiază statusurile prin formă și etichete text,
 inclusiv în arbore, căutare și inspector. Descrierea are panou redimensionabil,
-editor extins și previzualizare Tk. [Comportament, scurtături și limite](DESCRIERE-MARKDOWN.md).
+editor extins cu buffer comun, fără bară de formatare sau file de previzualizare. [Comportament, scurtături și limite](DESCRIERE-MARKDOWN.md).
 
 ## Navigare și lucru zilnic
 

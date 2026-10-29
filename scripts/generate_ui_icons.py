@@ -1,9 +1,11 @@
 """Generate the original FocusDesk outline icons (MIT). Development only, not runtime."""
 from pathlib import Path
+import sys
 from PIL import Image, ImageDraw
 ROOT=Path(__file__).resolve().parents[1]/'src/focusdesk/resources/icons'
 ROOT.mkdir(parents=True,exist_ok=True)
 SHAPES={
+ 'help':[('line',(12,6,8,4,3,4,3,20,8,20,12,22,16,20,21,20,21,4,16,4,12,6,12,22)),('line',(6,9,9,9)),('line',(15,9,18,9))],
  'pause':[('rect',(6,4,9,20)),('rect',(15,4,18,20))],
  'stop':[('rect',(6,6,18,18))],
  'clear':[('line',(6,6,18,18)),('line',(6,18,18,6))],
@@ -35,6 +37,7 @@ SHAPES={
  'brand':[('rect',(3,3,21,21)),('line',(8,17,8,7,17,7)),('line',(8,12,15,12))],
 }
 for name,shapes in SHAPES.items():
+ if len(sys.argv)>1 and name not in sys.argv[1:]:continue
  im=Image.new('RGBA',(96,96));d=ImageDraw.Draw(im)
  color={'status-done':'#287047','status-in_progress':'#4F46B8','status-testing':'#6750A4'}.get(name,'#596579')
  for shape,points in shapes:

@@ -57,6 +57,7 @@ from .tasklist import TaskList
 from .today import TodayPage
 from .activity_page import ActivityPage
 from .task_space import TaskSpace
+from .user_guide import GuideController
 
 log = logging.getLogger(__name__)
 
@@ -108,6 +109,7 @@ class FocusDeskApp:
         self._tick_job = None
         self._layout_generation = 0
         self._initial_path = workspace_path
+        self.user_guide = GuideController(self)
         self._build_menu()
         self._build_layout()
         self._bind_keys()
@@ -129,6 +131,11 @@ class FocusDeskApp:
         top.pack(fill="x")
         from .design import icon
         ttk.Label(top, text="  FocusDesk", image=icon(top,"brand",24), compound="left", style="Brand.TLabel").pack(side="left")
+        self.guide_btn = ttk.Button(top, text="Ghid de utilizare", image=icon(top,"help",20), compound="left",
+                                    style="Quiet.TButton", command=self.show_guide, takefocus=True)
+        self.guide_btn.pack(side="left", padx=(10, 0))
+        from .common import Tooltip
+        Tooltip(self.guide_btn, "Ghid local de utilizare · F1 pentru ajutor contextual")
         self.ws_label = ttk.Label(top, text="", style="Muted.TLabel", width=21)
         self.ws_label.pack(side="left", padx=(12, 0), pady=(3, 0))
         self.new_btn = tb.Menubutton(top, text="+ Nou", bootstyle="primary")
@@ -285,11 +292,15 @@ class FocusDeskApp:
         # Ajutor
         h = tk.Menu(m, tearoff=False)
         m.add_cascade(label="Ajutor", menu=h, underline=0)
+        h.add_command(label="Ghid de utilizare", command=self.show_guide)
+        h.add_command(label="Ajutor contextual\tF1", command=lambda:self.show_guide(contextual=True))
         h.add_command(label="Scurtături de tastatură", command=self.show_shortcuts)
         h.add_command(label="Despre FocusDesk", command=self.show_about)
+        self.help_menu = h
 
     def _bind_keys(self) -> None:
         r = self.root
+        r.bind_all("<F1>", lambda _e: (self.show_guide(contextual=True), "break")[1])
         r.bind("<F11>",self.toggle_task_focus)
         r.bind("<Control-n>", lambda _e: self.new_node(Kind.TASK))
         r.bind("<Control-f>", lambda _e: (self.search_entry.focus_set(), self.search_entry.select_range(0, "end")))
@@ -1402,12 +1413,11 @@ class FocusDeskApp:
         if SettingsDialog(self.root, self).run():
             self.refresh_all()
 
+    def show_guide(self, chapter=None, *, contextual=False):
+        return self.user_guide.open(chapter, contextual=contextual)
+
     def show_shortcuts(self) -> None:
-        show_info(self.root, "Ctrl+N  task nou\nCtrl+F  căutare globală\nCtrl+S  salvează inspectorul\n"
-                  "Ctrl+M  trimite e-mail din task\nInsert  câmpul de adăugare rapidă (în listă)\n"
-                  "Alt+→ / Alt+←  subtask / scoate un nivel\n"
-                  "F2  redenumește\nF5  reîmprospătează\nEnter în listă  deschide detaliile\n"
-                  "Clic dreapta  meniu contextual\nCtrl+Enter în jurnal  adaugă notița", "Scurtături")
+        self.show_guide('scurtaturi')
 
     def show_about(self) -> None:
         show_info(self.root, f"FocusDesk {__version__}\nOrganizator personal local: fișiere JSON/Markdown, "

@@ -9,8 +9,8 @@ selectat, inspectorul se retrage pentru a lăsa loc conținutului. Selectarea un
 Priorități alese manual (maximum configurat), sesiuni planificate și timerul activ,
 în liste compacte. Fără o sesiune activă, selectează o prioritate și apasă **Începe**.
 Când rulează sesiunea apar **Pauză**, **Încheie sesiunea…** și **Deschide taskul activ**.
-După pauză, **Continuă** reia aceeași sesiune. Pornirea altui task este dezactivată
-până la încheierea sesiunii curente; aceasta nu se oprește implicit.
+După pauză, **Continuă** reia aceeași sesiune. Pornirea explicită a altui task cere alegerea dintre continuarea sesiunii existente,
+încheierea ei și pornirea taskului nou sau anulare; selectarea taskului nu o oprește implicit.
 
 Restantele sunt un număr și o comandă către filtrul din lista de taskuri, fără o
 listă duplicată. Sesiunile din Astăzi deschid Calendarul pentru programare. Listele

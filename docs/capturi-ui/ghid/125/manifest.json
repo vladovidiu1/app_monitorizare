@@ -1,0 +1,58 @@
+{
+  "platform": "linux",
+  "scale_simulated": 1.25,
+  "windows_dpi_verified": false,
+  "native_windows_dialogs_verified": false,
+  "captures": [
+    "ghid-acces-antet.png",
+    "ghid-descriere-minim.png",
+    "ghid-cautare.png",
+    "ghid-din-editor-modal.png"
+  ],
+  "checks": [
+    {
+      "name": "antet-ghid",
+      "ok": true
+    },
+    {
+      "name": "antet-cautare",
+      "ok": true
+    },
+    {
+      "name": "antet-nou",
+      "ok": true
+    },
+    {
+      "name": "minim-search_entry",
+      "ok": true
+    },
+    {
+      "name": "minim-back_btn",
+      "ok": true
+    },
+    {
+      "name": "minim-forward_btn",
+      "ok": true
+    },
+    {
+      "name": "minim-toc",
+      "ok": true
+    },
+    {
+      "name": "minim-article",
+      "ok": true
+    },
+    {
+      "name": "minim-link_combo",
+      "ok": true
+    },
+    {
+      "name": "minim-link_btn",
+      "ok": true
+    },
+    {
+      "name": "minim-close_btn",
+      "ok": true
+    }
+  ]
+}

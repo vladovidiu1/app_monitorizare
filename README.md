@@ -171,3 +171,7 @@ Descriere completă, alegere explicită pentru ciorna nesalvată, atașamente de
 ## Explorator Fișiere
 
 Foldere reale de proiect/task, încărcare la extindere, actualizare la revenire/F5 și atașare la e-mail fără înregistrare manuală. [Ghid, capturi și limite](docs/FISIERE.md).
+
+## Ghid complet în aplicație
+
+**Ghid de utilizare** în antet și **F1** oferă 19 capitole, tutoriale, căutare offline și legături interne, într-o fereastră nemodală. Conținutul inclus în distribuție este documentația canonică de utilizare. [Cuprins](docs/utilizare.md) · [Verificări și limite](docs/GHID-IN-APLICATIE.md).
