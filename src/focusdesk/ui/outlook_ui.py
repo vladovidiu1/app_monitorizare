@@ -12,9 +12,9 @@ from ..domain.settings import Settings
 from ..domain.timeutil import local_day_bounds_utc
 from ..errors import FocusDeskError
 from ..integrations.calendar import AvailabilityResult
-from ..integrations.outlook import CalendarInfo, SyncRequest, availability_from_events, execute
+from ..integrations.outlook import CalendarInfo, MailHandoffUncertain, SyncRequest, availability_from_events, execute
 from ..services.calendar_sync import CalendarSyncService, PlannedOp, SyncSummary
-from ..services.mail import MailDraft
+from ..services.mail import MailDraft, validate_attachments
 from ..workers.com_worker import ComBlocked, ComTimeout, ComWorker
 from .common import ModalDialog, ask_choice, confirm, error_color, make_tree, ok_color, show_error, show_info
 from .planning import fmt_range, sync_state_text
@@ -39,6 +39,7 @@ class OutlookController:
         self.sync_service: CalendarSyncService | None = None
         self.verified = False  # true doar dupa un test reusit in aceasta rulare
         self.last_error: str | None = None
+        self._mail_pending = False
 
     # ---- state ------------------------------------------------------
     def attach(self) -> None:
@@ -233,24 +234,42 @@ class OutlookController:
             show_info(self.app.root, text, "Sincronizare Outlook")
 
     # ---- mail -------------------------------------------------------
-    def send_mail(self, draft: MailDraft, send: bool, on_done: Callable[[str], None]) -> None:
+    def send_mail(self, draft: MailDraft, send: bool, on_done: Callable[[str], None],
+                  on_error: Callable[[BaseException], None] | None = None) -> None:
         """Trimite (sau doar deschide ca ciorna) prin Outlook. Nu depinde de calendarul ales in Setari."""
+        if self._mail_pending:
+            if on_error:
+                on_error(ComBlocked("Un e-mail este deja în curs. Așteaptă rezultatul înainte de o altă operație."))
+            return
+        self._mail_pending = True
+        # Freeze the editable form before crossing the thread boundary. Only primitives reach COM.
+        to, cc, subject, body = list(draft.to), list(draft.cc), draft.subject, draft.body
+        paths = [item.path for item in draft.attachments]
         self.app.status.set_busy("Se trimite e-mailul…" if send else "Se deschide ciorna în Outlook…")
 
         def work(backend):
-            return backend.send_mail(draft.to, draft.cc, draft.subject, draft.body, send=send)
+            selected = validate_attachments(paths)
+            return backend.send_mail(to, cc, subject, body, send=send, attachments=[item.path for item in selected])
 
         def done(result) -> None:
+            self._mail_pending = False
             self.app.status.clear_busy()
-            on_done(str(result))
+            if result not in ("submitted", "displayed"):
+                failed(MailHandoffUncertain(f"Outlook a întors un rezultat necunoscut: {result!r}"))
+                return
+            on_done(result)
 
         def failed(exc: BaseException) -> None:
+            self._mail_pending = False
             self.app.status.clear_busy()
+            if on_error:
+                on_error(exc)
+                return
             msg = str(exc) if isinstance(exc, (ComTimeout, ComBlocked)) else f"{type(exc).__name__}: {exc}"
-            if send and isinstance(exc, ComTimeout):
-                msg += ("\n\nNu pot confirma dacă e-mailul a fost trimis. Verifică „Elemente trimise” în Outlook "
-                        "înainte să îl retrimiți.")
-            show_error(self.app.root, f"E-mailul nu a fost {'trimis' if send else 'deschis'}:\n{msg}", "E-mail")
+            if isinstance(exc, (ComTimeout, MailHandoffUncertain)):
+                msg += ("\n\nRezultatul este incert. Verifică ferestrele deschise, Ciorne, De trimis și Elemente trimise "
+                        "în Outlook înaintea unei noi încercări. Operația nu este reluată automat.")
+            show_error(self.app.root, f"Operația e-mail necesită verificare:\n{msg}", "E-mail")
 
         self.worker.submit(work, done, failed, timeout_s=COM_TIMEOUT_S, name="outlook-mail")
 

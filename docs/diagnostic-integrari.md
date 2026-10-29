@@ -54,20 +54,13 @@ de scriere automată în calendar.
 ## E-mail din task (Outlook Classic, COM) — NEVERIFICAT pe un Outlook real
 
 Implementat: `services/mail.py` (adrese, subiect, text implicit — testat), `integrations/outlook_com.py::send_mail`
-(COM real, **neexecutat în testele automate**), `ui/mail_ui.py` (dialog), `OutlookController.send_mail` (testat cu backend fals).
+(metodă verificată pe obiecte COM false; **Outlook real neexecutat**), `ui/mail_ui.py` (dialog), `OutlookController.send_mail` (testat cu backend fals).
 
-Flux: task selectat → buton „✉ E-mail” / Ctrl+M / clic dreapta › „Trimite e-mail…”. Dialogul propune subiectul
-„Nelămuriri: <task>” și un text cu contextul task-ului (locație, status, termen, următorul pas, descriere limitată), editabil.
-„Trimite” cere confirmare și trimite din contul implicit Outlook; „Deschide ciorna în Outlook” lasă mesajul deschis pentru
-ajustări (nu se trimite nimic). Enter nu trimite din greseală. Dacă Outlook nu poate rezolva un destinatar, **nu se trimite
-nimic**. După o trimitere reușită se adaugă o înregistrare „Acțiune” în Activitatea taskului. La timeout (Outlook blocat de un
-dialog) aplicația nu spune dacă mesajul a plecat: verifică „Elemente trimise”.
+Flux: task selectat → Ctrl+M / „Compune e-mail…” / meniul contextual. Mesaj editabil cu descrierea **completă**, alegerea explicită a ciornei nesalvate și atașamente efective selectate din calculator sau folderele taskului/proiectului. Toate atașamentele sunt validate și adăugate înainte de Display/Send; niciun mesaj parțial nu este trimis la refuzul unui document.
 
-Test manual: (1) „Deschide ciorna” cu un destinatar — trebuie să se deschidă o fereastră de mesaj nou cu subiectul/textul;
-(2) trimite-ți ție un mesaj de test cu „Trimite” și verifică „Elemente trimise” și Activitatea taskului; (3) încearcă o adresă inexistentă
-și o adresă invalidă (fără @) — trebuie refuzate; (4) dacă politica companiei afișează un avertisment de securitate Outlook la
-automatizare, aplicația nu îl ocolește. Mesajul se trimite ca text simplu; semnătura implicită din Outlook poate lipsi în
-modul „Trimite” (o poți scrie în mesaj sau folosi ciorna) — de verificat pe Outlook-ul real.
+Formularul rămâne disponibil la eroare. Confirmarea include destinatari, CC, subiect, număr și dimensiune atașamente. Rezultatul este „ciornă deschisă” sau „mesaj predat Outlook pentru trimitere”, fără confirmarea livrării. Timeoutul/excepția din Send cer verificarea în Outlook înaintea unei noi încercări explicite. Jurnalul notează rezultatul și numele documentelor, fără corpul integral; eșecul jurnalului nu retrimite mesajul.
+
+[Ghidul complet, capturi, teste false și verificarea manuală necesară în Outlook Classic](EMAIL-DIN-TASK.md). Nu s-au trimis mesaje reale și nu s-a executat backendul pe Outlook real.
 
 ## Git și VS Code
 

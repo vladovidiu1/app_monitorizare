@@ -71,7 +71,7 @@ def test_parse_addresses_rejects_invalid(bad):
 
 def test_build_draft_rules_for_send_and_draft():
     d = build_draft("a@b.ro", "", "Sub\niect", " text ")
-    assert d.subject == "Sub iect" and d.body == "text" and d.cc == []
+    assert d.subject == "Sub iect" and d.body == " text " and d.cc == []
     with pytest.raises(ValidationError):
         build_draft("", "", "S", "t")
     with pytest.raises(ValidationError):

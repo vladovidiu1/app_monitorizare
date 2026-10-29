@@ -127,9 +127,9 @@ class ComWorker:
                     continue  # rezultat tardiv: ignorat
                 on_done, on_error = task._on_done, task._on_error  # type: ignore[attr-defined]
                 if err is not None:
-                    self._poster.post(lambda e=err, cb=on_error: cb(e))
+                    self._poster.post(lambda e=err, cb=on_error, t=task: None if t.timed_out else cb(e))
                 else:
-                    self._poster.post(lambda r=result, cb=on_done: cb(r))
+                    self._poster.post(lambda r=result, cb=on_done, t=task: None if t.timed_out else cb(r))
         finally:
             backend = None
             if pythoncom is not None:

@@ -369,8 +369,8 @@ class Workspace:
         self.repo.write_description(node_id, text)
         self.emit("node_updated", node_id=node_id, fields=["description"])
 
-    def get_description(self, node_id: str) -> str:
-        return self.repo.read_description(node_id)
+    def get_description(self, node_id: str, *, observe: bool = True) -> str:
+        return self.repo.read_description(node_id, observe=observe)
 
     def toggle_checklist(self, node_id: str, items: list[tuple[str, bool]]) -> Node:
         return self.update_node(node_id, checklist=[ChecklistItem(text=t, done=d) for t, d in items])

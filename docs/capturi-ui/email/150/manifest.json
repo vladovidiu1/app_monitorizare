@@ -1,0 +1,45 @@
+{
+  "platform": "linux",
+  "scale_simulated": 1.5,
+  "outlook_real": false,
+  "windows_dpi_verified": false,
+  "captures": [
+    "email-atasamente.png",
+    "email-fisiere-proiect.png",
+    "email-eroare-minim.png"
+  ],
+  "geometry_checks": [
+    {
+      "name": "normal-ok_btn",
+      "ok": true
+    },
+    {
+      "name": "normal-draft_btn",
+      "ok": true
+    },
+    {
+      "name": "normal-attachment_tree",
+      "ok": true
+    },
+    {
+      "name": "minim-ok_btn",
+      "ok": true
+    },
+    {
+      "name": "minim-draft_btn",
+      "ok": true
+    },
+    {
+      "name": "minim-checked_btn",
+      "ok": true
+    },
+    {
+      "name": "minim-feedback",
+      "ok": true
+    },
+    {
+      "name": "minim-atasamente-derulate",
+      "ok": true
+    }
+  ]
+}

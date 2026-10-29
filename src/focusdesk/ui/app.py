@@ -43,7 +43,7 @@ from .common import (
 from .dashboard import DashboardWindow
 from .dialogs import IssuesDialog, MoveDialog, NewNodeDialog, NodePickerDialog, TrashDialog
 from .inspector import Inspector
-from .mail_ui import MailDialog
+from .mail_ui import DescriptionSourceDialog, MailDialog
 from .outlook_ui import ConflictsDialog, OutlookController
 from .planning import ManualSessionDialog, MissedRecurrenceDialog, PlannerDialog, RecurrenceDialog
 from .sidebar import Sidebar
@@ -94,6 +94,8 @@ class FocusDeskApp:
         self.session_buttons: list[SessionButton] = []
         self.dashboard: DashboardWindow | None = None
         self.followup_dialog = None
+        self.mail_dialog = None
+        self._mail_composing = False
         self.calendar_provider = LocalOnlyProvider()
         self._busy = 0
         self.current_view = "today"
@@ -993,26 +995,53 @@ class FocusDeskApp:
         if node is None:
             show_info(self.root, "Selectează un task din care să trimiți e-mailul.")
             return
-        dialog = MailDialog(self.root, self, node)
-        res = dialog.run()
-        if not res:
+        if self._mail_composing:
+            if self.mail_dialog is not None and self.mail_dialog.winfo_exists():
+                self.mail_dialog.lift()
             return
-        draft, send = res["draft"], res["action"] == "send"
-
-        def done(_result: str) -> None:
-            if not send:
-                self.status.set_message("Ciorna este deschisă în Outlook")
+        ws = self.ws
+        self._mail_composing = True
+        try:
+            description = None
+            details = self.inspector.tab_by_title("Detalii")
+            if details.node_id == node.id:
+                current = details.desc.get("1.0", "end-1c")
+                if current != details._orig_desc:
+                    choice = DescriptionSourceDialog(self.root).run()
+                    if choice not in ("current", "saved"):
+                        return
+                    if choice == "current":
+                        description = current
+            if self.ws is not ws or node.id not in ws.nodes:
                 return
-            self.status.set_message(f"E-mail trimis către {', '.join(draft.to)}")
-            recorded = False
-            if node is not None and not self.ws.read_only and node.id in self.ws.nodes:
-                recorded = self.run_write(lambda: self.ws.add_note(node.id, journal_text(draft), kind="action"))
-                self.inspector.refresh_current()
-            suffix = "\n\nTrimiterea este notată în Activitatea taskului." if recorded else ""
-            show_info(self.root, f"E-mail trimis către:\n{', '.join(draft.to)}{suffix}",
-                      "E-mail trimis")
+            self.mail_dialog = MailDialog(self.root, self, node, description=description)
+            self.mail_dialog.run()
+        except FocusDeskError as exc:
+            show_error(self.root, str(exc), "E-mail")
+        finally:
+            self.mail_dialog = None
+            self._mail_composing = False
 
-        self.outlook.send_mail(draft, send, done)
+    def record_mail_result(self, ws, node_id, draft, result) -> str:
+        """Record only the actual outcome in the captured workspace; never retry transport."""
+        text = {"displayed": "Ciorna este deschisă în Outlook, fără trimitere.",
+                "submitted": "Mesaj predat Outlook pentru trimitere. Livrarea efectivă nu este confirmată.",
+                "uncertain": "Rezultat e-mail incert. Verifică în Outlook înaintea unei noi încercări."}[result]
+        if self.ws is not ws or ws.read_only or node_id not in ws.nodes:
+            return text + " Jurnalul nu a fost scris: workspace schimbat, read-only sau task indisponibil."
+        try:
+            ws.add_note(node_id, journal_text(draft, result), kind="action")
+        except Exception as exc:
+            log.exception("Rezultat e-mail confirmat, jurnal local nescris")
+            return text + f" Jurnalul local nu a putut fi scris: {exc}. Nu retrimite pentru a repara jurnalul."
+        # Do not reload Details or discard unrelated unsaved task fields.
+        try:
+            journal = next(tab for tab in self.inspector.tabs if tab.title == "Activitate")
+            if self.inspector.node_id == node_id and self.inspector.nb.select() == str(journal):
+                journal.load(ws.get(node_id))
+        except Exception:
+            log.exception("Jurnalul e-mail a fost scris, dar afișarea lui nu s-a actualizat")
+        return text + " Rezultatul este notat în Activitatea taskului."
 
     def _selected_node(self) -> Node | None:
         if self.ws is None or not self.selected_id:

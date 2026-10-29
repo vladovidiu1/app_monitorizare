@@ -163,3 +163,7 @@ Calendar → Întâlniri importă explicit metadate dintr-un calendar Outlook Cl
 ## Verificare integrată
 
 [Raport final](docs/VERIFICARE-INTEGRATA.md): flux complet pe date temporare, teste, capturi la scalare 100%/125%/150%, benchmark final comparat cu 7708de2 și limitele reale de performanță/Outlook.
+
+## E-mail din task
+
+Descriere completă, alegere explicită pentru ciorna nesalvată, atașamente de pe calculator sau din folderele taskului/proiectului și formular păstrat la eroare. [Ghid și limite Outlook Classic](docs/EMAIL-DIN-TASK.md).

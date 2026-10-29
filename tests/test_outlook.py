@@ -87,10 +87,10 @@ class FakeOutlook:
         self.calls.append("delete")
         self.items[entry_id]["deleted"] = True
 
-    def send_mail(self, to, cc, subject, body, *, send):
+    def send_mail(self, to, cc, subject, body, *, send, attachments=()):
         self.thread_names.add(threading.current_thread().name)
-        self.mails.append(dict(to=to, cc=cc, subject=subject, body=body, send=send))
-        return "sent" if send else "displayed"
+        self.mails.append(dict(to=to, cc=cc, subject=subject, body=body, send=send, attachments=list(attachments)))
+        return "submitted" if send else "displayed"
 
     # actiuni ale utilizatorului in Outlook
     def user_moves(self, eid, new_start, new_end):

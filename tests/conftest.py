@@ -5,6 +5,15 @@ import pytest
 from focusdesk.services.workspace import Workspace
 
 
+def pytest_runtest_setup(item):
+    # Tests create many disposable Tk interpreters. Collect the previous test's closed
+    # widget cycles on the main thread, before a later I/O worker can trigger Python's
+    # cyclic GC and run tkinter.Variable.__del__ against a destroyed interpreter.
+    import gc
+
+    gc.collect()
+
+
 @pytest.fixture
 def ws(tmp_path):
     w = Workspace.open(tmp_path / "FocusDeskData", create=True, name="Test")

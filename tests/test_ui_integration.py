@@ -475,37 +475,32 @@ def test_mail_from_task_sends_through_outlook_and_journals(app):
     dlg.to_var.set("ana@firma.ro")
     assert dlg.validate() and dlg.collect()["action"] == "send"
     dlg.destroy()
-    draft = build_draft("ana@firma.ro", "", "Nelămuriri", "Când e termenul?")
+    # The real editable form now owns the asynchronous handoff and remains open on error.
+    def compose(action):
+        dialog = MailDialog(app.root, app, task)
+        dialog.to_var.set("ana@firma.ro")
+        dialog._submit(action)
+        return dialog
 
-    class Stub:
-        action = "send"
+    dialog = compose("draft")
+    assert pump(app, lambda: not dialog.winfo_exists(), 5)
+    assert be.mails[0]["send"] is False
+    assert any("Ciornă e-mail deschisă" in n.text for n in app.ws.list_notes(task.id))
+    dialog = compose("send")
+    assert pump(app, lambda: not dialog.winfo_exists(), 5)
+    assert be.mails[1]["send"] is True
+    assert any("E-mail predat Outlook" in n.text for n in app.ws.list_notes(task.id))
+    before = len(app.ws.list_notes(task.id))
 
-        def __init__(self, *a, **k):
-            pass
+    def boom(*a, **k):
+        raise RuntimeError("Outlook indisponibil")
 
-        def run(self):
-            return {"action": Stub.action, "draft": draft}
-
-    with pytest.MonkeyPatch.context() as m:
-        m.setattr("focusdesk.ui.app.MailDialog", Stub)
-        Stub.action = "draft"
-        app.compose_mail(task.id)
-        assert pump(app, lambda: bool(be.mails), 5) and be.mails[0]["send"] is False
-        assert not any("E-mail trimis" in n.text for n in app.ws.list_notes(task.id))  # ciorna nu se jurnalizeaza
-        Stub.action = "send"
-        app.compose_mail(task.id)
-        assert pump(app, lambda: len(be.mails) == 2, 5) and be.mails[1]["send"] is True
-        assert pump(app, lambda: any("ana@firma.ro" in n.text for n in app.ws.list_notes(task.id)), 5)
-        # esec la trimitere: nimic jurnalizat
-        before = len(app.ws.list_notes(task.id))
-
-        def boom(*a, **k):
-            raise RuntimeError("Outlook indisponibil")
-
-        be.send_mail = boom
-        app.compose_mail(task.id)
-        pump(app, lambda: False, 0.6)
-        assert len(app.ws.list_notes(task.id)) == before
+    be.send_mail = boom
+    dialog = compose("send")
+    assert pump(app, lambda: not dialog.pending, 5)
+    assert dialog.winfo_exists() and "Outlook indisponibil" in dialog.message.cget("text")
+    assert len(app.ws.list_notes(task.id)) == before
+    dialog.destroy()
     no_errors(app)
 
 

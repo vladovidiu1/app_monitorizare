@@ -21,6 +21,10 @@ BUSY_STATUS_NAMES = {0: FREE, 1: TENTATIVE, 2: BUSY, 3: OOF, 4: WORKING_ELSEWHER
 MAX_EVENTS = 3000
 
 
+class MailHandoffUncertain(RuntimeError):
+    """Display/Send was attempted; an exception cannot prove the message was not handed off."""
+
+
 @dataclass
 class CalendarInfo:
     store_id: str
@@ -112,7 +116,8 @@ class OutlookBackend(Protocol):
 
     def delete(self, entry_id: str, store_id: str) -> None: ...
 
-    def send_mail(self, to: list[str], cc: list[str], subject: str, body: str, *, send: bool) -> str: ...
+    def send_mail(self, to: list[str], cc: list[str], subject: str, body: str, *, send: bool,
+                  attachments: list[str]) -> str: ...
 
 
 # ---- availability ---------------------------------------------------------

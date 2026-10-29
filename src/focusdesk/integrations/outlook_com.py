@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timezone
 
 from .outlook import (
-    BUSY_STATUS_NAMES, MAX_EVENTS, AppointmentFields, AppointmentInfo, CalendarInfo, RawEvent,
+    BUSY_STATUS_NAMES, MAX_EVENTS, AppointmentFields, AppointmentInfo, CalendarInfo, MailHandoffUncertain, RawEvent,
 )
 
 log = logging.getLogger(__name__)
@@ -229,8 +229,12 @@ class OutlookComBackend:
             return None
 
     # ---- mail -------------------------------------------------------
-    def send_mail(self, to: list[str], cc: list[str], subject: str, body: str, *, send: bool) -> str:
+    def send_mail(self, to: list[str], cc: list[str], subject: str, body: str, *, send: bool,
+                  attachments: list[str] | tuple[str, ...] = ()) -> str:
         """`send=True` trimite din contul implicit Outlook; `send=False` doar deschide ciorna pentru revizuire."""
+        from ..services.mail import validate_attachments
+
+        selected = validate_attachments(attachments)
         try:
             app, _ = self._connect()
         except Exception as exc:
@@ -241,14 +245,33 @@ class OutlookComBackend:
             mail.CC = "; ".join(cc)
         mail.Subject = subject
         mail.Body = body
+        try:
+            for item in selected:
+                try:
+                    mail.Attachments.Add(item.path)
+                except Exception as exc:
+                    raise RuntimeError(f"Outlook a refuzat atașamentul „{item.name}” ({item.path}): {exc}. "
+                                       "Mesajul nu a fost predat pentru trimitere sau deschis.") from exc
+        except Exception:
+            try:
+                mail.Close(1)  # olDiscard: discard only this incomplete, undisplayed MailItem.
+            except Exception:
+                pass
+            raise
         if not send:
-            mail.Display(False)
+            try:
+                mail.Display(False)
+            except Exception as exc:
+                raise MailHandoffUncertain(f"Outlook nu a confirmat deschiderea ciornei: {exc}") from exc
             return "displayed"
         if not mail.Recipients.ResolveAll():
             bad = [str(r.Name) for r in mail.Recipients if not r.Resolved]
             raise ValueError("Outlook nu a putut rezolva destinatarii: " + ", ".join(bad) + ". Nimic nu a fost trimis.")
-        mail.Send()
-        return "sent"
+        try:
+            mail.Send()
+        except Exception as exc:
+            raise MailHandoffUncertain(f"Outlook nu a confirmat predarea mesajului: {exc}") from exc
+        return "submitted"
 
     # ---- writing ----------------------------------------------------
     @staticmethod

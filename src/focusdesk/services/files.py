@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import ntpath
 import os
 import shutil
+import stat
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,6 +39,68 @@ class ResolvedSource:
     source_path: str | None = None
 
 
+@dataclass(frozen=True)
+class LocalFile:
+    """Read-only snapshot for file pickers; never registers or copies an attachment."""
+
+    path: str
+    size_bytes: int | None = None
+    state: str = "ready"  # ready | missing | inaccessible | directory
+    detail: str = ""
+
+    @property
+    def name(self) -> str:
+        return ntpath.basename(self.path)
+
+
+def normalized_file_key(path: str | os.PathLike) -> str:
+    """Windows path equality, also reproducible in tests on non-Windows hosts."""
+    value = os.fspath(path)
+    if os.name == "nt" or not ntpath.isabs(value):
+        value = os.path.abspath(value)
+    return ntpath.normcase(ntpath.normpath(value))
+
+
+def format_size(value: int) -> str:
+    amount = float(value)
+    for unit in ("B", "KB", "MB", "GB"):
+        if amount < 1024 or unit == "GB":
+            return f"{amount:.1f} {unit}" if unit != "B" else f"{value} B"
+        amount /= 1024
+    raise AssertionError("unreachable")
+
+
+def inspect_local_file(path: str | os.PathLike) -> LocalFile:
+    """Check actual read access, not merely an access() flag. Never read the full content."""
+    value = os.path.abspath(path)
+    try:
+        info = Path(value).stat()
+        if stat.S_ISDIR(info.st_mode):
+            return LocalFile(value, state="directory", detail="Selectează documentele din interiorul folderului.")
+        if not stat.S_ISREG(info.st_mode):
+            return LocalFile(value, state="inaccessible", detail="Calea nu este un fișier obișnuit.")
+        with Path(value).open("rb") as stream:
+            stream.read(1)
+        return LocalFile(value, info.st_size)
+    except FileNotFoundError:
+        return LocalFile(value, state="missing", detail="Fișierul nu mai există.")
+    except OSError as exc:
+        return LocalFile(value, state="inaccessible", detail=str(exc))
+
+
+@dataclass(frozen=True)
+class FileLocation:
+    label: str
+    path: Path
+
+
+@dataclass(frozen=True)
+class DirectoryEntry:
+    path: Path
+    is_dir: bool
+    size_bytes: int | None
+
+
 class FileService:
     def __init__(self, ws: Workspace) -> None:
         self.ws = ws
@@ -44,6 +108,54 @@ class FileService:
     # ---- attachments ------------------------------------------------
     def files_dir(self, node_id: str) -> Path:
         return self.ws.node_dir(node_id) / "files"
+
+    def browse_locations(self, node_id: str) -> list[FileLocation]:
+        """Task/ancestor files, external references and code, without scanning descendants.
+
+        The browser lists one directory on demand, including files manually added on disk.
+        This read-only API can also serve the Files tab's future explorer.
+        """
+        locations: list[FileLocation] = []
+        seen: set[str] = set()
+
+        def add(label: str, path: Path) -> None:
+            key = normalized_file_key(path)
+            if key not in seen:
+                seen.add(key)
+                locations.append(FileLocation(label, path))
+
+        for node in (self.ws.get(node_id), *reversed(self.ws.ancestors(node_id))):
+            add(f"{node.title} — fișiere", self.files_dir(node.id))
+            for att in node.attachments:
+                try:
+                    path = self.resolve(node.id, att)
+                except UnsafePathError:
+                    continue
+                add(f"{node.title} — {att.name}", path if att.is_dir else path.parent)
+        try:
+            source = self.effective_source(node_id)
+        except (NotFoundError, ValidationError):
+            source = None
+        if source:
+            add("Folder de cod", source.path)
+        return locations
+
+    @staticmethod
+    def browse_directory(directory: Path) -> list[DirectoryEntry]:
+        """One level only; no recursive payload reads and no automatic link traversal."""
+        try:
+            entries = []
+            with os.scandir(directory) as children:
+                for child in children:
+                    if is_reparse_point(child.path):
+                        continue
+                    info = child.stat(follow_symlinks=False)
+                    if stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode):
+                        entries.append(DirectoryEntry(Path(child.path), stat.S_ISDIR(info.st_mode),
+                                                      info.st_size if stat.S_ISREG(info.st_mode) else None))
+            return sorted(entries, key=lambda item: (not item.is_dir, item.path.name.casefold()))
+        except OSError as exc:
+            raise StorageError(f"Folderul nu poate fi citit: {directory}\n{exc}") from exc
 
     def add_external(self, node_id: str, path: str | os.PathLike, name: str | None = None) -> Attachment:
         p = Path(path)

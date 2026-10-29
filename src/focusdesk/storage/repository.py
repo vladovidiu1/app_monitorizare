@@ -448,17 +448,21 @@ class WorkspaceRepository:
                 self._hashes.pop((nid, "description.md"), None)
 
     # ---- description ------------------------------------------------
-    def read_description(self, node_id: str) -> str:
+    def read_description(self, node_id: str, *, observe: bool = True) -> str:
+        """An editor load observes a new baseline; a read-only snapshot must preserve it."""
         path = self.dirs[node_id] / "description.md"
-        self._edit_baselines.pop((node_id,"description.md"),None)
-        self._edit_baselines.pop((node_id,"node.json"),None)
+        if observe:
+            self._edit_baselines.pop((node_id,"description.md"),None)
+            self._edit_baselines.pop((node_id,"node.json"),None)
         if not path.exists():
-            self._hashes.pop((node_id, "description.md"), None)
+            if observe:
+                self._hashes.pop((node_id, "description.md"), None)
             return ""
         raw = path.read_bytes()
         from .atomic import sha256_bytes
 
-        self._hashes[(node_id, "description.md")] = sha256_bytes(raw)
+        if observe:
+            self._hashes[(node_id, "description.md")] = sha256_bytes(raw)
         return raw.decode("utf-8-sig")
 
     def write_description(self, node_id: str, text: str) -> None:
