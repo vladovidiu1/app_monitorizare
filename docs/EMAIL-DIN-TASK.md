@@ -1,6 +1,6 @@
 # E-mail din task
 
-Din inspector, spațiul taskului, meniul contextual sau Ctrl+M, compune un mesaj nou în Outlook Classic. Integrarea rămâne opțională și folosește același ComWorker: obiectele COM rămân pe threadul dedicat, iar formularul și jurnalul sunt actualizate pe threadul Tk. Nu există citire de inbox sau trimitere în fundal fără acțiunea utilizatorului.
+Din inspector, spațiul taskului, meniul contextual sau Ctrl+M, compune un mesaj nou prin Outlook Classic (implicit) sau [Gmail cu parolă de aplicație](GMAIL.md). Formularul, ciorna editabilă și selecția documentelor sunt comune. Outlook păstrează ComWorker, Gmail folosește UiBridge pentru SMTP; UI și jurnalul se actualizează pe firul Tk. Nu există citire de inbox sau trimitere fără acțiunea utilizatorului. Detaliile și rezultatele Outlook de mai jos descriu etapa inițială; verificarea Gmail este separată.
 
 ## Descriere și ciornă
 

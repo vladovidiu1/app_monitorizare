@@ -67,6 +67,14 @@ def test_frozen_path_allows_only_private_dll_directory(tmp_path):
         verifier.validate_runtime_paths(str(tmp_path.parent / 'external-python'), tmp_path)
 
 
+def test_packaged_verifier_requires_gmail_and_native_credential_api():
+    verifier=module('verify_distribution')
+    report={'gmail_modules_loaded':True,'gmail_fake_smtp':True,'gmail_network_used':False,'credential_api_loaded':True}
+    verifier.validate_mail_runtime(report)
+    for name,value in [('gmail_modules_loaded',False),('gmail_fake_smtp',False),('gmail_network_used',True),('credential_api_loaded',False)]:
+        with pytest.raises(AssertionError):verifier.validate_mail_runtime({**report,name:value})
+
+
 def test_smoke_always_isolates_profile_even_on_failure(tmp_path, monkeypatch):
     import os
     from focusdesk import smoke

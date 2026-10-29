@@ -82,6 +82,8 @@ class FocusDeskApp:
             except tk.TclError:
                 pass
         self.bridge = UiBridge(self.root)
+        from ..services.gmail import GmailService
+        self.gmail = GmailService(self.config,self.bridge)
         self.outlook = OutlookController(self)
         self.ws: Workspace | None = None  # type: ignore[assignment]
         self.q: Queries | None = None  # type: ignore[assignment]
@@ -485,6 +487,9 @@ class FocusDeskApp:
         return True
 
     def on_close(self) -> None:
+        if self.gmail.busy:
+            self.status.set_message(tr('gmail.error.busy'))
+            return
         if self.ws is not None and not self._release_current():
             return
         try:
@@ -496,6 +501,7 @@ class FocusDeskApp:
             pass
         self.config.save()
         self.outlook.shutdown()
+        self.gmail.clear_session()
         self.bridge.close()
         for pending in self.root.tk.call("after", "info"):
             self.root.tk.call("after", "cancel", pending)
@@ -1039,7 +1045,10 @@ class FocusDeskApp:
         """Record only the actual outcome in the captured workspace; never retry transport."""
         text = {"displayed": tr('ui.app.ciorna_este_deschisa_in_outlook_fara_trimitere'),
                 "submitted": tr('ui.app.mesaj_predat_outlook_pentru_trimitere_livrarea_efectiva_nu_este_confir'),
-                "uncertain": tr('ui.app.rezultat_e_mail_incert_verifica_in_outlook_inaintea_unei_noi_incercari')}[result]
+                "uncertain": tr('ui.app.rezultat_e_mail_incert_verifica_in_outlook_inaintea_unei_noi_incercari')}.get(result) if isinstance(result,str) else None
+        if text is None:
+            from ..services.gmail import result_notice
+            text=result_notice(result)
         if self.ws is not ws or ws.read_only or node_id not in ws.nodes:
             return text + tr('ui.app.jurnalul_nu_a_fost_scris_workspace_schimbat_read_only_sau_task_indispo')
         try:

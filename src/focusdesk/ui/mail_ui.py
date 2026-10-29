@@ -13,6 +13,8 @@ from ..services.files import FileService
 from ..services.mail import (attachment_selection, attachment_summary, build_draft, confirmation_text,
                              default_body, default_subject, format_size)
 from ..workers.com_worker import ComTimeout
+from ..integrations.gmail import GmailResult, GmailUncertain, GmailError
+from ..services.gmail import result_notice, save_eml
 from .common import ModalDialog, ScrollFrame, Tooltip, confirm, make_tree, show_error, show_info
 from .colleagues_ui import ColleaguePickerDialog
 from .file_picker import TaskFilePicker
@@ -53,6 +55,7 @@ class MailDialog(ModalDialog):
         self.action = "send"
         self.pending = False
         self.uncertain = False
+        self.partial_result = None
         self.attachments = []
         self._controls = [self.ok_btn, self.cancel_btn]
         self.geometry("860x730")
@@ -60,6 +63,8 @@ class MailDialog(ModalDialog):
         self.draft_btn = ttk.Button(self.buttons, text=tr('ui.mail_ui.deschide_ciorna_in_outlook'), command=self._open_draft)
         self.draft_btn.pack(side="left")
         self._controls.append(self.draft_btn)
+        self.eml_btn=ttk.Button(self.buttons,text=tr('gmail.save_eml'),command=self._save_eml)
+        self._controls.append(self.eml_btn)
         self.cancel_btn.configure(command=self._cancel)
         self.protocol("WM_DELETE_WINDOW", self._cancel)
         self.bind("<Escape>", lambda _e: self._cancel())
@@ -75,10 +80,20 @@ class MailDialog(ModalDialog):
         self.form.pack(fill="both", expand=True)
         b = self.form.inner
         b.columnconfigure(1, weight=1)
-        b.rowconfigure(4, weight=1)
+        b.rowconfigure(5, weight=1)
+        transport=ttk.Frame(b);transport.grid(row=0,column=0,columnspan=2,sticky='ew',pady=(0,8))
+        transport.columnconfigure(1,weight=1)
+        ttk.Label(transport,text=tr('gmail.send_via')).grid(row=0,column=0,padx=(0,8))
+        self.provider_box=ttk.Combobox(transport,state='readonly')
+        self.provider_box.grid(row=0,column=1,sticky='ew')
+        self.provider_box.bind('<<ComboboxSelected>>',self._provider_changed)
+        self.configure_btn=ttk.Button(transport,text=tr('gmail.configure'),command=self._configure_gmail)
+        self.configure_btn.grid(row=1,column=1,sticky='w',pady=4)
+        self._controls.extend([self.provider_box,self.configure_btn])
+        self._provider_choices(app.config.mail.provider)
         self.task_label = ttk.Label(b, text=tr('ui.mail_ui.task', node_title=node.title), style="Section.TLabel", wraplength=720)
         self.task_label.grid(
-            row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+            row=1, column=0, columnspan=2, sticky="w", pady=(0, 8))
         self.to_var, self.cc_var = tk.StringVar(), tk.StringVar()
         person = node.requested_by
         try:
@@ -88,23 +103,23 @@ class MailDialog(ModalDialog):
         if person:
             self.to_var.set(person.email)
         self.subject_var = tk.StringVar(value=default_subject(node))
-        for r, (label, var) in enumerate(((tr('ui.mail_ui.catre'), self.to_var), ("CC", self.cc_var), (tr('ui.mail_ui.subiect'), self.subject_var)), 1):
+        for r, (label, var) in enumerate(((tr('ui.mail_ui.catre'), self.to_var), ("CC", self.cc_var), (tr('ui.mail_ui.subiect'), self.subject_var)), 2):
             ttk.Label(b, text=label).grid(row=r, column=0, sticky="w", pady=4, padx=(0, 10))
             line = ttk.Frame(b)
             line.grid(row=r, column=1, sticky="ew", pady=4)
             entry = ttk.Entry(line, textvariable=var)
             entry.pack(side="left", fill="x", expand=True)
             self._controls.append(entry)
-            if r in (1, 2):
+            if r in (2, 3):
                 pick = ttk.Button(line, text="…", width=3, command=lambda target=var: self._add_colleague(target))
                 pick.pack(side="left", padx=(4, 0))
                 self._controls.append(pick)
                 Tooltip(pick, tr('ui.mail_ui.adauga_un_coleg'))
-            if r == 1:
+            if r == 2:
                 self.to_entry = entry
-        ttk.Label(b, text=tr('ui.mail_ui.mesaj')).grid(row=4, column=0, sticky="nw", pady=4, padx=(0, 10))
+        ttk.Label(b, text=tr('ui.mail_ui.mesaj')).grid(row=5, column=0, sticky="nw", pady=4, padx=(0, 10))
         wrap = ttk.Frame(b)
-        wrap.grid(row=4, column=1, sticky="nsew", pady=4)
+        wrap.grid(row=5, column=1, sticky="nsew", pady=4)
         self.text = tk.Text(wrap, wrap="word", height=8, width=20, font="TkTextFont", undo=True)
         sb = ttk.Scrollbar(wrap, orient="vertical", command=self.text.yview)
         self.text.configure(yscrollcommand=sb.set)
@@ -113,7 +128,7 @@ class MailDialog(ModalDialog):
         self.text.insert("1.0", default_body(self.ws, node, description=description))
         self._controls.append(self.text)
         attachments = ttk.LabelFrame(b, text=tr('ui.mail_ui.atasamente'), padding=6)
-        attachments.grid(row=5, column=0, columnspan=2, sticky="ew", pady=6)
+        attachments.grid(row=6, column=0, columnspan=2, sticky="ew", pady=6)
         for col in range(2):
             attachments.columnconfigure(col, weight=1)
         for col, (label, command) in enumerate(((tr('ui.mail_ui.adauga_fisiere'), self._add_files),
@@ -136,14 +151,58 @@ class MailDialog(ModalDialog):
         self.attachment_tree.bind("<<TreeviewSelect>>", self._selected_attachment)
         self.help_label = ttk.Label(b, style="Muted.TLabel", wraplength=740, justify="left", text=(
             tr('ui.mail_ui.adrese_separate_prin_sau_contul_implicit_outlook_classic_mesaj_nou_far')))
-        self.help_label.grid(row=6, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        self.help_label.grid(row=7, column=0, columnspan=2, sticky="w", pady=(4, 0))
         self.message = ttk.Label(self.feedback_scroll.inner, text="", style="Muted.TLabel", wraplength=740, justify="left")
         self.message.pack(fill="x")
         self.checked_btn = ttk.Button(self.feedback, text=tr('ui.mail_ui.am_verificat_in_outlook'), command=self._checked_outlook)
+        self.refused_btn=ttk.Button(self.feedback,text=tr('gmail.retry_refused'),command=self._retry_refused)
         self.bind("<Configure>", self._resize)
         for widget in [*self._controls, self.attachment_tree]:
             widget.bind("<FocusIn>", self._reveal_focus, add="+")
         self.to_entry.focus_set()
+        self.buttons.bind('<Configure>',self._layout_buttons,add='+')
+        self._provider_changed()
+
+    def _provider_choices(self,selected):
+        account=self.app.config.mail.address
+        self.provider_box.configure(values=[tr('gmail.provider.outlook'),tr('gmail.account_choice',account=account) if account else tr('gmail.not_configured_choice')])
+        self.provider_box.current(1 if selected=='gmail' else 0)
+
+    def _provider(self):
+        return 'gmail' if self.provider_box.current()==1 else 'outlook'
+
+    def _provider_changed(self,event=None):
+        gmail=self._provider()=='gmail'
+        if gmail:
+            self.configure_btn.grid()
+        else:
+            self.configure_btn.grid_remove()
+        if hasattr(self,'help_label'):
+            self.help_label.configure(text=tr('gmail.compose_help') if gmail else tr('ui.mail_ui.adrese_separate_prin_sau_contul_implicit_outlook_classic_mesaj_nou_far'))
+        self._layout_buttons()
+
+    def _layout_buttons(self,event=None):
+        gmail=self._provider()=='gmail'
+        widgets=[self.eml_btn if gmail else self.draft_btn,self.ok_btn,self.cancel_btn]
+        signature=(self.buttons.winfo_width(),gmail,tuple(w.winfo_reqwidth() for w in widgets))
+        if getattr(self,'_button_layout',None)==signature:return
+        self._button_layout=signature
+        for widget in (self.draft_btn,self.eml_btn,self.ok_btn,self.cancel_btn):
+            if widget.winfo_manager()=='pack':widget.pack_forget()
+            else:widget.grid_forget()
+        row=column=used=0
+        for widget in widgets:
+            need=widget.winfo_reqwidth()+10
+            if used and used+need>max(200,self.buttons.winfo_width()):row+=1;column=used=0
+            widget.grid(row=row,column=column,padx=4,pady=4,sticky='w')
+            used+=need;column+=1
+
+    def _configure_gmail(self):
+        if self.pending:return
+        from .gmail_ui import EmailSettingsDialog
+        selected=self._provider()
+        EmailSettingsDialog(self,self.app).run()
+        if self.winfo_exists():self._provider_choices(selected);self._provider_changed()
 
     def _resize(self, event):
         if event.widget is self:
@@ -237,7 +296,8 @@ class MailDialog(ModalDialog):
         self.attachments = attachment_selection(self.attachments)
         self._render_attachments()
         return build_draft(self.to_var.get(), self.cc_var.get(), self.subject_var.get(),
-                           self.text.get("1.0", "end-1c"), for_send=self.action == "send", attachments=self.attachments)
+                           self.text.get("1.0", "end-1c"), for_send=self.action == "send", attachments=self.attachments,
+                           allow_cc_only=self._provider()=='gmail')
 
     def validate(self):
         if not self._valid_context():
@@ -245,10 +305,16 @@ class MailDialog(ModalDialog):
             return False
         try:
             self._validated_draft = self._build()
-        except ValidationError as exc:
+            if self._provider()=='gmail':
+                self._gmail_credentials=self.app.gmail.credentials()
+        except (ValidationError,GmailError) as exc:
             show_error(self, str(exc), "E-mail")
             return False
-        return self.action != "send" or confirm(self, confirmation_text(self._validated_draft), tr('ui.mail_ui.trimite_e_mail'))
+        text=confirmation_text(self._validated_draft)
+        if self._provider()=='gmail':
+            draft=self._validated_draft
+            text=tr('gmail.confirm',account=self._gmail_credentials.address,to=', '.join(draft.to),cc=', '.join(draft.cc) or '—',subject=draft.subject,attachments=attachment_summary(draft.attachments))
+        return self.action != "send" or confirm(self,text,tr('ui.mail_ui.trimite_e_mail'))
 
     def collect(self):
         return {"action": self.action, "draft": self._build()}
@@ -257,11 +323,14 @@ class MailDialog(ModalDialog):
         self._submit("send")
 
     def _open_draft(self):
-        self._submit("draft")
+        if self._provider()=='outlook':self._submit("draft")
 
     def _busy(self, busy):
         for widget in self._controls:
             widget.configure(state="disabled" if busy else "normal")
+        if not busy:self.provider_box.configure(state='readonly')
+        if not busy and self.uncertain:
+            self.ok_btn.configure(state='disabled');self.draft_btn.configure(state='disabled')
 
     def _submit(self, action):
         if self.pending or self.uncertain:
@@ -270,12 +339,21 @@ class MailDialog(ModalDialog):
         self._busy(True)
         try:
             if not self.validate():
+                self._gmail_credentials=None
                 self.pending = False
                 self._busy(False)
                 return
             draft = self._validated_draft
-            self._set_message(tr('ui.mail_ui.se_asteapta_outlook_mesajul_si_atasamentele_raman_in_formular'))
-            self.app.outlook.send_mail(draft, action == "send",
+            self._submission_provider=self._provider()
+            if self._submission_provider=='gmail':
+                self._submission_account=self._gmail_credentials.address
+                self._set_message(tr('gmail.sending'))
+                job=self.app.gmail.send(draft,lambda result:self._completed(draft,result),lambda error:self._failed(draft,error),credentials=self._gmail_credentials)
+                self._gmail_credentials=None
+                if job:self.app._track_workspace_job(job)
+            else:
+                self._set_message(tr('ui.mail_ui.se_asteapta_outlook_mesajul_si_atasamentele_raman_in_formular'))
+                self.app.outlook.send_mail(draft, action == "send",
                                       lambda result: self._completed(draft, result),
                                       lambda error: self._failed(draft, error))
         except Exception as exc:
@@ -286,7 +364,21 @@ class MailDialog(ModalDialog):
         try:
             notice = self.app.record_mail_result(self.ws, self.node_id, draft, result)
         except Exception as exc:
-            notice = tr('ui.mail_ui.rezultatul_outlook_este_confirmat_dar_jurnalul_local_nu_a_putut_fi_scr', exc=exc)
+            notice = tr('gmail.journal_failed') if isinstance(result,GmailResult) else tr('ui.mail_ui.rezultatul_outlook_este_confirmat_dar_jurnalul_local_nu_a_putut_fi_scr', exc=exc)
+        if isinstance(result,GmailResult):
+            self.pending=False
+            if result.status!='accepted':
+                self._busy(False)
+                self.partial_result=result if result.status=='partial' else None
+                self.uncertain=result.status=='partial'
+                if self.uncertain:
+                    self.ok_btn.configure(state='disabled');self.draft_btn.configure(state='disabled')
+                    self.refused_btn.pack(anchor='w',pady=4)
+                self._set_message(notice,error=True)
+                return
+            self.app.status.set_message(tr('gmail.result.accepted',account=result.account))
+            self.result={'action':self.action,'draft':draft,'result':result}
+            self.destroy();show_info(self.app.root,notice,'E-mail');return
         self.app.status.set_message(tr('ui.mail_ui.ciorna_deschisa_in_outlook') if result == "displayed" else
                                     tr('ui.mail_ui.e_mail_predat_outlook_livrare_neconfirmata'))
         self.pending = False
@@ -301,16 +393,19 @@ class MailDialog(ModalDialog):
         self._busy(False)
         self.attachments = attachment_selection(self.attachments)
         self._render_attachments()
-        self.uncertain = isinstance(error, (ComTimeout, MailHandoffUncertain))
+        self.uncertain = isinstance(error, (ComTimeout, MailHandoffUncertain,GmailUncertain))
         text = str(error)
         if self.uncertain:
-            text += (tr('ui.mail_ui.rezultatul_este_incert_mesajul_poate_fi_deja_in_outlook_verifica_feres'))
+            gmail=isinstance(error,GmailUncertain)
+            text += tr('gmail.check_before_retry') if gmail else tr('ui.mail_ui.rezultatul_este_incert_mesajul_poate_fi_deja_in_outlook_verifica_feres')
             self.ok_btn.configure(state="disabled")
             self.draft_btn.configure(state="disabled")
             self.checked_btn.pack(anchor="w", pady=4)
+            self.checked_btn.configure(text=tr('gmail.checked') if gmail else tr('ui.mail_ui.am_verificat_in_outlook'))
             if draft is not None:
                 try:
-                    self.app.record_mail_result(self.ws, self.node_id, draft, "uncertain")
+                    result=GmailResult('uncertain',self._submission_account,(),(),error.message_id) if gmail else 'uncertain'
+                    self.app.record_mail_result(self.ws,self.node_id,draft,result)
                 except Exception:
                     pass
         else:
@@ -318,12 +413,43 @@ class MailDialog(ModalDialog):
         self._set_message(text, error=True)
 
     def _checked_outlook(self):
-        if confirm(self, tr('ui.mail_ui.ai_verificat_in_outlook_ca_nu_exista_deja_ciorna_sau_mesajul_predat_pe'), tr('ui.mail_ui.reincercare_explicita')):
+        if self.partial_result is not None:return
+        gmail=getattr(self,'_submission_provider','outlook')=='gmail'
+        if confirm(self,tr('gmail.retry_confirm') if gmail else tr('ui.mail_ui.ai_verificat_in_outlook_ca_nu_exista_deja_ciorna_sau_mesajul_predat_pe'),tr('ui.mail_ui.reincercare_explicita')):
             self.uncertain = False
             self.checked_btn.pack_forget()
             self.ok_btn.configure(state="normal")
             self.draft_btn.configure(state="normal")
-            self._set_message(tr('ui.mail_ui.poti_reincerca_explicit_dupa_verificarea_in_outlook'))
+            self._set_message(tr('gmail.retry_ready') if gmail else tr('ui.mail_ui.poti_reincerca_explicit_dupa_verificarea_in_outlook'))
+
+    def _retry_refused(self):
+        result=self.partial_result
+        if result is None or not confirm(self,tr('gmail.retry_refused_confirm')):return
+        refused={a.casefold() for a,code in result.refused}
+        draft=self._validated_draft
+        self.to_var.set('; '.join(a for a in draft.to if a.casefold() in refused))
+        self.cc_var.set('; '.join(a for a in draft.cc if a.casefold() in refused))
+        self.partial_result=None;self.uncertain=False;self.refused_btn.pack_forget()
+        self.ok_btn.configure(state='normal');self.draft_btn.configure(state='normal')
+        self._set_message(tr('gmail.only_refused'))
+
+    def _save_eml(self):
+        if self.pending:return
+        try:
+            self.action='export';draft=self._build()
+            from ..integrations.gmail import account_address
+            address=account_address(self.app.config.mail.address)
+        except (ValidationError,GmailError) as exc:show_error(self,str(exc));return
+        path=filedialog.asksaveasfilename(parent=self,defaultextension='.eml',filetypes=[('E-mail','*.eml')])
+        if not path:return
+        self.pending=True;self._busy(True)
+        name=self.app.config.mail.display_name
+        def work(token):
+            try:save_eml(path,draft,address,name);return tr('gmail.eml_saved')
+            except Exception:return tr('gmail.eml_failed')
+        def done(text):
+            if self.winfo_exists():self.pending=False;self._busy(False);self._set_message(text)
+        self.app._track_workspace_job(self.app.bridge.submit(work,done,name='mail-eml'))
 
     def _cancel(self):
         if not self.pending:

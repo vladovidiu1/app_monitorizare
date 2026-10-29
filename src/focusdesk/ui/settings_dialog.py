@@ -14,6 +14,7 @@ from ..errors import FocusDeskError
 from ..services.colleagues import import_colleagues, load_colleagues
 from .common import ModalDialog, ScrollFrame, show_error
 from .formats import format_date, parse_date, parse_tags
+from .navigation_controls import AdaptiveNotebook
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
@@ -28,15 +29,18 @@ EXTRA_PAGES: list[tuple[str, Callable]] = []
 class SettingsDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, app: "FocusDeskApp") -> None:
         super().__init__(parent, tr('ui.settings_dialog.setari'), resizable=True, ok_text=tr('ui.settings_dialog.salveaza'))
+        self.body.pack_forget();self.buttons.pack_forget()
+        self.buttons.pack(side='bottom',fill='x');self.body.pack(fill='both',expand=True)
         self.app = app
         self._language_only = app.ws is None
-        self.nb = ttk.Notebook(self.body)
+        self.nb = AdaptiveNotebook(self.body)
         self.nb.pack(fill="both", expand=True)
         self.collectors: list[Callable[[Settings], None]] = []
         if self._language_only:
             page=ttk.Frame(self.nb,padding=12);page.columnconfigure(0,weight=1);page.columnconfigure(1,weight=1)
             self.nb.add(page,text=tr('ui.settings_dialog.general'))
             self._language_fields(page,row=0)
+            self._page_email()
             self.geometry('760x420');self.minsize(640,300)
             return
         self.s: Settings = app.ws.settings.model_copy(deep=True)
@@ -45,6 +49,7 @@ class SettingsDialog(ModalDialog):
         self._page_schedule()
         self._page_backup()
         self._page_checkpoints()
+        self._page_email()
         from .outlook_ui import build_outlook_settings_page
 
         extra: list[tuple[str, Callable]] = [(tr('ui.outlook_ui.outlook'), build_outlook_settings_page), *EXTRA_PAGES]
@@ -58,6 +63,15 @@ class SettingsDialog(ModalDialog):
             self.ok_btn.state(["disabled"])
 
     # ---- pages ------------------------------------------------------
+    def _page_email(self):
+        from .gmail_ui import EmailSettingsPanel
+        page=ttk.Frame(self.nb,padding=10)
+        self.nb.add(page,text=tr('gmail.integrations'))
+        box=ttk.LabelFrame(page,text=tr('gmail.settings_title'),padding=8)
+        box.pack(fill='both',expand=True)
+        self.email_panel=EmailSettingsPanel(box,self.app)
+        self.email_panel.pack(fill='both',expand=True)
+
     def _page_general(self) -> None:
         p = ttk.Frame(self.nb, padding=12)
         self.nb.add(p, text=tr('ui.settings_dialog.general'))

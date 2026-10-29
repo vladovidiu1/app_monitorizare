@@ -18,6 +18,7 @@ TOPICS = {
     'FilesTab':'fisiere', 'FileExplorer':'fisiere', 'ReferenceDialog':'fisiere',
     'JournalTab':'sesiuni#jurnalul-taskului', 'VersionsTab':'versiuni', 'PlanTab':'calendar',
     'MailDialog':'email', 'DescriptionSourceDialog':'email', 'TaskFilePicker':'email#atasamente',
+    'EmailSettingsDialog':'email#gmail-configurare', 'EmailSettingsPanel':'email#gmail-configurare',
     'StopSessionDialog':'sesiuni', 'CorrectTimeDialog':'sesiuni',
     'ManualSessionDialog':'calendar', 'PlannerDialog':'calendar', 'RecurrenceDialog':'calendar',
     'FollowupDialog':'cerinte', 'ReopenReasonDialog':'cerinte',

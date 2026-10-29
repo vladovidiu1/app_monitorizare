@@ -32,6 +32,21 @@ def _run(base: Path) -> dict:
     from .services.sessions import SessionService
     from .services.workspace import Workspace
     from .ui.app import FocusDeskApp
+    from .integrations.gmail import GmailTransport,GmailCredentials,mime_message
+    from .integrations.credentials import WindowsCredentialStore
+    from .services.mail import build_draft
+    # Resolve standard-library/native dependencies in the executable without accessing
+    # a real credential or contacting any mail server.
+    class FakeSmtp:
+        def __init__(self,*args,**kwargs):
+            context=kwargs['context']
+            assert context.check_hostname
+        def login(self,address,password):pass
+        def quit(self):pass
+    assert GmailTransport(smtp_ssl=FakeSmtp).test(GmailCredentials('test@example.invalid','fake-only'))
+    assert mime_message(build_draft('to@example.invalid','','Unicode îäéñ','Smoke body'),'test@example.invalid')['Message-ID']
+    credential_api_loaded=WindowsCredentialStore().available
+    if sys.platform=='win32':assert credential_api_loaded
 
     config = AppConfig(theme='dark', legacy_marker='preserve-user-settings',
                        ai={'enabled': True, 'model_path': 'old-unused-path'})
@@ -92,6 +107,8 @@ def _run(base: Path) -> dict:
     assert loaded.model_extra['legacy_marker'] == 'preserve-user-settings'
     assert loaded.model_extra['ai']['enabled'] is True
     return {'status': 'ok', 'gui_started': True, 'workspace_preserved': True,
+            'gmail_modules_loaded':True,'gmail_fake_smtp':True,'gmail_network_used':False,
+            'credential_api_loaded':credential_api_loaded,
             'task_space_verified': True, 'settings_preserved': True, 'legacy_settings_ignored': True,
             'outlook_disabled': True, 'python_path': os.environ.get('PATH', ''),
             'frozen': bool(getattr(sys, 'frozen', False))}

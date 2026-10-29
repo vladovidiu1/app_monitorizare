@@ -207,13 +207,17 @@ class DetailsTab(InspectorTab):
             self._set_state_recursive(child, "disabled" if ro else None)
 
     def _layout_split(self, event):
-        if event.height < 180:
+        # Reserve the editor and sash before clamping the scrollable metadata pane.
+        # A fixed 120px upper minimum could leave only 190px for the editor after
+        # the adaptive tab selector or wrapped actions consumed another row.
+        if event.height < 308:
             return
+        max_fields = max(100, event.height - 208)
         if not self._split_initialized:
             self._split_initialized = True
-            self.panes.sashpos(0, max(120, min(220, int(event.height * .4))))
-        elif self.panes.sashpos(0) > max(120, event.height - 240):
-            self.panes.sashpos(0, max(120, event.height - 240))
+            self.panes.sashpos(0, max(100, min(220, int(event.height * .4), max_fields)))
+        elif self.panes.sashpos(0) > max_fields:
+            self.panes.sashpos(0, max_fields)
 
     def description_context(self):
         ws = self.app.ws

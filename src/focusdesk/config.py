@@ -11,6 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .storage.atomic import atomic_write_json
+from .domain.mail import MailSettings
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +34,8 @@ def resource_path(relative: str) -> Path:
 
 class AppConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
+
+    mail: MailSettings = Field(default_factory=MailSettings)
 
     language: str = "ro"
 

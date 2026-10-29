@@ -168,6 +168,8 @@ Calendar → Întâlniri importă explicit metadate dintr-un calendar Outlook Cl
 
 Descriere completă, alegere explicită pentru ciorna nesalvată, atașamente de pe calculator sau din folderele taskului/proiectului și formular păstrat la eroare. [Ghid și limite Outlook Classic](docs/EMAIL-DIN-TASK.md).
 
+**Gmail opțional:** Setări → Integrări → E-mail configurează contul și parola de aplicație Google, păstrată în Windows Credential Manager sau numai în memoria sesiunii. Același formular oferă alegerea Outlook/Gmail, trimitere SMTP cu TLS și export local .eml. Outlook rămâne implicit; nu există inbox sau Google Calendar. [Configurare și test manual](docs/GMAIL.md) · [Verificări reale](docs/VERIFICARE-GMAIL.md).
+
 ## Explorator Fișiere
 
 Foldere reale de proiect/task, încărcare la extindere, actualizare la revenire/F5 și atașare la e-mail fără înregistrare manuală. [Ghid, capturi și limite](docs/FISIERE.md).

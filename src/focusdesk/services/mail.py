@@ -81,18 +81,19 @@ def clean_subject(subject: str) -> str:
 
 
 def build_draft(to: str, cc: str, subject: str, body: str, *, for_send: bool = True,
-                attachments: Iterable[str | Path | LocalFile] = ()) -> MailDraft:
+                attachments: Iterable[str | Path | LocalFile] = (), allow_cc_only: bool = False) -> MailDraft:
     """La trimitere sunt obligatorii destinatarul, subiectul si mesajul; pentru ciorna se accepta si goluri."""
     recipients = parse_addresses(to)
+    copies = parse_addresses(cc)
     subject = clean_subject(subject)
     if for_send:
-        if not recipients:
+        if not recipients and not (allow_cc_only and copies):
             raise ValidationError(tr('services.mail.adauga_cel_putin_un_destinatar'))
         if not subject:
             raise ValidationError(tr('extra.services.mail.subiectul_este_obligatoriu'))
         if not body.strip():
             raise ValidationError(tr('extra.services.mail.mesajul_este_gol'))
-    return MailDraft(to=recipients, cc=parse_addresses(cc), subject=subject, body=body,
+    return MailDraft(to=recipients, cc=copies, subject=subject, body=body,
                      attachments=validate_attachments(attachments))
 
 
@@ -125,6 +126,9 @@ def default_body(ws: Workspace, node: Node, *, description: str | None = None) -
 
 
 def journal_text(draft: MailDraft, result: str = "submitted") -> str:
+    if not isinstance(result,str):
+        from .gmail import journal_text as gmail_journal
+        return gmail_journal(draft,result)
     cc = tr('mail.cc',addresses=', '.join(draft.cc)) if draft.cc else ""
     outcome = {"submitted": tr('services.mail.e_mail_predat_outlook_pentru_trimitere_livrare_neconfirmata'),
                "displayed": tr('services.mail.ciorna_e_mail_deschisa_in_outlook_fara_trimitere'),

@@ -14,6 +14,12 @@ def validate_runtime_paths(value, bundle):
             raise AssertionError('Frozen runtime introduced an external PATH directory: ' + entry)
 
 
+def validate_mail_runtime(report):
+    assert report.get('gmail_modules_loaded') and report.get('gmail_fake_smtp'), 'Missing Gmail runtime verification'
+    assert report.get('gmail_network_used') is False, 'SMTP smoke must not use the network'
+    assert report.get('credential_api_loaded'), 'Windows Credential Manager API unavailable in executable'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--exe', type=Path, required=True)
@@ -34,6 +40,7 @@ def main():
         if result.returncode != 0 or report.get('status') != 'ok' or not report.get('frozen'):
             raise RuntimeError(f'Packaged application smoke failed: {report}')
         validate_runtime_paths(report['python_path'], args.exe.resolve().parent)
+        validate_mail_runtime(report)
         report.update(launcher_path_empty=True, runtime_path_internal_only=True)
         output.write_text(json.dumps(report, indent=2), encoding='utf-8')
         print(json.dumps(report), flush=True)
