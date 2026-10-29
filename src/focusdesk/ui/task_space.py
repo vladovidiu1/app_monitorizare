@@ -78,11 +78,12 @@ class TaskSpace(ttk.Frame):
         self.nb=ttk.Notebook(self.secondary);self.nb.pack(fill='both',expand=True)
         self.sections={};self.scrolls={}
         specs=[('Pași',SubtasksTab,dict(drafts_from=app.inspector.tab_by_title('Subtaskuri'),on_open=app.open_task_space,checklist_first=True)),
-               ('Fișiere',FilesTab,{}),('Activitate',JournalTab,dict(source_entry=self.journal_source.entry,source_kind=self.journal_source.kind_var)),
+               ('Fișiere',FilesTab,dict(on_expand=self.widen_files)),('Activitate',JournalTab,dict(source_entry=self.journal_source.entry,source_kind=self.journal_source.kind_var)),
                ('Planificare',PlanTab,{}),('Versiuni',VersionsTab,{})]
         for label,cls,options in specs:
-            scroll=ScrollFrame(self.nb);self.nb.add(scroll,text=label)
-            tab=cls(scroll.inner,app,**options);tab.pack(fill='both',expand=True)
+            scroll=ttk.Frame(self.nb) if label=='Fișiere' else ScrollFrame(self.nb)
+            self.nb.add(scroll,text=label)
+            tab=cls(scroll if label=='Fișiere' else scroll.inner,app,**options);tab.pack(fill='both',expand=True)
             if label=='Pași':
                 tab.check_frame.configure(text='Checklist')
                 tab.tv.configure(displaycolumns=('title','status','progress'))
@@ -189,6 +190,11 @@ class TaskSpace(ttk.Frame):
             self._load_section()
             self.body.sashpos(0,max(330,self.body.winfo_width()-365))
         self.panel_btn.configure(text='Ascunde panoul taskului' if str(self.secondary) in self.body.panes() else 'Arată panoul taskului')
+
+    def widen_files(self):
+        if str(self.secondary) not in self.body.panes(): self.toggle_panel()
+        if len(self.body.panes()) > 1:
+            self.body.sashpos(0, max(280, int(self.body.winfo_width() * .35)))
 
     def toggle_focus(self):
         if self.focus_layout is not None:

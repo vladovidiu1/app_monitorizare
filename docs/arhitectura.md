@@ -78,8 +78,8 @@ IPC-ul, pollingul și controalele UI. `ComWorker` rămâne exclusiv pentru calen
 ## Documentare Markdown și statusuri
 
 `ui/status_visuals.py` mapează tipul/statusul la resurse locale MIT și etichete.
-`ui/markdown_editor.py` oferă formatarea asistată și previzualizarea inertă în Tk
-Text. Fereastra extinsă este un peer Tcl al bufferului din inspector, cu grab modal
+`ui/markdown_editor.py` oferă un singur câmp Tk Text editabil, fără bară de formatare
+sau file de previzualizare. Fereastra extinsă este un peer Tcl al bufferului din inspector, cu grab modal
 și snapshot de anulare; nu are o copie independentă a descrierii. Salvarea rămâne
 în DetailsTab → Workspace.set_description, pe firul UI. Nu se schimbă formatul sau
 schema datelor și nu se introduc HTML, execuție de cod ori servicii externe.
@@ -160,3 +160,7 @@ TimerService persistă intenția înaintea pornirii și planul înghețat înain
 ## Întâlniri
 
 MeetingService gestionează importul, notițele, acțiunile și legăturile; MeetingStore separă JSON-ul sursei, JSON-ul local și Markdown-ul cu CAS și index reconstructibil. CalendarHub reutilizează Agenda și adaugă MeetingPage. Cititorul de metadate `integrations/meetings.py` rulează prin ComWorker; aplicarea locală este progresivă pe Tk, fără acces la widgeturi din workers. Conversiile reutilizează motorul recuperabil existent și FollowupService. [Contract și verificări](INTALNIRI.md).
+
+## Exploratorul Fișiere
+
+`ui/file_explorer.py` afișează incremental metadate citite prin `FileService.browse_directory`, câte un director deschis, prin UiBridge. Identitățile stabile derivă din rădăcină și calea Windows normalizată. Paginarea urmează sortării întregului director; pollingul este limitat la directoarele extinse. Generațiile de navigare și anularea ignoră rezultatele vechi. La schimbarea workspace-ului sunt eliberate și cache-urile din memorie, inclusiv referința la vechiul Workspace. Nu există index persistent paralel pentru fișiere, payloaduri citite la listare sau scrieri în metadate la navigare. [Detalii și limite](FISIERE.md).

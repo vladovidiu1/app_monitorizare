@@ -167,3 +167,7 @@ Calendar → Întâlniri importă explicit metadate dintr-un calendar Outlook Cl
 ## E-mail din task
 
 Descriere completă, alegere explicită pentru ciorna nesalvată, atașamente de pe calculator sau din folderele taskului/proiectului și formular păstrat la eroare. [Ghid și limite Outlook Classic](docs/EMAIL-DIN-TASK.md).
+
+## Explorator Fișiere
+
+Foldere reale de proiect/task, încărcare la extindere, actualizare la revenire/F5 și atașare la e-mail fără înregistrare manuală. [Ghid, capturi și limite](docs/FISIERE.md).

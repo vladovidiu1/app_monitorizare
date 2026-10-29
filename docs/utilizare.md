@@ -71,6 +71,8 @@ explicită.
 
 ## Fișiere
 
+Exploratorul afișează folderul real al proiectului și files/ al taskului, inclusiv documentele adăugate manual. Extinde directoarele la cerere, folosește Actualizează/F5 și selectează documente pentru e-mail fără a crea referințe. [Ghid complet](FISIERE.md).
+
 * **Copie administrată**: fișierul se copiază în `files/` al nodului (intră în backup-ul complet).
 * **Legătură externă**: se memorează doar calea; dacă lipsește apare „Lipsește” și poate fi relocalizată. Ștergerea
   legăturii nu șterge fișierul original.

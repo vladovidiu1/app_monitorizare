@@ -66,7 +66,7 @@ class TaskFilePicker(ModalDialog):
         self._remaining = []
         self.more.state(["disabled"])
         try:
-            entries = self.files.browse_directory(path)
+            entries = self.files.browse_directory(path, root=self.locations[self.location.current()].path)
         except FocusDeskError as exc:
             self.notice.configure(text=str(exc))
             return

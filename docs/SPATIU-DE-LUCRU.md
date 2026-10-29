@@ -84,3 +84,6 @@ Indicatorul permanent al sesiunii rămâne vizibil și în Concentrare. Începe 
 ## Contextul întâlnirilor
 
 Taskurile legate de o întâlnire au meniul compact Întâlniri legate, navigabil spre notițe. Acțiunile se transformă numai explicit în taskuri/proiecte sau cerințe noi; deschiderea contextului nu pornește o sesiune. [Ghid](INTALNIRI.md).
+
+
+Fișiere folosește acum [exploratorul folderelor reale](FISIERE.md), cu încărcare lazy și acțiunea „Mai mult spațiu pentru Fișiere”. Panoul își folosește întreaga înălțime, fără un al doilea scroll exterior.

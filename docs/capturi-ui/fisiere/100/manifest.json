@@ -1,0 +1,32 @@
+{
+  "platform": "linux",
+  "simulated_scale": 1.0,
+  "windows_dpi_verified": false,
+  "external_apps_opened": false,
+  "captures": [
+    "fisiere-inspector.png",
+    "fisiere-spatiu-lucru.png"
+  ],
+  "checks": [
+    {
+      "name": "inspector-refresh",
+      "ok": true,
+      "height": 35
+    },
+    {
+      "name": "inspector-tree",
+      "ok": true,
+      "height": 214
+    },
+    {
+      "name": "spatiu-refresh",
+      "ok": true,
+      "height": 35
+    },
+    {
+      "name": "spatiu-tree",
+      "ok": true,
+      "height": 132
+    }
+  ]
+}

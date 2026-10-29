@@ -99,6 +99,21 @@ class DirectoryEntry:
     path: Path
     is_dir: bool
     size_bytes: int | None
+    modified_ns: int | None = None
+    is_link: bool = False
+    state: str = "ready"
+    detail: str = ""
+
+
+@dataclass(frozen=True)
+class ExplorerSource:
+    key: str
+    label: str
+    path: Path | None
+    note: str = ""
+    is_dir: bool = True
+    reference_ids: tuple[str, ...] = ()
+    error: str = ""
 
 
 class FileService:
@@ -140,19 +155,113 @@ class FileService:
             add("Folder de cod", source.path)
         return locations
 
+    def explorer_sources(self, node_id: str) -> list[ExplorerSource]:
+        """Metadata only: use the existing source association, files/ and legacy references."""
+        node = self.ws.get(node_id)
+        sources = []
+        try:
+            source = self.effective_source(node_id)
+            if source:
+                owner = self.ws.get(source.owner_id)
+                note = f"Moștenit de la {owner.title}. " if source.inherited else ""
+                if source.mode == "shared":
+                    note += "Folder de cod comun. "
+                note += "Administrat în workspace." if (source.source_mode or source.mode) == "managed" else "Extern; nu intră automat în backup."
+                sources.append(ExplorerSource("work", "Folderul proiectului / de lucru", source.path, note))
+        except (NotFoundError, UnsafePathError, ValidationError) as exc:
+            sources.append(ExplorerSource("work", "Folderul proiectului / de lucru", None, error=str(exc)))
+        own = self.files_dir(node_id)
+        same = next((s for s in sources if s.path and normalized_file_key(s.path) == normalized_file_key(own)), None)
+        if same:
+            sources[sources.index(same)] = ExplorerSource(same.key, same.label + " · Fișierele taskului", own, same.note)
+        else:
+            sources.append(ExplorerSource("files", "Fișierele taskului" if node.kind == Kind.TASK else "Fișierele proiectului", own,
+                                          "Conținutul real din files/; inclus în backupul complet."))
+        roots = [s for s in sources if s.path]
+        if len(roots) == 2 and (is_within(roots[0].path, roots[1].path) or is_within(roots[1].path, roots[0].path)):
+            sources = [ExplorerSource(s.key, s.label, s.path, s.note + " Suprapunere între rădăcini: conținut comun, fără copii suplimentare.") for s in sources]
+        seen = set()
+        for att in sorted(node.attachments, key=lambda a: (not a.is_dir, len(a.path))):
+            try:
+                path = self.resolve(node_id, att)
+            except UnsafePathError as exc:
+                sources.append(ExplorerSource("link-" + att.id, att.name, None, is_dir=att.is_dir,
+                                              reference_ids=(att.id,), error=str(exc)))
+                continue
+            key = normalized_file_key(path)
+            if any(s.path and s.is_dir and is_within(s.path, path) for s in sources):
+                continue  # Still available as a reference action on the corresponding disk row.
+            if key in seen:
+                continue
+            seen.add(key)
+            ids = tuple(a.id for a in node.attachments if a.mode == att.mode and a.path == att.path)
+            sources.append(ExplorerSource("link-" + att.id, att.name, path,
+                                          "Legătură externă." if att.mode == "external" else "Referință administrată existentă.",
+                                          att.is_dir, ids))
+        return sources
+
     @staticmethod
-    def browse_directory(directory: Path) -> list[DirectoryEntry]:
-        """One level only; no recursive payload reads and no automatic link traversal."""
+    def explorer_path(root: Path, candidate: Path) -> Path:
+        """Revalidate boundaries and every path component, including the selected root.
+
+        Call from I/O workers: lstat can block on a disconnected network share.
+        """
+        root, candidate = Path(clean_abs(root)), Path(clean_abs(candidate))
+        if not is_within(root, candidate):
+            raise UnsafePathError("Calea iese din rădăcina aleasă.")
+        ensure_path_fits(candidate, reserve=0)
+        for parent in (root, *root.parents):
+            if is_reparse_point(parent):
+                raise UnsafePathError(f"Legătură/junction fără traversare automată: {parent}")
+        rel = candidate.relative_to(root)
+        return resolve_inside(root, rel.as_posix()) if rel.parts else root
+
+    @staticmethod
+    def describe_entry(root: Path, path: Path, *, readable: bool = False) -> DirectoryEntry:
+        checked = FileService.explorer_path(root, path)
+        try:
+            info = checked.lstat()
+            directory = stat.S_ISDIR(info.st_mode)
+            if not directory and not stat.S_ISREG(info.st_mode):
+                raise UnsafePathError("Calea nu este un fișier sau folder obișnuit.")
+            if readable:
+                if directory:
+                    with os.scandir(checked):
+                        pass
+                else:
+                    with checked.open("rb") as stream:
+                        stream.read(1)
+            return DirectoryEntry(checked, directory, None if directory else info.st_size, info.st_mtime_ns)
+        except OSError as exc:
+            raise StorageError(f"Calea nu este disponibilă: {checked}\n{exc}") from exc
+
+    @staticmethod
+    def browse_directory(directory: Path, *, root: Path | None = None, include_links: bool = False,
+                         cancel=None) -> list[DirectoryEntry]:
+        """One level, metadata only. An inaccessible child does not invalidate its siblings."""
+        directory = FileService.explorer_path(root or directory, directory)
         try:
             entries = []
             with os.scandir(directory) as children:
                 for child in children:
-                    if is_reparse_point(child.path):
-                        continue
-                    info = child.stat(follow_symlinks=False)
-                    if stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode):
-                        entries.append(DirectoryEntry(Path(child.path), stat.S_ISDIR(info.st_mode),
-                                                      info.st_size if stat.S_ISREG(info.st_mode) else None))
+                    if cancel:
+                        cancel.check()
+                    try:
+                        info = child.stat(follow_symlinks=False)
+                        link = stat.S_ISLNK(info.st_mode) or bool(getattr(info, "st_file_attributes", 0) & 0x400)
+                        if link and not include_links:
+                            continue
+                        directory_child = stat.S_ISDIR(info.st_mode)
+                        state = "link" if link else "ready" if directory_child or stat.S_ISREG(info.st_mode) else "unsupported"
+                        entries.append(DirectoryEntry(Path(child.path), directory_child,
+                                                      info.st_size if stat.S_ISREG(info.st_mode) and not link else None,
+                                                      info.st_mtime_ns, link, state,
+                                                      "Legătură/junction: fără traversare automată." if link else
+                                                      "Element special; nu se deschide automat." if state == "unsupported" else ""))
+                    except FileNotFoundError:
+                        continue  # Removed during listing; the next refresh reconciles it.
+                    except OSError as exc:
+                        entries.append(DirectoryEntry(Path(child.path), False, None, state="inaccessible", detail=str(exc)))
             return sorted(entries, key=lambda item: (not item.is_dir, item.path.name.casefold()))
         except OSError as exc:
             raise StorageError(f"Folderul nu poate fi citit: {directory}\n{exc}") from exc
@@ -307,6 +416,10 @@ class FileService:
 
     def clear_code_folder(self, node_id: str) -> None:
         self.ws.update_node(node_id, source_workspace=None)
+
+    def disable_code_folder(self, node_id: str) -> None:
+        """Stop inheritance on this node, preserving the parent association and all files."""
+        self.ws.update_node(node_id, source_workspace=SourceWorkspace(mode="disabled", path=""))
 
     def effective_source(self, node_id: str) -> ResolvedSource | None:
         """Folderul de cod propriu sau mostenit de la cel mai apropiat stramos."""

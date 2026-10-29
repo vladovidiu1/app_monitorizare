@@ -277,7 +277,8 @@ def test_files_and_checkpoint_flow(app, tmp_path):
     app.run_write(lambda: app.files.add_external(task.id, ext), refresh=True)
     files_tab = app.inspector.tab_by_title("Fișiere")
     files_tab.load(app.ws.get(task.id))
-    assert len(files_tab.tv.get_children()) == 1 and str(code) in files_tab.code_lbl.cget("text")
+    assert str(code) in files_tab.code_lbl.cget("text")
+    assert len(files_tab.explorer.sources) == 3  # Work folder, real files/ and the external reference.
     done = []
     app.create_checkpoint(task.id, "test", on_finished=lambda: done.append(1))
     assert pump(app, lambda: bool(done), 10)

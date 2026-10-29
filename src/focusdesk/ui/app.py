@@ -458,6 +458,8 @@ class FocusDeskApp:
                 return False
         # Stopping a coded task can enqueue its automatic checkpoint.
         if self._pending_workspace_jobs():return False
+        for tab in [*self.inspector.tabs, *self.task_space.sections.values()]:
+            if isinstance(tab, FilesTab): tab.detach_workspace()
         self.calendar_page.meetings.cancel_import()
         self.task_space.leave_route()
         self.task_space.positions.clear()
@@ -986,7 +988,7 @@ class FocusDeskApp:
         if self.run_write(lambda: self.ws.move(node.id, parent.parent_id, parent.sort_order + 5), refresh=True):
             self.tasklist.select(node.id)
 
-    def compose_mail(self, node_id: str | None = None) -> None:
+    def compose_mail(self, node_id: str | None = None, *, attachments=()) -> None:
         """E-mail din task prin Outlook Classic; trimiterea porneste doar din dialog, dupa confirmare."""
         if self.ws is None:
             return
@@ -997,6 +999,8 @@ class FocusDeskApp:
             return
         if self._mail_composing:
             if self.mail_dialog is not None and self.mail_dialog.winfo_exists():
+                if self.mail_dialog.ws is self.ws and self.mail_dialog.node_id == node.id and attachments:
+                    self.mail_dialog._select_attachments(attachments)
                 self.mail_dialog.lift()
             return
         ws = self.ws
@@ -1015,6 +1019,8 @@ class FocusDeskApp:
             if self.ws is not ws or node.id not in ws.nodes:
                 return
             self.mail_dialog = MailDialog(self.root, self, node, description=description)
+            if attachments:
+                self.mail_dialog._select_attachments(attachments)
             self.mail_dialog.run()
         except FocusDeskError as exc:
             show_error(self.root, str(exc), "E-mail")
