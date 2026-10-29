@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
@@ -61,7 +63,7 @@ class PlanningService:
             try:
                 node = self.ws.get(p.node_id)
                 if node.kind != Kind.TASK or node.status in CLOSED_STATUSES:
-                    raise FocusDeskError("task finalizat între timp")
+                    raise FocusDeskError(tr('services.planning.task_finalizat_intre_timp'))
                 out.created.append(self.sessions.create(p.node_id, p.start, p.end, origin="assisted",
                                                         reserve_calendar=reserve_calendar))
             except FocusDeskError as exc:

@@ -34,6 +34,13 @@ def resource_path(relative: str) -> Path:
 class AppConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
+    language: str = "ro"
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def _language(cls, value):
+        return value if value in ("ro", "en", "de", "fr", "es") else "ro"
+
     last_workspace: str | None = None
     recent_workspaces: list[str] = Field(default_factory=list)
     theme: str = "light"  # "light" | "dark"
@@ -42,7 +49,7 @@ class AppConfig(BaseModel):
     show_archived: bool = False
     show_completed: bool = False
     last_view: str = 'today'
-    inspector_tab: str = 'Detalii'
+    inspector_tab: str = 'details'
 
     @field_validator('last_view', mode='before')
     @classmethod
@@ -52,11 +59,11 @@ class AppConfig(BaseModel):
     @field_validator('inspector_tab', mode='before')
     @classmethod
     def _tab(cls, value):
-        if not isinstance(value, str):
-            return 'Detalii'
-        aliases = {'Jurnal': 'Activitate', 'Subtask-uri': 'Subtaskuri'}
-        value = aliases.get(value, value)
-        return value if value in ('Detalii','Subtaskuri','Activitate','Fișiere','Planificare','Versiuni') else 'Detalii'
+        aliases = {'Detalii':'details','Subtaskuri':'subtasks','Subtask-uri':'subtasks',
+                   'Activitate':'journal','Jurnal':'journal','Fișiere':'files',
+                   'Planificare':'planning','Versiuni':'versions'}
+        value = aliases.get(value, value) if isinstance(value,str) else 'details'
+        return value if value in ('details','subtasks','journal','files','planning','versions') else 'details'
 
     sash_left: int | None = None
     sash_right: int | None = None

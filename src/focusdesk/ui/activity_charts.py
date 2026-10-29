@@ -1,4 +1,6 @@
 """Small native, keyboard-operable Canvas charts using FocusDesk design tokens."""
+
+from ..i18n import tr, hours_text
 import tkinter as tk
 from tkinter import ttk
 from .design import C, px
@@ -16,7 +18,7 @@ class BarChart(ttk.Frame):
         self.canvas.pack(fill='both',expand=True)
         self.hbar=ttk.Scrollbar(self,orient='horizontal',command=self.canvas.xview)
         self.hbar.pack(fill='x');self.canvas.configure(xscrollcommand=self.hbar.set)
-        self.hint=ttk.Label(self,text='Săgeți: selectare · Enter: filtrează · detalii exacte în tabele',style='Muted.TLabel',wraplength=520)
+        self.hint=ttk.Label(self,text=tr('ui.activity_charts.sageti_selectare_enter_filtreaza_detalii_exacte_in_tabele'),style='Muted.TLabel',wraplength=520)
         self.hint.pack(anchor='w',pady=(4,0))
         self.canvas.bind('<Configure>',lambda event:self.draw())
         for key,delta in (('<Left>',-1),('<Up>',-1),('<Right>',1),('<Down>',1)):
@@ -34,7 +36,7 @@ class BarChart(ttk.Frame):
         self.selected=max(0,min(len(self.rows)-1,self.selected+delta));self.draw()
         if self.rows:
             row=self.rows[self.selected]
-            self.hint.configure(text=f"{row['label']}: {format_seconds(row['value'])}"+(f" lucrat / {format_seconds(row['secondary'])} programat" if 'secondary' in row else '')+' · Enter: filtrează')
+            self.hint.configure(text=f"{row['label']}: {format_seconds(row['value'])}"+(tr('ui.activity_charts.lucrat_programat', format_seconds_row_secondary=format_seconds(row['secondary'])) if 'secondary' in row else '')+tr('ui.activity_charts.enter_filtreaza'))
             if not self.horizontal:self.canvas.xview_moveto(max(0,(self.selected-2)/len(self.rows)))
         return 'break'
 
@@ -50,7 +52,7 @@ class BarChart(ttk.Frame):
         family=self._root()._focusdesk_family
         font=(family,9)
         if not self.rows:
-            c.create_text(width/2,height/2,text='Nicio durată în intervalul ales',fill=C.muted,font=font)
+            c.create_text(width/2,height/2,text=tr('ui.activity_charts.nicio_durata_in_intervalul_ales'),fill=C.muted,font=font)
             c.configure(scrollregion=(0,0,width,height));return
         maximum=max(max(row['value'],row.get('secondary',0)) for row in self.rows) or 1
         if self.horizontal:
@@ -60,7 +62,7 @@ class BarChart(ttk.Frame):
                 c.create_text(px(self,8),y+px(self,9),text=name,anchor='w',fill=C.text,font=font,tags=(f'bar{i}',))
                 left=width*.43;right=width-px(self,74)
                 c.create_rectangle(left,y,left+max(2,(right-left)*row['value']/maximum),y+px(self,17),fill=C.accent,outline='',tags=(f'bar{i}',))
-                c.create_text(width-px(self,5),y+px(self,9),text=f"{row['value']/3600:.1f} h",anchor='e',fill=C.text,font=font,tags=(f'bar{i}',))
+                c.create_text(width-px(self,5),y+px(self,9),text=hours_text(row['value']/3600),anchor='e',fill=C.text,font=font,tags=(f'bar{i}',))
                 c.tag_bind(f'bar{i}','<Button-1>',lambda event,n=i:self.click(n))
                 if i==self.selected and c.focus_get() is c:c.create_rectangle(1,y-2,width-2,y+px(self,22),outline=C.accent,dash=(3,2))
             c.configure(scrollregion=(0,0,width,height))
@@ -68,7 +70,7 @@ class BarChart(ttk.Frame):
             step=max(px(self,18),(width-px(self,50))/len(self.rows));virtual=max(width,step*len(self.rows)+px(self,50))
             base=height-px(self,27);plot=height-px(self,54)
             c.create_line(px(self,32),base,virtual,base,fill=C.border)
-            c.create_text(px(self,4),px(self,9),text=f'{maximum/3600:.1f} h',anchor='nw',fill=C.muted,font=font)
+            c.create_text(px(self,4),px(self,9),text=hours_text(maximum/3600),anchor='nw',fill=C.muted,font=font)
             for i,row in enumerate(self.rows):
                 x=px(self,38)+i*step;bw=max(2,step*.34)
                 c.create_rectangle(x,base-plot*row['value']/maximum,x+bw,base,fill=C.accent,outline='',tags=(f'bar{i}',))

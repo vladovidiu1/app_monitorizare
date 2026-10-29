@@ -1,4 +1,6 @@
 """Later requirements are independent tasks, not reminders, children or recurrences."""
+
+from ..i18n import tr
 from uuid import UUID, uuid5
 from ..domain.common import is_uuid, utcnow
 from ..domain.models import Node, Kind, Status, Priority, ChecklistItem, SourceWorkspace, HistoryEvent
@@ -15,10 +17,10 @@ class FollowupService:
     def validate_relation(self,node_id,source_id):
         if source_id is None:return
         source=self.ws.get(source_id)
-        if source.kind!=Kind.TASK:raise ValidationError('O cerință ulterioară trebuie să continue un task.')
+        if source.kind!=Kind.TASK:raise ValidationError(tr('services.followups.o_cerinta_ulterioara_trebuie_sa_continue_un_task'))
         seen={node_id};current=source_id
         while current is not None:
-            if current in seen:raise CycleError('Relația cerințelor ar crea un ciclu.')
+            if current in seen:raise CycleError(tr('services.followups.relatia_cerintelor_ar_crea_un_ciclu'))
             if current not in self.ws.nodes:break
             seen.add(current);current=self.ws.nodes[current].continuation_of
 
@@ -33,7 +35,7 @@ class FollowupService:
     def lineage(self,node_id):
         out=[];seen=set();current=node_id
         while current is not None:
-            if current in seen:raise CycleError('Ciclu în lanțul cerințelor.')
+            if current in seen:raise CycleError(tr('storage.repository.ciclu_in_lantul_cerintelor'))
             seen.add(current);out.append(current)
             node=self.ws.nodes.get(current)
             if node is None:break
@@ -53,15 +55,15 @@ class FollowupService:
     def validate_destination(self,parent_id):
         self.ws.check_parent(Kind.TASK,parent_id)
         if parent_id is not None and any(n.archived_at is not None for n in (*self.ws.ancestors(parent_id),self.ws.get(parent_id))):
-            raise ValidationError('Destinația este arhivată. Alege explicit un container activ sau rădăcina.')
+            raise ValidationError(tr('services.followups.destinatia_este_arhivata_alege_explicit_un_container_activ_sau_radacin'))
         if parent_id is not None:self.ws.repo._check_unmodified(parent_id,'node.json',self.ws.node_dir(parent_id)/'node.json')
         if parent_id is not None and not (self.ws.node_dir(parent_id)/'node.json').is_file():
-            raise ValidationError('Destinația nu mai este disponibilă. Alege alt container.')
+            raise ValidationError(tr('services.followups.destinatia_nu_mai_este_disponibila_alege_alt_container'))
 
     def create(self,source_id,*,title,description='',requested_by=None,priority=None,due_date=None,
                parent_id=...,copy_description=False,copy_checklist=False,code_access='none',code_folder=None,request_id,meeting_ids=()):
         self.ws._check_writable()
-        if not is_uuid(request_id):raise ValidationError('Identificator de operație invalid.')
+        if not is_uuid(request_id):raise ValidationError(tr('services.followups.identificator_de_operatie_invalid'))
         # Normalize user data before hashing, independently of later source edits.
         candidate=self.ws._build_node(dict(kind=Kind.TASK,title=title,status=Status.TODO,priority=priority or Priority.NORMAL,
             requested_by=requested_by,due_date=due_date,meeting_ids=list(meeting_ids)))
@@ -79,23 +81,23 @@ class FollowupService:
                 old_node=Node.model_validate(old.data['node']) if old.type=='followup_create' and old.state=='pending' else None
                 reserved=self.ws.repo.nodes_dir/physical_dirname(old_node.title,old_node.id) if old_node else None
                 if old_node is None or reserved.exists() or old_node.id in self.ws.nodes:
-                    raise ValidationError('Operația a fost deja începută cu alte date. Reîncearcă datele inițiale; nu se creează un duplicat.')
+                    raise ValidationError(tr('services.followups.operatia_a_fost_deja_inceputa_cu_alte_date_reincearca_datele_initiale'))
                 # No authoritative task has been written: the same stable request may be corrected.
             elif old.state=='done':
                 nid=old.data['new_node_id']
-                if nid not in self.ws.nodes:raise ValidationError('Cerința creată este în coș sau indisponibilă. Nu se recreează automat.')
+                if nid not in self.ws.nodes:raise ValidationError(tr('services.followups.cerinta_creata_este_in_cos_sau_indisponibila_nu_se_recreeaza_automat'))
                 return self.ws.get(nid)
             else:
                 nid=apply_followup(self.ws.repo,old)
                 self.ws.emit('node_created',node_id=nid);return self.ws.get(nid)
         source=self.ws.get(source_id)
-        if source.kind!=Kind.TASK:raise ValidationError('Selectează un task sursă.')
-        if not (self.ws.node_dir(source_id)/'node.json').is_file():raise ValidationError('Taskul sursă nu mai este disponibil.')
+        if source.kind!=Kind.TASK:raise ValidationError(tr('services.followups.selecteaza_un_task_sursa'))
+        if not (self.ws.node_dir(source_id)/'node.json').is_file():raise ValidationError(tr('services.followups.taskul_sursa_nu_mai_este_disponibil'))
         self.ws.repo._check_unmodified(source_id,'node.json',self.ws.node_dir(source_id)/'node.json')
         destination=source.parent_id if parent_id is ... else parent_id
         self.validate_destination(destination)
-        if destination==source_id:raise ValidationError('Alege un container separat de taskul sursă.')
-        if code_access not in ('none','shared','folder'):raise ValidationError('Alegere necunoscută pentru accesul la cod.')
+        if destination==source_id:raise ValidationError(tr('services.followups.alege_un_container_separat_de_taskul_sursa'))
+        if code_access not in ('none','shared','folder'):raise ValidationError(tr('services.followups.alegere_necunoscuta_pentru_accesul_la_cod'))
         from .files import FileService
         files=FileService(self.ws)
         sw=SourceWorkspace(mode='disabled')
@@ -103,7 +105,7 @@ class FollowupService:
         elif code_access=='folder':
             from pathlib import Path
             folder=Path(code_folder or '')
-            if not folder.is_absolute() or not folder.is_dir():raise ValidationError('Alege un folder de cod existent, cu cale absolută.')
+            if not folder.is_absolute() or not folder.is_dir():raise ValidationError(tr('services.followups.alege_un_folder_de_cod_existent_cu_cale_absoluta'))
             sw=SourceWorkspace(mode='external',path=str(folder))
         text=description
         if copy_description:
@@ -118,7 +120,7 @@ class FollowupService:
             checklist=[ChecklistItem(text=item.text,done=False) for item in source.checklist] if copy_checklist else [])
         node=Node.model_validate(data)
         path=self.ws.repo.nodes_dir/physical_dirname(node.title,nid);ensure_path_fits(path)
-        if path.exists():raise StorageError('Directorul rezervat există deja; nu se suprascrie.')
+        if path.exists():raise StorageError(tr('services.followups.directorul_rezervat_exista_deja_nu_se_suprascrie'))
         now=utcnow();events=[]
         for key,kind,node_id,event_data in (
             ('created','created',nid,{'title':node.title,'kind':'task','continuation_of':source_id}),
@@ -130,6 +132,6 @@ class FollowupService:
         try:nid=apply_followup(self.ws.repo,op)
         except Exception as exc:
             self.ws.emit('node_created',node_id=nid)
-            raise StorageError(f'Crearea nu este confirmată: {exc}. Ciorna se păstrează; reîncearcă aceleași date sau redeschide workspace-ul pentru recuperare.') from exc
+            raise StorageError(tr('services.followups.crearea_nu_este_confirmata_ciorna_se_pastreaza_reincearca_aceleasi_dat', exc=exc)) from exc
         self.ws.emit('node_created',node_id=nid)
         return self.ws.get(nid)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import uuid
 from datetime import date, datetime, timezone
 from typing import Annotated
@@ -19,7 +21,7 @@ def fmt_utc(value: datetime) -> str:
 
 def _require_aware(value: datetime) -> datetime:
     if value.tzinfo is None:
-        raise ValueError("data/ora trebuie sa contina fus orar (UTC)")
+        raise ValueError(tr('extra.domain.common.data_ora_trebuie_sa_contina_fus_orar_utc'))
     return value.astimezone(timezone.utc)
 
 

@@ -8,9 +8,10 @@ Setările descriu mediul tău de lucru și integrările opționale. Funcțiile l
 
 ## Pași pentru configurare
 1. Verifică numele workspace-ului, fusul orar și numărul maxim de priorități zilnice în **General**.
-2. În **Program de lucru** verifică zilele, intervalele, pauzele și excepțiile; acestea influențează planificarea, nu pornesc lucrul automat.
-3. Configurează **Backup** și **Versiuni & VS Code** numai pentru locații pe care le poți accesa.
-4. Salvează prin **Salvează**. Citește confirmările/erorile și verifică rezultatul în funcția relevantă.
+2. În **General → Limbă / Language**, alege Română, English, Deutsch, Français sau Español. **Aplică limba la repornire** salvează preferința în profil, separat de workspace. Repornește manual când ești pregătit; ciornele și timerul nu sunt schimbate. Limba nu modifică fusul orar sau timestampurile. Datele se introduc zi-lună-an ori ISO `YYYY-MM-DD`, cu ora `HH:MM`.
+3. În **Program de lucru** verifică zilele, intervalele, pauzele și excepțiile; acestea influențează planificarea, nu pornesc lucrul automat.
+4. Configurează **Backup** și **Versiuni & VS Code** numai pentru locații pe care le poți accesa.
+5. Salvează prin **Salvează**. Citește confirmările/erorile și verifică rezultatul în funcția relevantă.
 
 ## Colegi și solicitant
 **Colegi → Încarcă Excel colegi…** importă un .xlsx local, prima foaie cu numele în coloana A și codul în B. Codul nu conține domeniul; selectorul existent formează adresa conform convenției aplicației. Importul înlocuiește lista locală imediat, separat de butonul Salvează al setărilor; un import invalid păstrează lista veche. Alegerea solicitantului în task se salvează împreună cu taskul. Nu presupune că importul trimite mesaje.

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "79844992-2e0f-528c-aa45-9ecfc712e10d",
+  "revision": 1,
+  "name": "Simple task",
+  "variables": [],
+  "items": [
+    {
+      "key": "root",
+      "parent": null,
+      "kind": "task",
+      "title": "New task",
+      "description": "## Goal\n\n## Context\n\n## Steps\n\n- \n\n## Expected result\n\n## Completion criteria\n",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    }
+  ]
+}

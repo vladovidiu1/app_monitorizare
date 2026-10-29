@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import os
 import stat
 import zipfile
@@ -15,13 +17,13 @@ DEFAULT_MAX_TOTAL = 8 * 1024 ** 3
 
 def validate_member_name(name: str) -> PurePosixPath:
     if "\x00" in name or name.startswith(("/", "\\")):
-        raise UnsafePathError(f"Nume de arhivă invalid: {name!r}")
+        raise UnsafePathError(tr('storage.ziputil.nume_de_arhiva_invalid', name=name))
     normalized = name.replace("\\", "/")
     p = PurePosixPath(normalized)
     if p.is_absolute() or (len(normalized) > 1 and normalized[1] == ":"):
-        raise UnsafePathError(f"Cale absolută în arhivă: {name!r}")
+        raise UnsafePathError(tr('storage.ziputil.cale_absoluta_in_arhiva', name=name))
     if any(part == ".." for part in p.parts):
-        raise UnsafePathError(f"Cale cu '..' în arhivă: {name!r}")
+        raise UnsafePathError(tr('storage.ziputil.cale_cu_in_arhiva', name=name))
     return p
 
 
@@ -37,13 +39,13 @@ def safe_extract_zip(zip_path: Path, dest: Path, *, max_total: int = DEFAULT_MAX
             validate_member_name(info.filename)
             target = Path(clean_abs(dest / validate_member_name(info.filename)))
             if not is_within(dest, target):
-                raise UnsafePathError(f"Intrarea iese din folderul destinație: {info.filename!r}")
+                raise UnsafePathError(tr('storage.ziputil.intrarea_iese_din_folderul_destinatie', info_filename=info.filename))
             mode = info.external_attr >> 16
             if mode and stat.S_ISLNK(mode):
-                raise UnsafePathError(f"Arhiva conține un symlink: {info.filename!r}")
+                raise UnsafePathError(tr('storage.ziputil.arhiva_contine_un_symlink', info_filename=info.filename))
             total += info.file_size
             if total > max_total:
-                raise UnsafePathError("Arhiva depășește limita de dimensiune la extragere.")
+                raise UnsafePathError(tr('storage.ziputil.arhiva_depaseste_limita_de_dimensiune_la_extragere'))
         for info in infos:
             rel = validate_member_name(info.filename)
             target = Path(clean_abs(dest / rel))

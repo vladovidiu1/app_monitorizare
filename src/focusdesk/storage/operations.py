@@ -6,6 +6,8 @@ in afara de `node.json`, iar adancimea ierarhiei nu mai e limitata de lungimea c
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import os
 import shutil
@@ -99,8 +101,8 @@ def _move_dir(src: Path, dst: Path) -> None:
             last = exc
             time.sleep(0.05 * (attempt + 1))
         except OSError as exc:
-            raise StorageError(f"Mutarea directorului a eșuat: {exc}") from exc
-    raise StorageError(f"Mutarea directorului a eșuat (acces refuzat, posibil blocat de alt proces): {last}") from last
+            raise StorageError(tr('storage.operations.mutarea_directorului_a_esuat', exc=exc)) from exc
+    raise StorageError(tr('storage.operations.mutarea_directorului_a_esuat_acces_refuzat_posibil_blocat_de_alt_proce', last=last)) from last
 
 
 # ---- move ------------------------------------------------------------
@@ -110,11 +112,11 @@ def move_node(repo: WorkspaceRepository, node_id: str, new_parent_id: str | None
     repo._require_writable()
     node = repo.nodes.get(node_id)
     if node is None:
-        raise NotFoundError("Nodul nu există.")
+        raise NotFoundError(tr('storage.operations.nodul_nu_exista'))
     if new_parent_id is not None and new_parent_id not in repo.nodes:
-        raise NotFoundError("Destinația nu există.")
+        raise NotFoundError(tr('storage.operations.destinatia_nu_exista'))
     if new_parent_id in descendants(repo, node_id):
-        raise CycleError("Nu poți muta un nod în interiorul propriilor descendenți.")
+        raise CycleError(tr('storage.operations.nu_poti_muta_un_nod_in_interiorul_propriilor_descendenti'))
     changes: dict[str, Any] = {"parent_id": new_parent_id}
     if sort_order is not None:
         changes["sort_order"] = sort_order
@@ -137,7 +139,7 @@ def trash_node(repo: WorkspaceRepository, node_id: str) -> None:
     repo._require_writable()
     node = repo.nodes.get(node_id)
     if node is None:
-        raise NotFoundError("Nodul nu există.")
+        raise NotFoundError(tr('storage.operations.nodul_nu_exista'))
     ids = descendants(repo, node_id)
     entry = repo.trash_dir / node_id
     moves = [(str(repo.dirs[i]), str(entry / "nodes" / repo.dirs[i].name)) for i in ids]
@@ -200,14 +202,14 @@ def restore_node(repo: WorkspaceRepository, node_id: str, new_parent_id: str | N
         new_parent_id = None
     clash = [i for i in data["node_ids"] if i in repo.nodes]
     if clash:
-        raise ValidationError("Există deja noduri cu aceleași UUID-uri în workspace.")
+        raise ValidationError(tr('storage.operations.exista_deja_noduri_cu_aceleasi_uuid_uri_in_workspace'))
     sources = _trash_dirs(entry, data)
     moves = [(str(src), str(repo.nodes_dir / src.name)) for src in sources.values()]
     for src, dst in moves:
         if Path(dst).exists():
-            raise StorageError("La destinație există deja un director cu același nume.")
+            raise StorageError(tr('storage.operations.la_destinatie_exista_deja_un_director_cu_acelasi_nume'))
         if len(clean_abs(dst)) + _max_relative_length(Path(src)) > MAX_PATH:
-            raise StorageError("Restaurarea ar depăși limita de cale Windows.")
+            raise StorageError(tr('storage.operations.restaurarea_ar_depasi_limita_de_cale_windows'))
     root_dst = repo.nodes_dir / data["dirname"]
     patch = {"parent_id": new_parent_id}
     op = _new_op(repo, "restore_node", {
@@ -291,10 +293,10 @@ def rename_physical_dir(repo: WorkspaceRepository, node_id: str) -> Path:
     if os.path.normcase(str(new_dir)) == os.path.normcase(str(old_dir)):
         return old_dir
     if new_dir.exists():
-        raise StorageError("Există deja un director cu acest nume.")
+        raise StorageError(tr('storage.operations.exista_deja_un_director_cu_acest_nume'))
     deepest = len(clean_abs(new_dir)) + _max_relative_length(old_dir)
     if deepest > MAX_PATH:
-        raise StorageError("Redenumirea ar depăși limita de cale Windows.")
+        raise StorageError(tr('storage.operations.redenumirea_ar_depasi_limita_de_cale_windows'))
     op = _new_op(repo, "rename_dir", {"node_id": node_id, "old_dir": str(old_dir), "new_dir": str(new_dir)})
     try:
         _move_dir(old_dir, new_dir)
@@ -316,13 +318,13 @@ def _recover_multi_move(repo: WorkspaceRepository, op: OperationRecord) -> str:
     pending = [(s, t) for s, t in pairs if s.exists() and not t.exists()]
     moved = [(s, t) for s, t in pairs if t.exists() and not s.exists()]
     if len(pending) + len(moved) != len(pairs):
-        _finish(repo, op, "failed", "stare ambiguă (ambele directoare există sau lipsesc)")
-        return f"Operația {op.type} necesită verificare manuală: stare ambiguă."
+        _finish(repo, op, "failed", tr('storage.operations.stare_ambigua_ambele_directoare_exista_sau_lipsesc'))
+        return tr('storage.operations.operatia_necesita_verificare_manuala_stare_ambigua', op_type=op.type)
     if not moved:
         if op.type == "trash_node" and d.get("manifest_dir"):
             shutil.rmtree(d["manifest_dir"], ignore_errors=True)
-        _finish(repo, op, "rolled_back", "directoarele nu fuseseră mutate")
-        return f"Operația {op.type} întreruptă a fost anulată (nimic mutat)."
+        _finish(repo, op, "rolled_back", tr('storage.operations.directoarele_nu_fusesera_mutate'))
+        return tr('storage.operations.operatia_intrerupta_a_fost_anulata_nimic_mutat', op_type=op.type)
     for s, t in pending:
         _move_dir(s, t)
     if op.type == "restore_node":
@@ -330,7 +332,7 @@ def _recover_multi_move(repo: WorkspaceRepository, op: OperationRecord) -> str:
         if d.get("manifest_dir"):
             shutil.rmtree(d["manifest_dir"], ignore_errors=True)
     _finish(repo, op)
-    return f"Operația {op.type} întreruptă a fost finalizată."
+    return tr('storage.operations.operatia_intrerupta_a_fost_finalizata', op_type=op.type)
 
 
 def recover_pending(repo: WorkspaceRepository) -> list[str]:
@@ -350,7 +352,7 @@ def recover_pending(repo: WorkspaceRepository) -> list[str]:
                 continue
             old_dir, new_dir = Path(d.get("old_dir", "")), Path(d.get("new_dir", ""))
             if not d.get("old_dir"):
-                _finish(repo, op, "failed", "operație fără directoare")
+                _finish(repo, op, "failed", tr('storage.operations.operatie_fara_directoare'))
                 continue
             old_exists, new_exists = old_dir.exists(), new_dir.exists()
             if new_exists and not old_exists:
@@ -358,17 +360,17 @@ def recover_pending(repo: WorkspaceRepository) -> list[str]:
                 if op.type == "restore_node" and d.get("manifest_dir"):
                     shutil.rmtree(d["manifest_dir"], ignore_errors=True)
                 _finish(repo, op)
-                messages.append(f"Operația {op.type} întreruptă a fost finalizată.")
+                messages.append(tr('storage.operations.operatia_intrerupta_a_fost_finalizata', op_type=op.type))
             elif old_exists and not new_exists:
                 if op.type == "trash_node" and d.get("manifest_dir"):
                     shutil.rmtree(d["manifest_dir"], ignore_errors=True)
-                _finish(repo, op, "rolled_back", "directorul nu fusese mutat")
-                messages.append(f"Operația {op.type} întreruptă a fost anulată (nimic mutat).")
+                _finish(repo, op, 'rolled_back', tr('extra.storage.operations.directorul_nu_fusese_mutat'))
+                messages.append(tr('storage.operations.operatia_intrerupta_a_fost_anulata_nimic_mutat', op_type=op.type))
             else:
-                _finish(repo, op, "failed", "stare ambiguă (ambele directoare există sau lipsesc)")
-                messages.append(f"Operația {op.type} necesită verificare manuală: stare ambiguă.")
+                _finish(repo, op, "failed", tr('storage.operations.stare_ambigua_ambele_directoare_exista_sau_lipsesc'))
+                messages.append(tr('storage.operations.operatia_necesita_verificare_manuala_stare_ambigua', op_type=op.type))
         except Exception as exc:
             log.exception("Recuperarea operației %s a eșuat", op.id)
             _finish(repo, op, "failed", str(exc))
-            messages.append(f"Recuperarea operației {op.type} a eșuat: {exc}")
+            messages.append(tr('storage.operations.recuperarea_operatiei_a_esuat', op_type=op.type, exc=exc))
     return messages

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import time
 import tkinter as tk
@@ -61,8 +63,8 @@ from .user_guide import GuideController
 
 log = logging.getLogger(__name__)
 
-VIEW_TITLES = {"today":"Astăzi", "tasks":"Proiecte și taskuri", "calendar":"Calendar", "activity":"Activitate", "archive":"Arhivă"}
-VIEW_HINTS = {"tasks":"Niciun task. Adaugă un task sau schimbă filtrele.", "archive":"Arhiva este goală."}
+VIEW_TITLES = {"today":tr('ui.app.astazi'), "tasks":tr('ui.app.proiecte_si_taskuri'), "calendar":tr('ui.outlook_ui.calendar'), "activity":tr('ui.activity_page.activitate'), "archive":tr('ui.app.arhiva')}
+VIEW_HINTS = {"tasks":tr('ui.app.niciun_task_adauga_un_task_sau_schimba_filtrele'), "archive":tr('ui.app.arhiva_este_goala')}
 
 
 class FocusDeskApp:
@@ -131,21 +133,21 @@ class FocusDeskApp:
         top.pack(fill="x")
         from .design import icon
         ttk.Label(top, text="  FocusDesk", image=icon(top,"brand",24), compound="left", style="Brand.TLabel").pack(side="left")
-        self.guide_btn = ttk.Button(top, text="Ghid de utilizare", image=icon(top,"help",20), compound="left",
+        self.guide_btn = ttk.Button(top, text=tr('ui.app.ghid_de_utilizare'), image=icon(top,"help",20), compound="left",
                                     style="Quiet.TButton", command=self.show_guide, takefocus=True)
         self.guide_btn.pack(side="left", padx=(10, 0))
         from .common import Tooltip
-        Tooltip(self.guide_btn, "Ghid local de utilizare · F1 pentru ajutor contextual")
+        Tooltip(self.guide_btn, tr('ui.app.ghid_local_de_utilizare_f1_pentru_ajutor_contextual'))
         self.ws_label = ttk.Label(top, text="", style="Muted.TLabel", width=21)
         self.ws_label.pack(side="left", padx=(12, 0), pady=(3, 0))
-        self.new_btn = tb.Menubutton(top, text="+ Nou", bootstyle="primary")
+        self.new_btn = tb.Menubutton(top, text=tr('common.new'), bootstyle="primary")
         self.new_menu = tk.Menu(self.new_btn, tearoff=False)
-        self.new_menu.add_command(label="Din șablon…", command=self.new_from_template)
-        self.new_menu.add_command(label="Task\tCtrl+N", command=lambda: self.new_node(Kind.TASK))
-        self.new_menu.add_command(label="Subtask în selecția curentă", command=self.new_subtask)
+        self.new_menu.add_command(label=tr('ui.app.din_sablon'), command=self.new_from_template)
+        self.new_menu.add_command(label=tr('common.task_shortcut'), command=lambda: self.new_node(Kind.TASK))
+        self.new_menu.add_command(label=tr('ui.app.subtask_in_selectia_curenta'), command=self.new_subtask)
         self.new_menu.add_separator()
-        self.new_menu.add_command(label="Folder / categorie", command=lambda: self.new_node(Kind.FOLDER))
-        self.new_menu.add_command(label="Proiect", command=lambda: self.new_node(Kind.PROJECT))
+        self.new_menu.add_command(label=tr('ui.app.folder_categorie'), command=lambda: self.new_node(Kind.FOLDER))
+        self.new_menu.add_command(label=tr('ui.app.proiect'), command=lambda: self.new_node(Kind.PROJECT))
         self.new_btn["menu"] = self.new_menu
         self.new_btn.pack(side="right")
         self.search_var = tk.StringVar()
@@ -221,81 +223,81 @@ class FocusDeskApp:
         self.menubar = m
         # Fisier
         f = tk.Menu(m, tearoff=False)
-        m.add_cascade(label="Fișier", menu=f, underline=0)
-        f.add_command(label="Deschide workspace…", command=self.menu_open_workspace)
-        f.add_command(label="Workspace nou…", command=self.menu_new_workspace)
-        f.add_command(label="Creează workspace demonstrativ…", command=self.menu_demo_workspace)
+        m.add_cascade(label=tr('ui.tab_versions.fisier'), menu=f, underline=0)
+        f.add_command(label=tr('ui.app.deschide_workspace'), command=self.menu_open_workspace)
+        f.add_command(label=tr('ui.app.workspace_nou'), command=self.menu_new_workspace)
+        f.add_command(label=tr('ui.app.creeaza_workspace_demonstrativ'), command=self.menu_demo_workspace)
         self.recent_menu = tk.Menu(f, tearoff=False)
-        f.add_cascade(label="Workspace-uri recente", menu=self.recent_menu)
+        f.add_cascade(label=tr('menu.recent_workspaces'), menu=self.recent_menu)
         f.add_separator()
-        f.add_command(label="Salvează\tCtrl+S", command=self.save_current)
-        f.add_command(label="Rescanează workspace", command=self.rescan)
+        f.add_command(label=tr('ui.app.salveaza_ctrl_s'), command=self.save_current)
+        f.add_command(label=tr('ui.app.rescaneaza_workspace'), command=self.rescan)
         f.add_separator()
-        f.add_command(label="Backup acum (metadate)", command=lambda: self.backup_now(False))
-        f.add_command(label="Backup acum (complet, cu fișiere)", command=lambda: self.backup_now(True))
-        f.add_command(label="Restaurează backup într-un folder nou…", command=self.restore_backup)
+        f.add_command(label=tr('ui.app.backup_acum_metadate'), command=lambda: self.backup_now(False))
+        f.add_command(label=tr('ui.app.backup_acum_complet_cu_fisiere'), command=lambda: self.backup_now(True))
+        f.add_command(label=tr('ui.app.restaureaza_backup_intr_un_folder_nou'), command=self.restore_backup)
         f.add_separator()
-        f.add_command(label="Coș…", command=self.open_trash)
+        f.add_command(label=tr('ui.app.cos'), command=self.open_trash)
         f.add_separator()
-        f.add_command(label="Ieșire", command=self.on_close)
+        f.add_command(label=tr('ui.app.iesire'), command=self.on_close)
         self.file_menu = f
         # Organizare
         o = tk.Menu(m, tearoff=False)
-        m.add_cascade(label="Organizare", menu=o, underline=0)
-        o.add_command(label="Task nou\tCtrl+N", command=lambda: self.new_node(Kind.TASK))
-        o.add_command(label="Subtask nou", command=self.new_subtask)
-        o.add_command(label="Folder nou", command=lambda: self.new_node(Kind.FOLDER))
-        o.add_command(label="Proiect nou", command=lambda: self.new_node(Kind.PROJECT))
+        m.add_cascade(label=tr('ui.app.organizare'), menu=o, underline=0)
+        o.add_command(label=tr('ui.app.task_nou_ctrl_n'), command=lambda: self.new_node(Kind.TASK))
+        o.add_command(label=tr('ui.app.subtask_nou'), command=self.new_subtask)
+        o.add_command(label=tr('ui.app.folder_nou'), command=lambda: self.new_node(Kind.FOLDER))
+        o.add_command(label=tr('ui.app.proiect_nou'), command=lambda: self.new_node(Kind.PROJECT))
         o.add_separator()
-        o.add_command(label="Redenumește\tF2", command=self.rename_selected)
-        o.add_command(label="Mută…", command=self.move_selected)
-        o.add_command(label="Face subtask al task-ului de deasupra\tAlt+→", command=self.indent_selected)
-        o.add_command(label="Scoate un nivel\tAlt+←", command=self.outdent_selected)
-        o.add_command(label="Adaugă legătură…", command=self.link_selected)
-        o.add_command(label="Prioritate pentru azi (comută)", command=self.toggle_pin_selected)
-        o.add_command(label="Finalizează / redeschide", command=self.toggle_done_selected)
+        o.add_command(label=tr('ui.app.redenumeste_f2'), command=self.rename_selected)
+        o.add_command(label=tr('ui.app.muta'), command=self.move_selected)
+        o.add_command(label=tr('ui.app.face_subtask_al_task_ului_de_deasupra_alt'), command=self.indent_selected)
+        o.add_command(label=tr('ui.app.scoate_un_nivel_alt'), command=self.outdent_selected)
+        o.add_command(label=tr('ui.app.adauga_legatura'), command=self.link_selected)
+        o.add_command(label=tr('ui.app.prioritate_pentru_azi_comuta'), command=self.toggle_pin_selected)
+        o.add_command(label=tr('ui.tab_subtasks.finalizeaza_redeschide'), command=self.toggle_done_selected)
         o.add_separator()
-        o.add_command(label="Arhivează / dezarhivează", command=self.toggle_archive_selected)
-        o.add_command(label="Trimite în coș", command=self.trash_selected)
+        o.add_command(label=tr('ui.app.arhiveaza_dezarhiveaza'), command=self.toggle_archive_selected)
+        o.add_command(label=tr('ui.app.trimite_in_cos'), command=self.trash_selected)
         o.add_separator()
-        o.add_command(label="Programează sesiune…", command=lambda: self.schedule_session())
-        o.add_command(label="Planificare asistată…", command=self.open_planner)
-        o.add_command(label="Task-uri recurente…", command=self.open_recurrences)
-        o.add_command(label="Trimite e-mail din task…\tCtrl+M", command=self.compose_mail)
+        o.add_command(label=tr('ui.app.programeaza_sesiune'), command=lambda: self.schedule_session())
+        o.add_command(label=tr('ui.app.planificare_asistata'), command=self.open_planner)
+        o.add_command(label=tr('menu.recurring_tasks'), command=self.open_recurrences)
+        o.add_command(label=tr('ui.app.trimite_e_mail_din_task_ctrl_m'), command=self.compose_mail)
         o.add_separator()
         self.session_menu = tk.Menu(o, tearoff=False)
-        self.session_menu.add_command(label="Începe sesiune pentru selecție", command=self.start_selected_session)
-        self.session_menu.add_command(label="Pauză / continuă", command=self.toggle_pause)
-        self.session_menu.add_command(label="Oprește sesiunea…", command=self.stop_session)
-        o.add_cascade(label="Sesiune de lucru", menu=self.session_menu)
+        self.session_menu.add_command(label=tr('ui.app.incepe_sesiune_pentru_selectie'), command=self.start_selected_session)
+        self.session_menu.add_command(label=tr('ui.app.pauza_continua'), command=self.toggle_pause)
+        self.session_menu.add_command(label=tr('ui.app.opreste_sesiunea_2'), command=self.stop_session)
+        o.add_cascade(label=tr('ui.app.sesiune_de_lucru'), menu=self.session_menu)
         self.org_menu = o
         # Instrumente
         t = tk.Menu(m, tearoff=False)
-        m.add_cascade(label="Instrumente", menu=t, underline=0)
+        m.add_cascade(label=tr('ui.app.instrumente'), menu=t, underline=0)
         self.dark_var = tk.BooleanVar(value=self.config.theme == "dark")
-        t.add_command(label="Aspect luminos FocusDesk", command=self.toggle_theme)
+        t.add_command(label=tr('ui.app.aspect_luminos_focusdesk'), command=self.toggle_theme)
         self.inspector_var = tk.BooleanVar(value=self.config.show_inspector)
-        t.add_checkbutton(label="Arată inspectorul", variable=self.inspector_var, command=self.toggle_inspector)
+        t.add_checkbutton(label=tr('ui.app.arata_inspectorul'), variable=self.inspector_var, command=self.toggle_inspector)
         self.archived_var = tk.BooleanVar(value=self.config.show_archived)
-        t.add_checkbutton(label="Arată elementele arhivate în arbore", variable=self.archived_var,
+        t.add_checkbutton(label=tr('ui.app.arata_elementele_arhivate_in_arbore'), variable=self.archived_var,
                           command=self.toggle_archived)
         self.completed_var = tk.BooleanVar(value=self.config.show_completed)
-        t.add_checkbutton(label="Arată taskurile închise în arbore", variable=self.completed_var,
+        t.add_checkbutton(label=tr('ui.app.arata_taskurile_inchise_in_arbore'), variable=self.completed_var,
                           command=self.toggle_completed)
         t.add_separator()
-        t.add_command(label="Calendar lunar de activitate\tCtrl+D", command=self.open_dashboard)
+        t.add_command(label=tr('ui.app.calendar_lunar_de_activitate_ctrl_d'), command=self.open_dashboard)
         t.add_separator()
-        t.add_command(label="Verificare integritate workspace…", command=self.show_issues)
-        t.add_command(label="Gestionare șabloane…", command=self.manage_templates)
-        t.add_command(label="Setări…", command=self.open_settings)
+        t.add_command(label=tr('ui.app.verificare_integritate_workspace'), command=self.show_issues)
+        t.add_command(label=tr('ui.app.gestionare_sabloane'), command=self.manage_templates)
+        t.add_command(label=tr('ui.app.setari'), command=self.open_settings)
         self.tools_menu = t
         # Ajutor
         h = tk.Menu(m, tearoff=False)
-        m.add_cascade(label="Ajutor", menu=h, underline=0)
-        h.add_command(label="Ghid de utilizare", command=self.show_guide)
-        h.add_command(label="Ajutor contextual\tF1", command=lambda:self.show_guide(contextual=True))
-        h.add_command(label="Scurtături de tastatură", command=self.show_shortcuts)
-        h.add_command(label="Despre FocusDesk", command=self.show_about)
+        m.add_cascade(label=tr('ui.app.ajutor'), menu=h, underline=0)
+        h.add_command(label=tr('ui.app.ghid_de_utilizare'), command=self.show_guide)
+        h.add_command(label=tr('ui.app.ajutor_contextual_f1'), command=lambda:self.show_guide(contextual=True))
+        h.add_command(label=tr('ui.app.scurtaturi_de_tastatura'), command=self.show_shortcuts)
+        h.add_command(label=tr('ui.app.despre_focusdesk'), command=self.show_about)
         self.help_menu = h
 
     def _bind_keys(self) -> None:
@@ -327,11 +329,10 @@ class FocusDeskApp:
         self.welcome()
 
     def welcome(self) -> None:
-        choice = ask_choice(self.root, "Bun venit în FocusDesk",
-                            "Alege unde ții datele. Workspace-ul este un folder local (JSON + Markdown), "
-                            "independent de aplicație și de orice cont cloud.",
-                            [("new", "Workspace nou…"), ("open", "Deschide existent…"),
-                             ("demo", "Workspace demonstrativ…"), ("quit", "Ieșire")])
+        choice = ask_choice(self.root, tr('ui.app.bun_venit_in_focusdesk'),
+                            tr('ui.app.alege_unde_tii_datele_workspace_ul_este_un_folder_local_json_markdown'),
+                            [("new", tr('ui.app.workspace_nou')), ("open", tr('ui.app.deschide_existent')),
+                             ("demo", tr('ui.app.workspace_demonstrativ')), ("quit", tr('ui.app.iesire'))])
         if choice == "new":
             if not self.menu_new_workspace():
                 self.welcome()
@@ -354,13 +355,12 @@ class FocusDeskApp:
             return False
         except Exception as exc:
             log.exception("Deschiderea workspace-ului a esuat")
-            show_error(self.root, f"Workspace-ul nu a putut fi deschis: {exc}")
+            show_error(self.root, tr('ui.app.workspace_ul_nu_a_putut_fi_deschis', exc=exc))
             return False
         if ws.repo.lock_conflict:
-            ans = ask_choice(self.root, "Workspace deja deschis",
-                             "Workspace-ul este deschis într-o altă instanță FocusDesk. Poți continua doar pentru "
-                             "citire; editarea este blocată ca să nu se suprascrie datele.",
-                             [("ro", "Deschide doar pentru citire"), ("cancel", "Renunță")])
+            ans = ask_choice(self.root, tr('ui.app.workspace_deja_deschis'),
+                             tr('ui.app.workspace_ul_este_deschis_intr_o_alta_instanta_focusdesk_poti_continua'),
+                             [("ro", tr('ui.app.deschide_doar_pentru_citire')), ("cancel", tr('ui.planning.renunta'))])
             if ans != "ro":
                 ws.close()
                 return False
@@ -383,11 +383,11 @@ class FocusDeskApp:
         ws.subscribe(self._on_ws_event)
         self.config.remember_workspace(path)
         self.config.save()
-        self.root.title(f"FocusDesk — {ws.name}" + ("  [doar citire]" if ws.read_only else ""))
+        self.root.title(tr('ui.settings_dialog.focusdesk', ws_name=ws.name) + (tr('common.readonly_suffix') if ws.read_only else ""))
         self.ws_label.configure(text=ws.name)
         self.status.set_workspace(ws.name, str(path), ws.read_only)
-        self.status.set_saved() if not ws.read_only else self.status.set_save_idle("Doar citire")
-        self.status.set_calendar("Calendar: local")
+        self.status.set_saved() if not ws.read_only else self.status.set_save_idle(tr('ui.meetings.doar_citire'))
+        self.status.set_calendar(tr('ui.app.calendar_local'))
         self._rebuild_recent_menu()
         self.outlook.attach()
         self.sidebar._first_fill = True
@@ -407,20 +407,18 @@ class FocusDeskApp:
         if self.timer and self.timer.recovered and not ws.read_only:
             self._handle_recovered_timer()
         if self.timer and self.timer.recovery_error:
-            show_info(self.root,self.timer.recovery_error+' Nu pornesc alt timer peste acest fișier; verifică datele sau backupul.')
+            show_info(self.root,self.timer.recovery_error+tr('ui.app.nu_pornesc_alt_timer_peste_acest_fisier_verifica_datele_sau_backupul'))
         diagnostic=self.sessions.diagnostics(self.timer.state.session_id if self.timer and self.timer.state else None)
         if diagnostic['orphan_active'] or diagnostic['overlapping_work']:
-            show_info(self.root, f"Diagnostic sesiuni: {len(diagnostic['orphan_active'])} înregistrări active fără timer curent; "
-                      f"{len(diagnostic['overlapping_work'])} suprapuneri de muncă încheiată. Nu sunt timere paralele. "
-                      "Verifică Planificare / Corectează timpul…; datele nu au fost rescrise.")
+            show_info(self.root, tr('ui.app.diagnostic_sesiuni_inregistrari_active_fara_timer_curent_suprapuneri_d', len_diagnostic_orphan_active=len(diagnostic['orphan_active']), len_diagnostic_overlapping_work=len(diagnostic['overlapping_work'])))
         if not ws.read_only:
             self._maintenance_on_open()
             self.root.after(3000, lambda: self.check_scheduled_checkpoints(startup=True))
         if not ws.read_only and ws.settings.backup.daily:
             self._track_workspace_job(self.bridge.submit(lambda tok: backup_service.ensure_daily_backup(ws),
                                on_done=lambda r: self.status.set_message(
-                                   f"Backup zilnic creat ({r.kind})" if r else ""),
-                               on_error=lambda e: self.status.set_message(f"Backup zilnic eșuat: {e}"),
+                                   tr('ui.app.backup_zilnic_creat', r_kind=r.kind) if r else ""),
+                               on_error=lambda e: self.status.set_message(tr('ui.app.backup_zilnic_esuat', e=e)),
                                name="daily-backup"))
 
     def _maintenance_on_open(self) -> None:
@@ -431,13 +429,13 @@ class FocusDeskApp:
             missed_sessions = self.sessions.mark_missed()
             created, missed = self.recurrence.generate_today_all()
         except FocusDeskError as exc:
-            self.status.set_message(f"Întreținere la pornire: {exc}")
+            self.status.set_message(tr('ui.app.intretinere_la_pornire', exc=exc))
             return
         msgs = []
         if missed_sessions:
-            msgs.append(f"{missed_sessions} sesiuni planificate au fost marcate ca ratate")
+            msgs.append(tr('ui.app.sesiuni_planificate_au_fost_marcate_ca_ratate', missed_sessions=missed_sessions))
         if created:
-            msgs.append(f"{len(created)} task-uri recurente create pentru azi")
+            msgs.append(tr('ui.app.task_uri_recurente_create_pentru_azi', len_created=len(created)))
         if msgs:
             self.status.set_message("; ".join(msgs))
         if created or missed_sessions:
@@ -456,10 +454,10 @@ class FocusDeskApp:
             self._handle_recovered_timer()
             if self.timer.recovered:return False
         if self.timer and self.timer.active and not self.ws.read_only:
-            ans = ask_choice(self.root, "Sesiune activă",
-                             "Este o sesiune de lucru activă. Ce faci cu ea înainte de a schimba workspace-ul?",
-                             [("stop", "Oprește sesiunea"), ("keep", "Salvează în pauză pentru recuperare la redeschidere"),
-                              ("cancel", "Anulează")])
+            ans = ask_choice(self.root, tr('ui.app.sesiune_activa'),
+                             tr('ui.app.este_o_sesiune_de_lucru_activa_ce_faci_cu_ea_inainte_de_a_schimba_work'),
+                             [("stop", tr('ui.app.opreste_sesiunea')), ("keep", tr('ui.app.salveaza_in_pauza_pentru_recuperare_la_redeschidere')),
+                              ("cancel", tr('ui.meetings.anuleaza'))])
             if ans == "stop":
                 if not self.stop_session():
                     return False
@@ -476,7 +474,7 @@ class FocusDeskApp:
         self.task_space.positions.clear()
         self.inspector.node_id = None
         for tab in self.inspector.tabs: tab.node_id = None
-        self.inspector.tab_by_title("Detalii").desc.edit_reset()
+        self.inspector.tab_by_id("details").desc.edit_reset()
         self.ws.close()
         self.ws = None  # type: ignore[assignment]
         self.q = None  # type: ignore[assignment]
@@ -617,19 +615,19 @@ class FocusDeskApp:
         v = self.current_view
         if v.startswith("search:"):
             query = v[7:]
-            self.tasklist.set_source(f"Rezultate pentru „{query}”", lambda: q.search(query), "Căutare globală",
-                                     show_closed=True, empty_hint="Niciun rezultat.")
+            self.tasklist.set_source(tr('ui.app.rezultate_pentru', query=query), lambda: q.search(query), tr('ui.app.cautare_globala'),
+                                     show_closed=True, empty_hint=tr('ui.app.niciun_rezultat'))
         elif v.startswith("tree:"):
             nid = self.current_scope
             node = ws.get(nid) if nid else None
             if node is None:
                 return
             self.tasklist.set_source(node.title, lambda: q.tasks_in(nid), ws.breadcrumb(nid),
-                                     empty_hint="Niciun task aici. Scrie un titlu mai sus și apăsă Enter.",
+                                     empty_hint=tr('ui.app.niciun_task_aici_scrie_un_titlu_mai_sus_si_apasa_enter'),
                                      scope_id=nid)
         else:
             loader = q.view_archive if v == 'archive' else lambda: q.tasks(open_only=not self.tasklist.closed_var.get())
-            self.tasklist.set_source(VIEW_TITLES.get(v, 'Proiecte și taskuri'), loader, "Toate taskurile" if v != 'archive' else 'Elemente arhivate',
+            self.tasklist.set_source(VIEW_TITLES.get(v, tr('ui.app.proiecte_si_taskuri')), loader, tr('ui.app.toate_taskurile') if v != 'archive' else tr('ui.app.elemente_arhivate'),
                                      show_closed=(v == 'archive'), empty_hint=VIEW_HINTS.get(v,''))
 
     def _sync_inspector(self):
@@ -652,7 +650,7 @@ class FocusDeskApp:
         if code == 'done':
             self.tasklist.status_var.set(STATUS_LABELS[Status.DONE])
             self.tasklist.closed_var.set(True)
-        if code == 'overdue': self.tasklist.due_var.set('Restante')
+        if code == 'overdue': self.tasklist.due_var.set(tr('ui.app.restante'))
         self.tasklist.refresh()
 
     # ================================================================
@@ -675,7 +673,7 @@ class FocusDeskApp:
         if not meetings.resolve():return False
         if self.followup_dialog is not None and self.followup_dialog.winfo_exists():
             self.followup_dialog.lift();return False
-        details = self.inspector.tab_by_title("Detalii")
+        details = self.inspector.tab_by_id("details")
         for editor in (details.editor, self.task_space.editor):
             guide = getattr(editor, "guide_dialog", None)
             if guide is not None and guide.winfo_exists():
@@ -687,9 +685,9 @@ class FocusDeskApp:
             return False
         if self.ws is None or not (self.inspector.is_dirty() or (self.current_view == "task_space" and self.task_space.is_dirty())):
             return True
-        ans = ask_choice(self.root, "Modificări nesalvate",
-                         "Există modificări nesalvate în task.",
-                         [("save", "Salvează"), ("discard", "Renunță la modificări"), ("cancel", "Rămâi aici")])
+        ans = ask_choice(self.root, tr('ui.tab_details.modificari_nesalvate'),
+                         tr('ui.app.exista_modificari_nesalvate_in_task'),
+                         [("save", tr('ui.settings_dialog.salveaza')), ("discard", tr('ui.tab_details.renunta_la_modificari')), ("cancel", tr('ui.meetings.ramai_aici'))])
         if ans == "save":
             return self.task_space.save() if self.current_view == "task_space" else self.inspector.save()
         if ans == "discard":
@@ -791,7 +789,7 @@ class FocusDeskApp:
 
     def focus_inspector(self) -> None:
         self.inspector.show_tab("Detalii")
-        tab = self.inspector.tab_by_title("Detalii")
+        tab = self.inspector.tab_by_id("details")
         if tab is not None and hasattr(tab, "title_entry"):
             tab.title_entry.focus_set()  # type: ignore[attr-defined]
 
@@ -839,26 +837,26 @@ class FocusDeskApp:
     # ================================================================
     # Write guard
     # ================================================================
-    def run_write(self, fn: Callable[[], Any], *, success_text: str = "Salvat", refresh: bool = False) -> bool:
+    def run_write(self, fn: Callable[[], Any], *, success_text: str = tr('ui.tab_details.salvat'), refresh: bool = False) -> bool:
         if self.ws is None:
             return False
         try:
             fn()
         except ExternalModificationError as exc:
-            self.status.set_save_error("Conflict: modificat extern")
+            self.status.set_save_error(tr('ui.app.conflict_modificat_extern'))
             self._handle_external_modification(str(exc))
             return False
         except ReadOnlyError:
-            show_error(self.root, "Workspace-ul este deschis doar pentru citire.")
+            show_error(self.root, tr('ui.app.workspace_ul_este_deschis_doar_pentru_citire'))
             return False
         except FocusDeskError as exc:
-            self.status.set_save_error("Eroare la salvare")
+            self.status.set_save_error(tr('ui.statusbar.eroare_la_salvare'))
             show_error(self.root, str(exc))
             return False
         except Exception as exc:
             log.exception("Eroare neașteptată la scriere")
-            self.status.set_save_error("Eroare la salvare")
-            show_error(self.root, f"Eroare neașteptată: {exc}")
+            self.status.set_save_error(tr('ui.statusbar.eroare_la_salvare'))
+            show_error(self.root, tr('ui.app.eroare_neasteptata', exc=exc))
             return False
         self.status.set_saved()
         if refresh:
@@ -866,10 +864,9 @@ class FocusDeskApp:
         return True
 
     def _handle_external_modification(self, message: str) -> None:
-        ans = ask_choice(self.root, "Fișier modificat extern",
-                         f"{message}\n\nAplicația nu suprascrie silențios modificările făcute din afară. "
-                         "Reîncarc workspace-ul de pe disc? (modificările nesalvate din formular se pierd)",
-                         [("reload", "Reîncarcă de pe disc"), ("cancel", "Anulează")])
+        ans = ask_choice(self.root, tr('ui.app.fisier_modificat_extern'),
+                         tr('ui.app.aplicatia_nu_suprascrie_silentios_modificarile_facute_din_afara_reinca', message=message),
+                         [("reload", tr('ui.meetings.reincarca_de_pe_disc')), ("cancel", tr('ui.meetings.anuleaza'))])
         if ans == "reload" and self.ws:
             self.ws.reload()
             self.refresh_all()
@@ -886,7 +883,7 @@ class FocusDeskApp:
         if self.inspector.is_dirty():
             self.inspector.save()
         else:
-            self.status.set_message("Nimic de salvat — modificările se scriu imediat pe disc.")
+            self.status.set_message(tr('ui.app.nimic_de_salvat_modificarile_se_scriu_imediat_pe_disc'))
 
     # ================================================================
     # Node actions
@@ -911,7 +908,7 @@ class FocusDeskApp:
         if self.ws is None:
             return None
         if self.ws.read_only:
-            show_error(self.root, "Workspace-ul este deschis doar pentru citire.")
+            show_error(self.root, tr('ui.app.workspace_ul_este_deschis_doar_pentru_citire'))
             return None
         if not self.confirm_leave():
             return None
@@ -933,7 +930,7 @@ class FocusDeskApp:
     def new_from_template(self):
         if self.ws is None:return
         if self.ws.read_only:
-            show_error(self.root,"Workspace-ul este deschis doar pentru citire.")
+            show_error(self.root,tr('ui.app.workspace_ul_este_deschis_doar_pentru_citire'))
             return
         if not self.confirm_leave():return
         from .templates_ui import CreateTemplateDialog
@@ -947,7 +944,7 @@ class FocusDeskApp:
     def save_as_template(self,node_id):
         if self.ws is None or self.ws.read_only or not self.confirm_leave():return
         from .templates_ui import TemplateEditor
-        name=ask_string(self.root,"Salvează ca șablon","Nume șablon:",initial=self.ws.get(node_id).title[:200])
+        name=ask_string(self.root,tr('ui.app.salveaza_ca_sablon'),tr('ui.app.nume_sablon'),initial=self.ws.get(node_id).title[:200])
         if not name:return
         try:
             template=self.ws.templates.capture(node_id,name)
@@ -957,7 +954,7 @@ class FocusDeskApp:
     def new_subtask(self) -> None:
         nid = self.selected_id
         if not nid or self.ws is None or self.ws.nodes[nid].kind != Kind.TASK:
-            show_info(self.root, "Selectează întâi un task pentru a-i adăuga un subtask.")
+            show_info(self.root, tr('ui.app.selecteaza_intai_un_task_pentru_a_i_adauga_un_subtask'))
             return
         self.new_node(Kind.TASK, parent_id=nid)
 
@@ -981,8 +978,7 @@ class FocusDeskApp:
         idx = next((i for i, n in enumerate(siblings) if n.id == node.id), 0)
         prev = siblings[idx - 1] if idx > 0 else None
         if prev is None or prev.kind != Kind.TASK:
-            show_info(self.root, "Task-ul trebuie să aibă deasupra lui (pe același nivel) un alt task "
-                      "căruia să îi devină subtask.")
+            show_info(self.root, tr('ui.app.task_ul_trebuie_sa_aiba_deasupra_lui_pe_acelasi_nivel_un_alt_task_caru'))
             return
         if self.run_write(lambda: self.ws.move(node.id, prev.id), refresh=True):
             self.tasklist.select(node.id)
@@ -994,7 +990,7 @@ class FocusDeskApp:
             return
         parent = self.ws.nodes.get(node.parent_id) if node.parent_id else None
         if parent is None or parent.kind != Kind.TASK:
-            show_info(self.root, "Task-ul este deja la primul nivel al containerului său.")
+            show_info(self.root, tr('ui.app.task_ul_este_deja_la_primul_nivel_al_containerului_sau'))
             return
         if self.run_write(lambda: self.ws.move(node.id, parent.parent_id, parent.sort_order + 5), refresh=True):
             self.tasklist.select(node.id)
@@ -1006,7 +1002,7 @@ class FocusDeskApp:
         nid = node_id or self.selected_id
         node = self.ws.nodes.get(nid) if nid else None
         if node is None:
-            show_info(self.root, "Selectează un task din care să trimiți e-mailul.")
+            show_info(self.root, tr('ui.app.selecteaza_un_task_din_care_sa_trimiti_e_mailul'))
             return
         if self._mail_composing:
             if self.mail_dialog is not None and self.mail_dialog.winfo_exists():
@@ -1018,7 +1014,7 @@ class FocusDeskApp:
         self._mail_composing = True
         try:
             description = None
-            details = self.inspector.tab_by_title("Detalii")
+            details = self.inspector.tab_by_id("details")
             if details.node_id == node.id:
                 current = details.desc.get("1.0", "end-1c")
                 if current != details._orig_desc:
@@ -1041,24 +1037,24 @@ class FocusDeskApp:
 
     def record_mail_result(self, ws, node_id, draft, result) -> str:
         """Record only the actual outcome in the captured workspace; never retry transport."""
-        text = {"displayed": "Ciorna este deschisă în Outlook, fără trimitere.",
-                "submitted": "Mesaj predat Outlook pentru trimitere. Livrarea efectivă nu este confirmată.",
-                "uncertain": "Rezultat e-mail incert. Verifică în Outlook înaintea unei noi încercări."}[result]
+        text = {"displayed": tr('ui.app.ciorna_este_deschisa_in_outlook_fara_trimitere'),
+                "submitted": tr('ui.app.mesaj_predat_outlook_pentru_trimitere_livrarea_efectiva_nu_este_confir'),
+                "uncertain": tr('ui.app.rezultat_e_mail_incert_verifica_in_outlook_inaintea_unei_noi_incercari')}[result]
         if self.ws is not ws or ws.read_only or node_id not in ws.nodes:
-            return text + " Jurnalul nu a fost scris: workspace schimbat, read-only sau task indisponibil."
+            return text + tr('ui.app.jurnalul_nu_a_fost_scris_workspace_schimbat_read_only_sau_task_indispo')
         try:
             ws.add_note(node_id, journal_text(draft, result), kind="action")
         except Exception as exc:
             log.exception("Rezultat e-mail confirmat, jurnal local nescris")
-            return text + f" Jurnalul local nu a putut fi scris: {exc}. Nu retrimite pentru a repara jurnalul."
+            return text + tr('ui.app.jurnalul_local_nu_a_putut_fi_scris_nu_retrimite_pentru_a_repara_jurnal', exc=exc)
         # Do not reload Details or discard unrelated unsaved task fields.
         try:
-            journal = next(tab for tab in self.inspector.tabs if tab.title == "Activitate")
+            journal = self.inspector.tab_by_id('journal')
             if self.inspector.node_id == node_id and self.inspector.nb.select() == str(journal):
                 journal.load(ws.get(node_id))
         except Exception:
             log.exception("Jurnalul e-mail a fost scris, dar afișarea lui nu s-a actualizat")
-        return text + " Rezultatul este notat în Activitatea taskului."
+        return text + tr('ui.app.rezultatul_este_notat_in_activitatea_taskului')
 
     def _selected_node(self) -> Node | None:
         if self.ws is None or not self.selected_id:
@@ -1069,8 +1065,8 @@ class FocusDeskApp:
         node = self._selected_node()
         if node is None:
             return
-        title = ask_string(self.root, "Redenumește", "Titlu nou (directorul fizic și UUID-ul rămân neschimbate):",
-                           node.title, "Redenumește")
+        title = ask_string(self.root, tr('ui.app.redenumeste'), tr('ui.app.titlu_nou_directorul_fizic_si_uuid_ul_raman_neschimbate'),
+                           node.title, tr('ui.app.redenumeste'))
         if title and title != node.title:
             if self.run_write(lambda: self.ws.rename(node.id, title), refresh=True):
                 self.inspector.load(node.id)
@@ -1094,7 +1090,7 @@ class FocusDeskApp:
         node = self._selected_node()
         if node is None:
             return
-        picked = NodePickerDialog(self.root, self.ws, "Legătură către…", exclude={node.id, *node.related_node_ids}).run()
+        picked = NodePickerDialog(self.root, self.ws, tr('ui.tab_details.legatura_catre'), exclude={node.id, *node.related_node_ids}).run()
         if picked:
             self.run_write(lambda: self.ws.add_related(node.id, picked), refresh=True)
 
@@ -1115,9 +1111,9 @@ class FocusDeskApp:
             return
         new = Status.TODO if node.status in CLOSED_STATUSES else Status.DONE
         if new == Status.DONE and self.ws.future_sessions(node.id):
-            ans = ask_choice(self.root, "Sesiuni viitoare",
-                             "Task-ul are sesiuni planificate în viitor. Le anulez?",
-                             [("cancel", "Anulează sesiunile"), ("keep", "Păstrează-le"), ("abort", "Nu finaliza")])
+            ans = ask_choice(self.root, tr('ui.app.sesiuni_viitoare'),
+                             tr('ui.app.task_ul_are_sesiuni_planificate_in_viitor_le_anulez'),
+                             [("cancel", tr('ui.app.anuleaza_sesiunile')), ("keep", tr('ui.app.pastreaza_le')), ("abort", tr('ui.app.nu_finaliza'))])
             if ans in (None, "abort"):
                 return
             if ans == "cancel":
@@ -1151,9 +1147,9 @@ class FocusDeskApp:
             return
         policy = "keep"
         if self.ws.future_sessions(node.id):
-            ans = ask_choice(self.root, "Sesiuni viitoare",
-                             "Nodul are sesiuni planificate în viitor. Ce faci cu ele?",
-                             [("keep", "Păstrează-le"), ("cancel", "Anulează-le"), ("abort", "Nu arhiva")])
+            ans = ask_choice(self.root, tr('ui.app.sesiuni_viitoare'),
+                             tr('ui.app.nodul_are_sesiuni_planificate_in_viitor_ce_faci_cu_ele'),
+                             [("keep", tr('ui.app.pastreaza_le')), ("cancel", tr('ui.app.anuleaza_le')), ("abort", tr('ui.app.nu_arhiva'))])
             if ans in (None, "abort"):
                 return
             policy = ans
@@ -1164,8 +1160,8 @@ class FocusDeskApp:
         if node is None:
             return
         n = len(self.ws.subtree_ids(node.id))
-        extra = f" și {n - 1} descendenți" if n > 1 else ""
-        if confirm(self.root, f"Muți „{node.title}”{extra} în coș? Poți restaura din Fișier › Coș."):
+        extra = tr('ui.app.si_descendenti', n_1=n - 1) if n > 1 else ""
+        if confirm(self.root, tr('ui.app.muti_in_cos_poti_restaura_din_fisier_cos', node_title=node.title, extra=extra)):
             if self.run_write(lambda: self.ws.trash(node.id), refresh=True):
                 self.selected_id = None
                 self.inspector.load(None)
@@ -1184,48 +1180,48 @@ class FocusDeskApp:
         ro = self.ws.read_only
         state = "disabled" if ro else "normal"
         if node is None:
-            menu.add_command(label="Task nou", command=lambda: self.new_node(Kind.TASK, parent_id=None), state=state)
-            menu.add_command(label="Folder nou", command=lambda: self.new_node(Kind.FOLDER, parent_id=None), state=state)
-            menu.add_command(label="Proiect nou", command=lambda: self.new_node(Kind.PROJECT, parent_id=None), state=state)
+            menu.add_command(label=tr('ui.app.task_nou'), command=lambda: self.new_node(Kind.TASK, parent_id=None), state=state)
+            menu.add_command(label=tr('ui.app.folder_nou'), command=lambda: self.new_node(Kind.FOLDER, parent_id=None), state=state)
+            menu.add_command(label=tr('ui.app.proiect_nou'), command=lambda: self.new_node(Kind.PROJECT, parent_id=None), state=state)
         else:
             if node.kind == Kind.TASK:
-                menu.add_command(label="Deschide spațiul de lucru",command=lambda:self.open_task_space(node.id))
-                menu.add_command(label="Subtask nou", command=lambda: self.new_node(Kind.TASK, parent_id=node.id),
+                menu.add_command(label=tr('ui.app.deschide_spatiul_de_lucru'),command=lambda:self.open_task_space(node.id))
+                menu.add_command(label=tr('ui.app.subtask_nou'), command=lambda: self.new_node(Kind.TASK, parent_id=node.id),
                                  state=state)
                 if self.timer_active() and self.timer.node_id==node.id:
-                    menu.add_command(label="■ Încheie sesiunea", command=self.stop_session)
+                    menu.add_command(label=tr('ui.app.incheie_sesiunea'), command=self.stop_session)
                 else:
-                    menu.add_command(label="▶ Începe sesiune", command=lambda: self.start_session(node.id),
+                    menu.add_command(label=tr('ui.app.incepe_sesiune_2'), command=lambda: self.start_session(node.id),
                                      state=state)
-                menu.add_command(label="Redeschide taskul" if node.status in CLOSED_STATUSES else "Finalizează taskul", command=self.toggle_done_selected, state=state)
-                menu.add_command(label="Adaugă cerință nouă…",command=lambda:self.add_followup(node.id),state=state)
+                menu.add_command(label=tr('ui.app.redeschide_taskul') if node.status in CLOSED_STATUSES else tr('ui.app.finalizeaza_taskul'), command=self.toggle_done_selected, state=state)
+                menu.add_command(label=tr('ui.app.adauga_cerinta_noua'),command=lambda:self.add_followup(node.id),state=state)
                 if node.status in CLOSED_STATUSES:
-                    menu.add_command(label="Redeschide cu motiv…",command=lambda:self.reopen_with_reason(node.id),state=state)
-                menu.add_command(label="Prioritate pentru azi (comută)", command=self.toggle_pin_selected, state=state)
+                    menu.add_command(label=tr('ui.app.redeschide_cu_motiv'),command=lambda:self.reopen_with_reason(node.id),state=state)
+                menu.add_command(label=tr('ui.app.prioritate_pentru_azi_comuta'), command=self.toggle_pin_selected, state=state)
             else:
-                menu.add_command(label="Task nou aici", command=lambda: self.new_node(Kind.TASK, parent_id=node.id),
+                menu.add_command(label=tr('ui.app.task_nou_aici'), command=lambda: self.new_node(Kind.TASK, parent_id=node.id),
                                  state=state)
-                menu.add_command(label="Folder nou aici", command=lambda: self.new_node(Kind.FOLDER, parent_id=node.id),
+                menu.add_command(label=tr('ui.app.folder_nou_aici'), command=lambda: self.new_node(Kind.FOLDER, parent_id=node.id),
                                  state=state)
                 if node.kind == Kind.FOLDER:
-                    menu.add_command(label="Proiect nou aici",
+                    menu.add_command(label=tr('ui.app.proiect_nou_aici'),
                                      command=lambda: self.new_node(Kind.PROJECT, parent_id=node.id), state=state)
             if node.kind in (Kind.PROJECT,Kind.TASK):
-                menu.add_command(label="Salvează ca șablon…",command=lambda:self.save_as_template(node.id),state=state)
+                menu.add_command(label=tr('ui.app.salveaza_ca_sablon_2'),command=lambda:self.save_as_template(node.id),state=state)
             menu.add_separator()
-            menu.add_command(label="Redenumește\tF2", command=self.rename_selected, state=state)
-            menu.add_command(label="Mută…", command=self.move_selected, state=state)
+            menu.add_command(label=tr('ui.app.redenumeste_f2'), command=self.rename_selected, state=state)
+            menu.add_command(label=tr('ui.app.muta'), command=self.move_selected, state=state)
             if node.kind == Kind.TASK:
-                menu.add_command(label="Face subtask al celui de deasupra\tAlt+→", command=self.indent_selected,
+                menu.add_command(label=tr('ui.app.face_subtask_al_celui_de_deasupra_alt'), command=self.indent_selected,
                                  state=state)
-                menu.add_command(label="Scoate un nivel\tAlt+←", command=self.outdent_selected, state=state)
-            menu.add_command(label="Adaugă legătură…", command=self.link_selected, state=state)
-            menu.add_command(label="Trimite e-mail…\tCtrl+M", command=lambda: self.compose_mail(node.id))
+                menu.add_command(label=tr('ui.app.scoate_un_nivel_alt'), command=self.outdent_selected, state=state)
+            menu.add_command(label=tr('ui.app.adauga_legatura'), command=self.link_selected, state=state)
+            menu.add_command(label=tr('ui.app.trimite_e_mail_ctrl_m'), command=lambda: self.compose_mail(node.id))
             self._extend_context_menu(menu, node)
             menu.add_separator()
-            menu.add_command(label="Dezarhivează" if node.archived_at else "Arhivează",
+            menu.add_command(label=tr('ui.app.dezarhiveaza') if node.archived_at else tr('ui.app.arhiveaza'),
                              command=self.toggle_archive_selected, state=state)
-            menu.add_command(label="Trimite în coș", command=self.trash_selected, state=state)
+            menu.add_command(label=tr('ui.app.trimite_in_cos'), command=self.trash_selected, state=state)
         try:
             menu.tk_popup(x, y)
         finally:
@@ -1233,9 +1229,9 @@ class FocusDeskApp:
 
     def _extend_context_menu(self, menu: tk.Menu, node: Node) -> None:
         menu.add_separator()
-        menu.add_command(label="Deschide folderul nodului", command=lambda: self.open_node_folder(node.id))
+        menu.add_command(label=tr('ui.app.deschide_folderul_nodului'), command=lambda: self.open_node_folder(node.id))
         if node.kind != Kind.FOLDER and self.files.usable_source_dir(node.id) is not None:
-            menu.add_command(label="Deschide codul în VS Code", command=lambda: self.open_code_in_vscode(node.id))
+            menu.add_command(label=tr('ui.app.deschide_codul_in_vs_code'), command=lambda: self.open_code_in_vscode(node.id))
 
     # ================================================================
     # Workspace / file menu
@@ -1245,21 +1241,21 @@ class FocusDeskApp:
         for p in self.config.recent_workspaces:
             self.recent_menu.add_command(label=p, command=lambda p=p: self.open_workspace(Path(p)))
         if not self.config.recent_workspaces:
-            self.recent_menu.add_command(label="(niciunul)", state="disabled")
+            self.recent_menu.add_command(label=tr('common.none'), state="disabled")
 
     def menu_open_workspace(self) -> bool:
-        d = filedialog.askdirectory(parent=self.root, title="Alege folderul workspace-ului",
+        d = filedialog.askdirectory(parent=self.root, title=tr('ui.app.alege_folderul_workspace_ului'),
                                     initialdir=self.config.last_workspace or str(Path.home()))
         if not d:
             return False
         p = Path(d)
         if not (p / "workspace.json").is_file():
-            show_error(self.root, "Folderul ales nu conține un workspace FocusDesk (lipsește workspace.json).")
+            show_error(self.root, tr('ui.app.folderul_ales_nu_contine_un_workspace_focusdesk_lipseste_workspace_jso'))
             return False
         return self.open_workspace(p)
 
     def menu_new_workspace(self) -> bool:
-        d = filedialog.askdirectory(parent=self.root, title="Alege folderul în care se creează workspace-ul",
+        d = filedialog.askdirectory(parent=self.root, title=tr('ui.app.alege_folderul_in_care_se_creeaza_workspace_ul'),
                                     initialdir=str(Path.home() / "Documents"))
         if not d:
             return False
@@ -1269,17 +1265,17 @@ class FocusDeskApp:
         if p.exists() and any(p.iterdir()):
             p = p / "FocusDeskData"
             if p.exists() and any(p.iterdir()):
-                show_error(self.root, f"{p} există deja și nu este gol.")
+                show_error(self.root, tr('ui.app.exista_deja_si_nu_este_gol', p=p))
                 return False
-            if not confirm(self.root, f"Folderul ales nu este gol. Creez workspace-ul în:\n{p} ?"):
+            if not confirm(self.root, tr('ui.app.folderul_ales_nu_este_gol_creez_workspace_ul_in', p=p)):
                 return False
-        name = ask_string(self.root, "Workspace nou", "Nume afișat:", "FocusDesk", "Creează") or "FocusDesk"
+        name = ask_string(self.root, tr('ui.app.workspace_nou_2'), tr('ui.app.nume_afisat'), "FocusDesk", tr('ui.planning.creeaza')) or "FocusDesk"
         return self.open_workspace(p, create=True, name=name)
 
     def menu_demo_workspace(self) -> bool:
         from ..services.demo import create_demo_workspace
 
-        d = filedialog.askdirectory(parent=self.root, title="Alege un folder GOL pentru workspace-ul demonstrativ",
+        d = filedialog.askdirectory(parent=self.root, title=tr('ui.app.alege_un_folder_gol_pentru_workspace_ul_demonstrativ'),
                                     initialdir=str(Path.home() / "Documents"))
         if not d:
             return False
@@ -1287,7 +1283,7 @@ class FocusDeskApp:
         if p.exists() and any(p.iterdir()):
             p = p / "FocusDeskDemo"
             if p.exists() and any(p.iterdir()):
-                show_error(self.root, f"{p} există deja și nu este gol.")
+                show_error(self.root, tr('ui.app.exista_deja_si_nu_este_gol', p=p))
                 return False
         if not self._release_current():
             return False
@@ -1312,7 +1308,7 @@ class FocusDeskApp:
         self.refresh_all()
         errors = sum(1 for i in self.ws.issues if i.severity == "error")
         warns = len(self.ws.issues) - errors
-        self.status.set_message(f"Rescanat: {len(self.ws.nodes)} noduri, {errors} erori, {warns} avertismente")
+        self.status.set_message(tr('ui.app.rescanat_noduri_erori_avertismente', len_self_ws_nodes=len(self.ws.nodes), errors=errors, warns=warns))
         if self.ws.issues:
             IssuesDialog(self.root, self.ws).run()
 
@@ -1327,31 +1323,31 @@ class FocusDeskApp:
     def backup_now(self, full: bool) -> None:
         ws = self.ws
         if ws is None or ws.read_only:
-            show_error(self.root, "Backup-ul necesită un workspace editabil.")
+            show_error(self.root, tr('ui.app.backup_ul_necesita_un_workspace_editabil'))
             return
         if not self.calendar_page.meetings.resolve():return
-        self.status.set_message("Se creează backup-ul…")
+        self.status.set_message(tr('ui.app.se_creeaza_backup_ul'))
 
         def done(res) -> None:
-            msg = f"Backup {'complet' if full else 'de metadate'} creat:\n{res.path}\n({res.file_count} fișiere)"
-            msg += "\n\nAtenție: un backup pe același disc nu protejează de defectarea discului."
+            msg = tr('backup.full_created' if full else 'backup.meta_created',path=res.path,files=res.file_count)
+            msg += tr('ui.app.atentie_un_backup_pe_acelasi_disc_nu_protejeaza_de_defectarea_discului')
             if res.external_copy:
-                msg += f"\nCopie externă: {res.external_copy}"
+                msg += tr('ui.app.copie_externa', res_external_copy=res.external_copy)
             if res.external_error:
-                msg += f"\nCopia externă a eșuat: {res.external_error}"
-            self.status.set_message("Backup creat")
-            show_info(self.root, msg, "Backup")
+                msg += tr('ui.app.copia_externa_a_esuat', res_external_error=res.external_error)
+            self.status.set_message(tr('ui.app.backup_creat'))
+            show_info(self.root, msg, tr('ui.settings_dialog.backup'))
 
         self._track_workspace_job(self.bridge.submit(lambda tok: backup_service.create_backup(ws, full=full), on_done=done,
                            on_error=lambda e: (self.status.set_message(""), show_error(self.root, str(e))),
                            name="backup"))
 
     def restore_backup(self) -> None:
-        zp = filedialog.askopenfilename(parent=self.root, title="Alege arhiva de backup",
-                                        filetypes=[("Backup FocusDesk", "*.zip")])
+        zp = filedialog.askopenfilename(parent=self.root, title=tr('ui.app.alege_arhiva_de_backup'),
+                                        filetypes=[(tr('ui.app.backup_focusdesk'), "*.zip")])
         if not zp:
             return
-        d = filedialog.askdirectory(parent=self.root, title="Alege un folder GOL pentru restaurare")
+        d = filedialog.askdirectory(parent=self.root, title=tr('ui.tab_versions.alege_un_folder_gol_pentru_restaurare'))
         if not d:
             return
         try:
@@ -1359,7 +1355,7 @@ class FocusDeskApp:
         except FocusDeskError as exc:
             show_error(self.root, str(exc))
             return
-        if confirm(self.root, f"Backup restaurat în:\n{out}\n\nÎl deschid acum ca workspace?"):
+        if confirm(self.root, tr('ui.app.backup_restaurat_in_il_deschid_acum_ca_workspace', out=out)):
             self.open_workspace(out)
 
     # ================================================================
@@ -1378,7 +1374,7 @@ class FocusDeskApp:
             self.sidebar.tree.tag_configure("closed", foreground=muted_color(self.root))
             self.sidebar.tree.tag_configure("archived", foreground=muted_color(self.root))
             self.refresh_all()
-            self.inspector.tab_by_title("Detalii").sf.sync_background()  # type: ignore[union-attr]
+            self.inspector.tab_by_id("details").sf.sync_background()  # type: ignore[union-attr]
 
     def toggle_inspector(self) -> None:
         self.config.show_inspector = self.inspector_var.get()
@@ -1406,11 +1402,9 @@ class FocusDeskApp:
         self.sidebar.refresh()
 
     def open_settings(self) -> None:
-        if self.ws is None:
-            return
         from .settings_dialog import SettingsDialog
 
-        if SettingsDialog(self.root, self).run():
+        if SettingsDialog(self.root, self).run() and self.ws is not None:
             self.refresh_all()
 
     def show_guide(self, chapter=None, *, contextual=False):
@@ -1420,8 +1414,7 @@ class FocusDeskApp:
         self.show_guide('scurtaturi')
 
     def show_about(self) -> None:
-        show_info(self.root, f"FocusDesk {__version__}\nOrganizator personal local: fișiere JSON/Markdown, "
-                  "fără baze de date și fără servicii cloud.", "Despre")
+        show_info(self.root, tr('ui.app.focusdesk_organizator_personal_local_fisiere_json_markdown_fara_baze_d', version=__version__), tr('ui.app.despre'))
 
     # ================================================================
     # Sessions / timer
@@ -1446,7 +1439,7 @@ class FocusDeskApp:
             return
         node = self.last_worked_node()
         if node is None:
-            show_info(self.root, "Nu există încă o sesiune anterioară de reluat.")
+            show_info(self.root, tr('ui.app.nu_exista_inca_o_sesiune_anterioara_de_reluat'))
             return
         self.select_node(node.id, reveal=True)
         self.start_session(node.id)
@@ -1454,7 +1447,7 @@ class FocusDeskApp:
     def start_selected_session(self) -> None:
         node = self._selected_node()
         if node is None or node.kind != Kind.TASK:
-            show_info(self.root, "Selectează un task pentru a începe o sesiune.")
+            show_info(self.root, tr('ui.app.selecteaza_un_task_pentru_a_incepe_o_sesiune'))
             return
         self.start_session(node.id)
 
@@ -1477,9 +1470,9 @@ class FocusDeskApp:
             if self.timer.node_id == node_id:
                 self.select_node(node_id,reveal=True)
                 return
-            choice=ask_choice(self.root,'Sesiune curentă',
-                'Există deja o sesiune de lucru, inclusiv în pauză. Ce dorești să faci?',
-                [('continue','Continuă sesiunea existentă'),('finish','Încheie sesiunea și începe taskul ales'),('cancel','Anulează')])
+            choice=ask_choice(self.root,tr('ui.app.sesiune_curenta'),
+                tr('ui.app.exista_deja_o_sesiune_de_lucru_inclusiv_in_pauza_ce_doresti_sa_faci'),
+                [('continue',tr('ui.app.continua_sesiunea_existenta')),('finish',tr('ui.app.incheie_sesiunea_si_incepe_taskul_ales')),('cancel',tr('ui.meetings.anuleaza'))])
             if choice=='continue':
                 if not self.timer.running:self.run_write(self.timer.resume)
                 self.select_node(self.timer.node_id,reveal=True)
@@ -1489,13 +1482,13 @@ class FocusDeskApp:
         if node is None:
             return
         blockers = self.ws.unfinished_dependencies(node_id)
-        if blockers and not confirm(self.root, "Task-ul depinde de task-uri nefinalizate:\n• " +
+        if blockers and not confirm(self.root, tr('ui.app.task_ul_depinde_de_task_uri_nefinalizate') +
                                     "\n• ".join(b.title for b in blockers) + "\n\nContinui oricum?"):
             return
         open_opts = self._ask_session_open_options(node)
         if open_opts is False:
             return
-        ok = self.run_write(lambda: self.timer.start(node_id, planned_session_id), success_text=f"În lucru: {node.title} · început {utcnow().astimezone(self.q.tz()):%H:%M}")
+        ok = self.run_write(lambda: self.timer.start(node_id, planned_session_id), success_text=tr('ui.app.in_lucru_inceput', node_title=node.title, utcnow_astimezone_self_q_tz=utcnow().astimezone(self.q.tz())))
         if not ok:
             return
         self._tick()
@@ -1532,7 +1525,7 @@ class FocusDeskApp:
                 except FocusDeskError as exc:
                     errors.append(str(exc))
         if errors:
-            show_error(self.root, "\n".join(errors), "Deschidere parțială")
+            show_error(self.root, "\n".join(errors), tr('ui.app.deschidere_partiala'))
         self.config.session_open = {k: bool(v) for k, v in opts.items()}
         self.config.save()
 
@@ -1542,7 +1535,7 @@ class FocusDeskApp:
         self._last_pause_action=now
         t = self.timer
         if t is None or not t.active:
-            show_info(self.root, "Nu există o sesiune activă.")
+            show_info(self.root, tr('ui.app.nu_exista_o_sesiune_activa'))
             return
         if t.running:
             self.run_write(t.pause)
@@ -1565,7 +1558,7 @@ class FocusDeskApp:
         if t is None or not t.active:
             return True
         if t.state.finalization:
-            return self.run_write(t.stop,success_text='Sesiune încheiată')
+            return self.run_write(t.stop,success_text=tr('ui.app.sesiune_incheiata'))
         was_running=t.running
         if not self.run_write(t.pause):return False
         node = self.ws.nodes.get(t.node_id) if t.node_id else None
@@ -1574,7 +1567,7 @@ class FocusDeskApp:
             if was_running and t.state and t.state.state == "paused":
                 self.run_write(t.resume)
             return False
-        ok = self.run_write(lambda: t.stop(**res), success_text="Sesiune încheiată")
+        ok = self.run_write(lambda: t.stop(**res), success_text=tr('ui.app.sesiune_incheiata'))
         if ok:
             self._on_session_stopped(node)
             self._tick()
@@ -1587,7 +1580,7 @@ class FocusDeskApp:
             return
         if self.files.usable_source_dir(node.id) is None:
             return
-        self.create_checkpoint(node.id, "La finalul sesiunii", trigger="session_end", quiet_if_unchanged=True)
+        self.create_checkpoint(node.id, tr('ui.app.la_finalul_sesiunii'), trigger="session_end", quiet_if_unchanged=True)
 
     # ---- jobs / checkpoints / openers ---------------------------------
     def _track_workspace_job(self,job):
@@ -1599,11 +1592,11 @@ class FocusDeskApp:
         self._workspace_jobs=[(ws,j) for ws,j in self._workspace_jobs if not j.done]
         pending=[j for ws,j in self._workspace_jobs if ws is self.ws]
         if pending:
-            self.status.set_message('Workspace păstrat deschis: așteaptă finalizarea operației locale ('+pending[0].name+').')
+            self.status.set_message(tr('ui.app.workspace_pastrat_deschis_asteapta_finalizarea_operatiei_locale')+pending[0].name+').')
         return bool(pending)
 
     def run_job(self, work: Callable[..., Any], on_done: Callable[[Any], None] | None = None, *, name: str = "job",
-                busy_text: str = "Se lucrează…", on_error: Callable[[BaseException], None] | None = None) -> Job:
+                busy_text: str = tr('ui.app.se_lucreaza'), on_error: Callable[[BaseException], None] | None = None) -> Job:
         """Ruleaza `work(token)` intr-un thread; callback-urile se executa pe thread-ul UI."""
         workspace=self.ws
         self._busy += 1
@@ -1622,7 +1615,7 @@ class FocusDeskApp:
                     on_done(res)
                 except Exception as exc:
                     log.exception("Callback job %s a eșuat", name)
-                    show_error(self.root, f"Eroare: {exc}")
+                    show_error(self.root, tr('ui.app.eroare', exc=exc))
 
         def err(exc: BaseException) -> None:
             finish()
@@ -1632,7 +1625,7 @@ class FocusDeskApp:
             elif isinstance(exc, FocusDeskError):
                 show_error(self.root, str(exc))
             else:
-                show_error(self.root, f"Eroare neașteptată: {exc}")
+                show_error(self.root, tr('ui.app.eroare_neasteptata', exc=exc))
 
         return self._track_workspace_job(self.bridge.submit(work, ok, err, name=name))
 
@@ -1644,20 +1637,20 @@ class FocusDeskApp:
         def done(m) -> None:
             if m is None:
                 if not quiet_if_unchanged:
-                    show_info(self.root, "Nicio modificare față de ultimul checkpoint; nu s-a creat unul nou.")
-                self.status.set_message("Checkpoint: fără modificări")
+                    show_info(self.root, tr('ui.app.nicio_modificare_fata_de_ultimul_checkpoint_nu_s_a_creat_unul_nou'))
+                self.status.set_message(tr('ui.app.checkpoint_fara_modificari'))
             else:
-                self.status.set_message(f"Checkpoint salvat ({len(m.files)} fișiere)")
+                self.status.set_message(tr('ui.app.checkpoint_salvat_fisiere', len_m_files=len(m.files)))
             if on_finished:
                 on_finished()
 
         def error(exc: BaseException) -> None:
-            self.status.set_message("Checkpoint eșuat")
-            show_error(self.root, f"Checkpoint-ul nu a fost salvat: {exc}", "Checkpoint")
+            self.status.set_message(tr('ui.app.checkpoint_esuat'))
+            show_error(self.root, tr('ui.app.checkpoint_ul_nu_a_fost_salvat', exc=exc), tr('ui.app.checkpoint'))
 
         self.run_job(lambda tok: cs.create(node_id, description, trigger=trigger, session_id=session_id,
                                            force=force, cancel=tok),
-                     done, on_error=error, name="checkpoint", busy_text="Se salvează checkpoint-ul…")
+                     done, on_error=error, name="checkpoint", busy_text=tr('ui.app.se_salveaza_checkpoint_ul'))
 
     # ---- calendar / planning -------------------------------------------
     def get_availability(self, start_day, end_day, on_done: Callable[[AvailabilityResult], None],
@@ -1668,11 +1661,10 @@ class FocusDeskApp:
     def availability_hint(self) -> str:
         o = self.outlook
         if o.enabled() and o.verified:
-            return "Disponibilitate citită din Outlook (calendarul ales)."
+            return tr('ui.app.disponibilitate_citita_din_outlook_calendarul_ales')
         if o.enabled():
-            return ("Outlook este configurat, dar neverificat în această sesiune; planificarea încearcă să-l citească "
-                    "și, dacă nu reușește, folosește doar disponibilitatea locală.")
-        return "Disponibilitate verificată doar local (calendarul extern nu este citit)."
+            return (tr('ui.app.outlook_este_configurat_dar_neverificat_in_aceasta_sesiune_planificare'))
+        return tr('ui.app.disponibilitate_verificata_doar_local_calendarul_extern_nu_este_citit')
 
     def on_sessions_changed(self) -> None:
         self.sidebar.refresh()
@@ -1705,9 +1697,9 @@ class FocusDeskApp:
 
         ws = self.ws
         if not sessions:
-            show_info(self.root, "Nu există sesiuni viitoare de exportat.")
+            show_info(self.root, tr('ui.app.nu_exista_sesiuni_viitoare_de_exportat'))
             return
-        path = filedialog.asksaveasfilename(parent=self.root, title="Salvează fișierul .ics",
+        path = filedialog.asksaveasfilename(parent=self.root, title=tr('ui.app.salveaza_fisierul_ics'),
                                             defaultextension=".ics", initialfile="focusdesk-sesiuni.ics",
                                             filetypes=[("iCalendar", "*.ics")])
         if not path:
@@ -1739,10 +1731,9 @@ class FocusDeskApp:
                 s.sync.signature = session_signature(s)
                 ws.repo.sessions.save(s)
 
-        self.run_write(mark, success_text="ICS exportat")
-        show_info(self.root, f"Exportat — necesită import în calendar.\n{len(items)} sesiuni scrise în:\n{path}\n\n"
-                  "Fișierul nu sincronizează automat. Reimportul actualizărilor/anulărilor depinde de clientul de calendar.",
-                  "Export ICS")
+        self.run_write(mark, success_text=tr('extra.ui.app.ics_exportat'))
+        show_info(self.root, tr('ui.app.exportat_necesita_import_in_calendar_sesiuni_scrise_in_fisierul_nu_sin', len_items=len(items), path=path),
+                  tr('integrations.ics.export_ics'))
 
     def check_scheduled_checkpoints(self, startup: bool = False) -> None:
         """Checkpoint zilnic programat (doar cat ruleaza aplicatia); ora ratata se raporteaza explicit."""
@@ -1767,29 +1758,29 @@ class FocusDeskApp:
             for oid in owners:
                 tok.check()
                 try:
-                    m = cs.create(oid, "Checkpoint programat", trigger=trigger, missed_note=decision.note)
-                    results.append((oid, "creat" if m else "fără modificări", None))
+                    m = cs.create(oid, tr('ui.app.checkpoint_programat'), trigger=trigger, missed_note=decision.note)
+                    results.append((oid, "created" if m else "unchanged", None))
                 except Exception as exc:  # raportat, nu ascuns
-                    results.append((oid, "eșuat", str(exc)))
+                    results.append((oid, "failed", str(exc)))
             return results
 
         def done(results) -> None:
             self._sched_running = False
-            ok = sum(1 for r in results if r[1] == "creat")
-            bad = [r for r in results if r[1] == "eșuat"]
+            ok = sum(1 for r in results if r[1] == "created")
+            bad = [r for r in results if r[1] == "failed"]
             if not bad:
                 sch.mark_ran(today)  # la erori nu marcam, ca sa reincerce
-            msg = f"Checkpoint programat: {ok} create, {len(results) - ok - len(bad)} fără modificări, {len(bad)} eșuate"
+            msg = tr('ui.app.checkpoint_programat_create_fara_modificari_esuate', ok=ok, len_results_ok_len_bad=len(results) - ok - len(bad), len_bad=len(bad))
             self.status.set_message(msg)
             if decision.note:
-                show_info(self.root, decision.note, "Checkpoint programat ratat")
+                show_info(self.root, decision.note, tr('ui.app.checkpoint_programat_ratat'))
             if bad:
-                show_error(self.root, "Checkpoint programat eșuat:\n" + "\n".join(
-                    f"• {ws.nodes[o].title if o in ws.nodes else o}: {e}" for o, _s, e in bad[:5]), "Checkpoint")
+                show_error(self.root, tr('ui.app.checkpoint_programat_esuat_2') + "\n".join(
+                    tr('ui.app.checkpoint_failure_item', ws_nodes_o_title_if_o_in_ws_nodes_else_o=ws.nodes[o].title if o in ws.nodes else o, e=e) for o, _s, e in bad[:5]), tr('ui.app.checkpoint'))
 
         def failed(exc: BaseException) -> None:
             self._sched_running = False
-            self.status.set_message(f"Checkpoint programat eșuat: {exc}")
+            self.status.set_message(tr('ui.app.checkpoint_programat_esuat', exc=exc))
 
         self._track_workspace_job(self.bridge.submit(work, done, failed, name="scheduled-checkpoint"))
 
@@ -1814,7 +1805,7 @@ class FocusDeskApp:
             return
         src = self.files.usable_source_dir(node_id)
         if src is None:
-            show_error(self.root, "Nu există un folder de cod valid pentru acest nod.")
+            show_error(self.root, tr('ui.app.nu_exista_un_folder_de_cod_valid_pentru_acest_nod'))
             return
         try:
             system_open.open_in_vscode(src, self.ws.settings.vscode_path)
@@ -1834,12 +1825,12 @@ class FocusDeskApp:
                 self.status.set_save_error(str(exc))
                 if t.state:t.state.state='paused'
             node = self.ws.nodes.get(t.node_id or "")
-            label = f"{'Sesiune' if t.running else 'Pauză'}: {node.title if node else '?'} — {format_seconds(t.seconds)}"
+            label = tr('ui.app.timer_status', sesiune_if_t_running_else_pauza=tr('ui.tab_journal.sesiune') if t.running else tr('ui.session_ui.pauza'), node_title_if_node_else=node.title if node else '?', format_seconds_t_seconds=format_seconds(t.seconds))
             if t.state.state == "paused" and t.pending_gap:
-                label += " (nu a fost numărat intervalul de repaus)"
+                label += tr('ui.app.nu_a_fost_numarat_intervalul_de_repaus')
             self.status.set_timer(label, active=t.running)
         else:
-            self.status.set_timer("Nicio sesiune de lucru pornită")
+            self.status.set_timer(tr('ui.session_ui.nicio_sesiune_de_lucru_pornita'))
         if self.current_view == "today":
             self.today.update_timer()
         self.update_session_buttons()
@@ -1869,18 +1860,16 @@ class FocusDeskApp:
         self._gap_dialog_open = True
         try:
             minutes = round(gap / 60)
-            ans = ask_choice(self.root, "Interval de inactivitate",
-                             f"Între două verificări au trecut aproximativ {minutes} min (repaus/suspendare Windows "
-                             "sau aplicație blocată). Intervalul NU a fost numărat ca lucru.\n\n"
-                             "Cât din el vrei să adaugi la timpul lucrat?",
-                             [("none", "Nimic (0 min)"), ("all", f"Tot ({minutes} min)"), ("custom", "Altă valoare…")])
+            ans = ask_choice(self.root, tr('ui.app.interval_de_inactivitate'),
+                             tr('ui.app.intre_doua_verificari_au_trecut_aproximativ_min_repaus_suspendare_wind', minutes=minutes),
+                             [("none", tr('ui.app.nimic_0_min')), ("all", tr('ui.app.tot_min', minutes=minutes)), ("custom", tr('ui.app.alta_valoare'))])
             add = 0.0
             if ans == "all":
                 add = gap
             elif ans == "custom":
                 from .formats import parse_duration
 
-                val = ask_string(self.root, "Timp de adăugat", "Minute (ex: 20, 1h):", "0", "Adaugă")
+                val = ask_string(self.root, tr('ui.app.timp_de_adaugat'), tr('ui.app.minute_ex_20_1h'), "0", tr('ui.tab_subtasks.adauga'))
                 try:
                     mins = parse_duration(val or "0") or 0
                     add = min(mins * 60, gap)
@@ -1897,20 +1886,17 @@ class FocusDeskApp:
         try:
             rec=t.recovered;st=t.state
             if st.finalization:
-                if confirm(self.root,'Încheierea sesiunii a fost întreruptă. Reiau salvarea fără a adăuga timp?'):
+                if confirm(self.root,tr('ui.app.incheierea_sesiunii_a_fost_intrerupta_reiau_salvarea_fara_a_adauga_tim')):
                     self.run_write(t.stop)
                 return
-            ans=ask_choice(self.root,'Sesiune de recuperat',
-                f'Task: {rec.node_title}\nUltima stare: {"În pauză" if st.state=="paused" else "În lucru"}\n'
-                f'Ultima salvare: {st.heartbeat_at.astimezone(self.q.tz()):%d.%m.%Y %H:%M:%S}\n'
-                f'Lucrat salvat: {format_seconds(t.seconds)}. Timpul cât aplicația a fost închisă NU este muncă.\n'
-                'Continuă păstrează timpul salvat; încheierea la o oră aleasă nu adaugă automat intervalul offline.',
-                [('continue','Continuă'),('end','Încheie la o oră aleasă…'),('discard','Renunță la intervalul nesalvat')])
+            ans=ask_choice(self.root,tr('ui.app.sesiune_de_recuperat'),
+                tr('ui.app.task_ultima_stare_ultima_salvare_lucrat_salvat_timpul_cat_aplicatia_a', rec_node_title=rec.node_title, in_pauza_if_st_state_paused_else_in_lucru=tr('ui.session_ui.in_pauza') if st.state=='paused' else tr('ui.session_ui.in_lucru'), st_heartbeat_at_astimezone_self_q_tz=st.heartbeat_at.astimezone(self.q.tz()), format_seconds_t_seconds=format_seconds(t.seconds)),
+                [('continue',tr('ui.session_ui.continua')),('end',tr('ui.app.incheie_la_o_ora_aleasa')),('discard',tr('ui.app.renunta_la_intervalul_nesalvat'))])
             if ans=='continue':self.run_write(t.continue_recovered)
             elif ans=='end':
                 from .session_ui import parse_local_stamp
-                value=ask_string(self.root,'Ora încheierii','Data și ora efectivă ISO, cu offset pentru DST:',
-                    st.heartbeat_at.astimezone(self.q.tz()).isoformat(timespec='seconds'),'Încheie')
+                value=ask_string(self.root,tr('ui.app.ora_incheierii'),tr('ui.app.data_si_ora_efectiva_iso_cu_offset_pentru_dst'),
+                    st.heartbeat_at.astimezone(self.q.tz()).isoformat(timespec='seconds'),tr('ui.session_ui.incheie'))
                 if value:
                     try:stamp=parse_local_stamp(value,self.ws.settings.timezone)
                     except ValueError as exc:show_error(self.root,str(exc));return
@@ -1924,10 +1910,10 @@ class FocusDeskApp:
 
 class StartSessionDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, app: FocusDeskApp, node: Node, src_dir: Path | None, n_files: int) -> None:
-        super().__init__(parent, "Începe sesiune", ok_text="▶ Începe")
+        super().__init__(parent, tr('ui.app.incepe_sesiune'), ok_text=tr('ui.app.incepe'))
         defaults = app.config.session_open
         ttk.Label(self.body, text=node.title, style="Section.TLabel", wraplength=420).pack(anchor="w")
-        ttk.Label(self.body, style="Muted.TLabel", text="Alege ce să se deschidă acum (doar la cerere):").pack(
+        ttk.Label(self.body, style="Muted.TLabel", text=tr('ui.app.alege_ce_sa_se_deschida_acum_doar_la_cerere')).pack(
             anchor="w", pady=(2, 8))
         self.vars = {
             "vscode": tk.BooleanVar(value=defaults.get("vscode", False)),
@@ -1936,12 +1922,12 @@ class StartSessionDialog(ModalDialog):
         }
         if src_dir is not None:
             ttk.Checkbutton(self.body, variable=self.vars["vscode"],
-                            text=f"Folderul de cod în VS Code ({src_dir})").pack(anchor="w", pady=2)
+                            text=tr('ui.app.folderul_de_cod_in_vs_code', src_dir=src_dir)).pack(anchor="w", pady=2)
         ttk.Checkbutton(self.body, variable=self.vars["explorer"],
-                        text="Folderul în Explorer" + (" (cod)" if src_dir else " (al nodului)")).pack(anchor="w", pady=2)
+                        text=tr('ui.app.folderul_in_explorer') + (tr('common.code_suffix') if src_dir else tr('common.node_suffix'))).pack(anchor="w", pady=2)
         if n_files:
             ttk.Checkbutton(self.body, variable=self.vars["files"],
-                            text=f"Fișierele atașate ({n_files}; scripturile nu se deschid)").pack(anchor="w", pady=2)
+                            text=tr('ui.app.fisierele_atasate_scripturile_nu_se_deschid', n_files=n_files)).pack(anchor="w", pady=2)
 
     def collect(self) -> dict[str, bool]:
         return {k: v.get() for k, v in self.vars.items()}
@@ -1949,7 +1935,7 @@ class StartSessionDialog(ModalDialog):
 
 class StopSessionDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, app: FocusDeskApp, node: Node | None, seconds: float) -> None:
-        super().__init__(parent, "Oprește sesiunea", resizable=True, ok_text="Salvează și oprește")
+        super().__init__(parent, tr('ui.app.opreste_sesiunea'), resizable=True, ok_text=tr('ui.app.salveaza_si_opreste'))
         from ..domain.labels import STATUS_LABELS
         from .formats import duration_to_text
 
@@ -1957,23 +1943,23 @@ class StopSessionDialog(ModalDialog):
         self.node = node
         b = self.body
         b.columnconfigure(1, weight=1)
-        ttk.Label(b, text=node.title if node else "(task)", style="Section.TLabel").grid(
+        ttk.Label(b, text=node.title if node else tr('common.task_placeholder'), style="Section.TLabel").grid(
             row=0, column=0, columnspan=2, sticky="w")
-        ttk.Label(b, text=f"Timp lucrat efectiv: {format_seconds(seconds)} (timpul planificat nu se numără)",
+        ttk.Label(b, text=tr('ui.app.timp_lucrat_efectiv_timpul_planificat_nu_se_numara', format_seconds_seconds=format_seconds(seconds)),
                   style="Muted.TLabel").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 8))
-        ttk.Label(b, text="Ce am făcut").grid(row=2, column=0, sticky="nw", pady=3)
+        ttk.Label(b, text=tr('ui.app.ce_am_facut')).grid(row=2, column=0, sticky="nw", pady=3)
         self.text = tk.Text(b, height=5, width=52, wrap="word", font="TkTextFont")
         self.text.grid(row=2, column=1, sticky="ew", pady=3)
         self.text.focus_set()
-        ttk.Label(b, text="Următorul pas").grid(row=3, column=0, sticky="w", pady=3)
+        ttk.Label(b, text=tr('ui.tab_details.urmatorul_pas')).grid(row=3, column=0, sticky="w", pady=3)
         self.next_var = tk.StringVar(value=(node.next_action or "") if node else "")
         ttk.Entry(b, textvariable=self.next_var).grid(row=3, column=1, sticky="ew", pady=3)
-        ttk.Label(b, text="Timp rămas").grid(row=4, column=0, sticky="w", pady=3)
+        ttk.Label(b, text=tr('ui.planning.timp_ramas')).grid(row=4, column=0, sticky="w", pady=3)
         rem = node.remaining_minutes if node and node.remaining_minutes is not None else (
             node.estimated_minutes if node else None)
         self.rem_var = tk.StringVar(value=duration_to_text(rem))
         ttk.Entry(b, textvariable=self.rem_var, width=12).grid(row=4, column=1, sticky="w", pady=3)
-        ttk.Label(b, text="Status").grid(row=5, column=0, sticky="w", pady=3)
+        ttk.Label(b, text=tr('ui.tab_details.status')).grid(row=5, column=0, sticky="w", pady=3)
         self.status_var = tk.StringVar(value="(neschimbat)")
         opts = ["(neschimbat)", STATUS_LABELS[Status.IN_PROGRESS], STATUS_LABELS[Status.WAITING],
                 STATUS_LABELS[Status.TESTING], STATUS_LABELS[Status.DONE]]

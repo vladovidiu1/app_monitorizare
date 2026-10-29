@@ -1,4 +1,6 @@
 """Read-only calendar imports, local drafts/actions and recoverable explicit node creation."""
+
+from ..i18n import tr
 from datetime import datetime
 from uuid import UUID, uuid5
 from ..domain.common import utcnow, new_id, is_uuid
@@ -22,7 +24,7 @@ class MeetingService:
 
     def configure(self,store_id,folder_id,label):
         self.ws.repo._require_writable()
-        if not store_id or not folder_id:raise ValidationError('Alege explicit un calendar')
+        if not store_id or not folder_id:raise ValidationError(tr('extra.services.meetings.alege_explicit_un_calendar'))
         data=self.config();data.update(store_id=store_id,folder_id=folder_id,label=label,last_error=None)
         atomic_write_json(self.config_path,data)
         self.ws.emit('meetings_changed')
@@ -40,7 +42,7 @@ class MeetingService:
                 from datetime import timezone
                 occurrence_key=datetime.fromisoformat(occurrence_key).astimezone(timezone.utc).isoformat()
             except ValueError:pass
-        if not event_uid:raise ValidationError('Eveniment fără identificator stabil; nu se importă după titlu')
+        if not event_uid:raise ValidationError(tr('services.meetings.eveniment_fara_identificator_stabil_nu_se_importa_dupa_titlu'))
         return checksum(['outlook',store_id,folder_id,event_uid,occurrence_key])
 
     def import_batch(self,store_id,folder_id,batch,first,last):
@@ -52,11 +54,11 @@ class MeetingService:
     def iter_import_batch(self,store_id,folder_id,batch,first,last):
         """No notes reads, no removals. A partial result never implies absence."""
         self.ws.repo._require_writable()
-        if first>=last:raise ValidationError('Interval de import invalid')
+        if first>=last:raise ValidationError(tr('extra.services.meetings.interval_de_import_invalid'))
         config=self.config()
         if (store_id,folder_id)!=(config.get('store_id'),config.get('folder_id')):
-            raise ValidationError('Sursa selectată s-a schimbat. Rezultatul întârziat este ignorat.')
-        if self._importing:raise ValidationError('Un import se aplică deja')
+            raise ValidationError(tr('services.meetings.sursa_selectata_s_a_schimbat_rezultatul_intarziat_este_ignorat'))
+        if self._importing:raise ValidationError(tr('services.meetings.un_import_se_aplica_deja'))
         self._importing=True
         try:
             known={row['source_key']:row['id'] for row in self.store.summaries() if row['provider']=='outlook'}
@@ -72,7 +74,7 @@ class MeetingService:
                     if mid in known_ids:self.store.source(mid)
                     record=MeetingSource(id=mid,provider='outlook',source_key=key,store_id=store_id,folder_id=folder_id,
                         event_uid=event.uid,occurrence_key=event.occurrence_key,entry_id=event.entry_id,
-                        title=event.title or '(Fără titlu)',start_at=event.start,end_at=event.end,timezone=self.ws.settings.timezone,
+                        title=event.title or tr('services.meetings.fara_titlu'),start_at=event.start,end_at=event.end,timezone=self.ws.settings.timezone,
                         source_timezone=event.timezone,location=event.location,organizer=event.organizer,join_url=event.join_url,
                         all_day=event.all_day,all_day_start=event.all_day_start,all_day_end=event.all_day_end,state='cancelled' if event.cancelled else 'present')
                     self.store.save_source(record);seen.add(key);known[key]=mid;known_ids.add(mid);count+=1
@@ -101,7 +103,7 @@ class MeetingService:
         except NotFoundError:existing=None
         if existing is not None:
             if (existing.title,existing.start_at,existing.end_at,existing.location)!=(record.title,record.start_at,record.end_at,record.location):
-                raise ValidationError('Această întâlnire a fost deja creată cu alte date; nu se suprascrie la retry')
+                raise ValidationError(tr('services.meetings.aceasta_intalnire_a_fost_deja_creata_cu_alte_date_nu_se_suprascrie_la'))
             return existing
         self.store.save_source(record);self.ws.emit('meetings_changed');return record
 
@@ -112,9 +114,9 @@ class MeetingService:
         self.ws.repo._require_writable();self.store.source(mid);local=self.store.local(mid)
         action=MeetingAction(id=action_id or new_id(),text=text,responsible=responsible,due_date=due_date,state=state)
         old=next((a for a in local.actions if a.id==action.id),None)
-        if expected is not None and old!=expected:raise ExternalModificationError('Acțiunea s-a modificat după deschiderea dialogului. Reîncarcă înainte de salvare.')
-        if old and old.node_id:raise ValidationError('Acțiunea este deja transformată; deschide taskul legat')
-        if state=='converted':raise ValidationError('Folosește crearea explicită a unui task/proiect')
+        if expected is not None and old!=expected:raise ExternalModificationError(tr('services.meetings.actiunea_s_a_modificat_dupa_deschiderea_dialogului_reincarca_inainte_d'))
+        if old and old.node_id:raise ValidationError(tr('services.meetings.actiunea_este_deja_transformata_deschide_taskul_legat'))
+        if state=='converted':raise ValidationError(tr('services.meetings.foloseste_crearea_explicita_a_unui_task_proiect'))
         local.actions=[action if a.id==action.id else a for a in local.actions] if old else [*local.actions,action]
         self.store.save_local(mid,local);self.ws.emit('meetings_changed',meeting_id=mid);return action
 
@@ -145,7 +147,7 @@ class MeetingService:
     def create_node(self,mid,*,request_id,title,description='',kind=Kind.TASK,parent_id=None,priority=Priority.NORMAL,
                     due_date=None,action_id=None,followup_source=None,code_access='none'):
         self.ws.repo._require_writable()
-        if not is_uuid(request_id):raise ValidationError('Identificator de operație invalid')
+        if not is_uuid(request_id):raise ValidationError(tr('services.meetings.identificator_de_operatie_invalid'))
         payload=dict(meeting_id=mid,title=title,description=description,kind=Kind(kind).value,parent_id=parent_id,
             priority=Priority(priority).value,due_date=due_date.isoformat() if due_date else None,action_id=action_id,
             followup_source=followup_source,code_access=code_access)
@@ -153,7 +155,7 @@ class MeetingService:
         try:op=self.ws.repo.operations.get(request_id)
         except NotFoundError:op=None
         if op:
-            if op.type!='meeting_convert' or op.data['fingerprint']!=fingerprint:raise ValidationError('Operația există cu alte date; reîncearcă datele inițiale')
+            if op.type!='meeting_convert' or op.data['fingerprint']!=fingerprint:raise ValidationError(tr('services.meetings.operatia_exista_cu_alte_date_reincearca_datele_initiale'))
             return self._apply(op)
         self.store.source(mid);local=self.store.local(mid)
         if action_id:
@@ -161,16 +163,16 @@ class MeetingService:
                 pp=pending.data.get('payload',{})
                 if pending.data.get('meeting_id')==mid and pp.get('action_id')==action_id:
                     if pending.data['fingerprint']!=fingerprint:
-                        raise ValidationError('Acțiunea are deja o creare în curs. Reîncearcă datele inițiale sau recuperează operația; nu creez un al doilea task.')
+                        raise ValidationError(tr('services.meetings.actiunea_are_deja_o_creare_in_curs_reincearca_datele_initiale_sau_recu'))
                     return self._apply(pending)
         action=next((a for a in local.actions if a.id==action_id),None)
-        if action_id and action is None:raise ValidationError('Acțiunea nu mai există')
+        if action_id and action is None:raise ValidationError(tr('services.meetings.actiunea_nu_mai_exista'))
         if action and action.node_id:
-            if action.node_id not in self.ws.nodes:raise NotFoundError('Taskul creat este indisponibil sau în coș; nu îl recreez')
+            if action.node_id not in self.ws.nodes:raise NotFoundError(tr('services.meetings.taskul_creat_este_indisponibil_sau_in_cos_nu_il_recreez'))
             return self.ws.get(action.node_id)
         kind=Kind(kind)
-        if followup_source and kind!=Kind.TASK:raise ValidationError('O cerință ulterioară este un task, nu un proiect')
-        if kind not in (Kind.TASK,Kind.PROJECT):raise ValidationError('Creează un task sau un proiect')
+        if followup_source and kind!=Kind.TASK:raise ValidationError(tr('services.meetings.o_cerinta_ulterioara_este_un_task_nu_un_proiect'))
+        if kind not in (Kind.TASK,Kind.PROJECT):raise ValidationError(tr('services.meetings.creeaza_un_task_sau_un_proiect'))
         self._destination(kind,parent_id)
         seed_id=str(uuid5(UUID(request_id),'node'))
         nid=str(uuid5(UUID(seed_id),'requirement'))
@@ -185,7 +187,7 @@ class MeetingService:
     def _apply(self,op):
         self.ws.repo._require_writable()
         if op.state=='done':
-            if op.data['new_node_id'] not in self.ws.nodes:raise NotFoundError('Taskul creat nu mai este disponibil; nu creez un duplicat')
+            if op.data['new_node_id'] not in self.ws.nodes:raise NotFoundError(tr('extra.services.meetings.taskul_creat_nu_mai_este_disponibil_nu_creez_un_duplicat'))
             return self.ws.get(op.data['new_node_id'])
         p=op.data['payload'];mid=op.data['meeting_id'];self.store.source(mid)
         if p['followup_source']:
@@ -201,9 +203,9 @@ class MeetingService:
                     description=p['description'],events=[event.model_dump(mode='json')]))
                 self.ws.repo.operations.save(seed)
             if 'node' in seed.steps_done and op.data['new_node_id'] not in self.ws.nodes:
-                raise NotFoundError('Taskul creat a devenit indisponibil; restaurează-l, nu se recreează automat')
+                raise NotFoundError(tr('services.meetings.taskul_creat_a_devenit_indisponibil_restaureaza_l_nu_se_recreeaza_auto'))
             nid=apply_followup(self.ws.repo,seed)
-            if nid not in self.ws.nodes:raise NotFoundError('Taskul creat este în coș; nu îl recreez')
+            if nid not in self.ws.nodes:raise NotFoundError(tr('services.meetings.taskul_creat_este_in_cos_nu_il_recreez'))
             node=self.ws.get(nid)
         self._finish_link(mid,node.id,p['action_id'],op.data.get('action_before'))
         op.data=dict(fingerprint=op.data['fingerprint'],new_node_id=node.id,meeting_id=mid)
@@ -215,17 +217,17 @@ class MeetingService:
         local=self.store.local(mid)
         if action_id:
             action=next((a for a in local.actions if a.id==action_id),None)
-            if action is None:raise ExternalModificationError('Acțiunea a fost eliminată; legătura nu este confirmată')
-            if action.node_id and action.node_id!=nid:raise ExternalModificationError('Acțiunea este legată de alt task')
+            if action is None:raise ExternalModificationError(tr('services.meetings.actiunea_a_fost_eliminata_legatura_nu_este_confirmata'))
+            if action.node_id and action.node_id!=nid:raise ExternalModificationError(tr('services.meetings.actiunea_este_legata_de_alt_task'))
             if not action.node_id and action.model_dump(mode='json')!=action_before:
-                raise ExternalModificationError('Acțiunea a fost modificată; nu o suprascriu')
+                raise ExternalModificationError(tr('services.meetings.actiunea_a_fost_modificata_nu_o_suprascriu'))
             action.node_id=nid;action.state='converted'
         if nid not in local.linked_node_ids:local.linked_node_ids.append(nid)
         self.store.save_local(mid,local)
 
     def link(self,mid,nid):
         self.ws.repo._require_writable();self.store.source(mid);node=self.ws.get(nid)
-        if node.kind not in (Kind.TASK,Kind.PROJECT):raise ValidationError('Leagă un task sau un proiect')
+        if node.kind not in (Kind.TASK,Kind.PROJECT):raise ValidationError(tr('services.meetings.leaga_un_task_sau_un_proiect'))
         oid=str(uuid5(UUID(self.ws.id),'meeting-link:'+mid+':'+nid))
         try:op=self.ws.repo.operations.get(oid)
         except NotFoundError:
@@ -245,8 +247,8 @@ class MeetingService:
         for op in self.ws.repo.operations.select(predicate=lambda r:r.get('state')=='pending' and r.get('type') in ('meeting_convert','meeting_link')):
             try:
                 self._apply(op) if op.type=='meeting_convert' else self._apply_link(op)
-                messages.append('Operația întâlnirii a fost recuperată fără duplicate.')
-            except Exception as exc:messages.append('Operație întâlnire în așteptare: '+str(exc))
+                messages.append(tr('services.meetings.operatia_intalnirii_a_fost_recuperata_fara_duplicate'))
+            except Exception as exc:messages.append(tr('services.meetings.operatie_intalnire_in_asteptare')+str(exc))
         return messages
 
     def integrity(self,*,include_notes=False):
@@ -257,19 +259,19 @@ class MeetingService:
                 local=self.store.local(mid)
                 if include_notes:self.store.notes(mid,observe=False)
                 for nid in local.linked_node_ids:
-                    if nid not in self.ws.nodes:issues.append((mid,'Referință la task/proiect indisponibil: '+nid))
-                    elif mid not in self.ws.nodes[nid].meeting_ids:issues.append((mid,'Legătură inversă lipsă pentru '+nid))
+                    if nid not in self.ws.nodes:issues.append((mid,tr('services.meetings.referinta_la_task_proiect_indisponibil')+nid))
+                    elif mid not in self.ws.nodes[nid].meeting_ids:issues.append((mid,tr('services.meetings.legatura_inversa_lipsa_pentru')+nid))
             except Exception as exc:issues.append((mid,str(exc)))
         known={r['id'] for r in rows}
         for node in self.ws.nodes.values():
             for mid in node.meeting_ids:
-                if mid not in known:issues.append((node.id,'Întâlnire indisponibilă: '+mid))
+                if mid not in known:issues.append((node.id,tr('services.meetings.intalnire_indisponibila')+mid))
         return issues
 
 
 def meeting_state(row,now=None):
     now=now or utcnow()
-    if row['state']=='cancelled':return 'Anulată'
-    if row['state']=='not_seen':return 'Sursă neconfirmată'
+    if row['state']=='cancelled':return tr('domain.labels.anulata')
+    if row['state']=='not_seen':return tr('services.meetings.sursa_neconfirmata')
     start=datetime.fromisoformat(row['start_at']);end=datetime.fromisoformat(row['end_at'])
-    return 'Urmează' if now<start else 'În desfășurare' if now<end else 'Încheiată'
+    return tr('services.meetings.urmeaza') if now<start else tr('services.meetings.in_desfasurare') if now<end else tr('domain.labels.incheiata')

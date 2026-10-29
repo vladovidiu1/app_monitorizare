@@ -1,23 +1,25 @@
 """Disposable guided-description draft; no persistence, parsing or task mutations."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from tkinter import ttk
 from .common import ScrollFrame
 from .design import C, px
 
-APPLIED_MESSAGE = 'Aplicat în descriere. Salvează taskul pentru păstrare.'
+APPLIED_MESSAGE = tr('ui.description_guide.aplicat_in_descriere_salveaza_taskul_pentru_pastrare')
 
 
 def guided_text(goal, steps, result):
     """Keep field contents verbatim; skip whitespace-only fields and number real steps."""
     sections = []
-    if goal.strip(): sections.append('Scop\n' + goal)
+    if goal.strip(): sections.append(tr('ui.description_guide.scop_2') + goal)
     for number, content in enumerate((text for text in steps if text.strip()), 1):
-        sections.append(f'Pasul {number}\n' + content)
-    if result.strip(): sections.append('Rezultat așteptat\n' + result)
+        sections.append(tr('ui.description_guide.pasul', number=number) + content)
+    if result.strip(): sections.append(tr('ui.description_guide.rezultat_asteptat_2') + result)
     if not sections:
-        raise ValueError('Completează cel puțin o secțiune: Scop, un pas sau Rezultat așteptat.')
+        raise ValueError(tr('ui.description_guide.completeaza_cel_putin_o_sectiune_scop_un_pas_sau_rezultat_asteptat'))
     return '\n\n'.join(sections)
 
 
@@ -58,23 +60,23 @@ class ExistingDescriptionChoice(NestedModal):
     def __init__(self, guide, generated, expected):
         super().__init__(guide)
         self.guide, self.generated, self.expected = guide, generated, expected
-        self.title('Descriere existentă')
+        self.title(tr('ui.description_guide.descriere_existenta'))
         self.resizable(True, True)
         self._focusdesk_sized = True
         self.geometry(f'{px(self,680)}x{px(self,210)}')
         self.minsize(px(self,440), px(self,190))
         self.columnconfigure(0,weight=1); self.rowconfigure(0,weight=1)
-        self.prompt=ttk.Label(self, text='Descrierea conține deja text. Cum aplici conținutul ghidului?',
+        self.prompt=ttk.Label(self, text=tr('ui.description_guide.descrierea_contine_deja_text_cum_aplici_continutul_ghidului'),
                   style='Section.TLabel', wraplength=px(self,600), padding=16)
         self.prompt.grid(row=0,column=0,sticky='nsew')
         self.bind('<Configure>',lambda event:self.prompt.configure(wraplength=max(180,self.winfo_width()-40)))
         bar=ttk.Frame(self,padding=12);bar.grid(row=1,column=0,sticky='ew')
         bar.columnconfigure(0,weight=1);bar.columnconfigure(1,weight=1)
-        self.append_btn=ttk.Button(bar,text='Adaugă la final',style='Primary.TButton',command=lambda:self.choose('append'))
+        self.append_btn=ttk.Button(bar,text=tr('ui.description_guide.adauga_la_final'),style='Primary.TButton',command=lambda:self.choose('append'))
         self.append_btn.grid(row=0,column=0,sticky='ew',padx=(0,6))
-        self.replace_btn=ttk.Button(bar,text='Înlocuiește descrierea',command=lambda:self.choose('replace'))
+        self.replace_btn=ttk.Button(bar,text=tr('ui.description_guide.inlocuieste_descrierea'),command=lambda:self.choose('replace'))
         self.replace_btn.grid(row=0,column=1,sticky='ew')
-        self.cancel_btn=ttk.Button(bar,text='Anulează',command=self.cancel)
+        self.cancel_btn=ttk.Button(bar,text=tr('ui.meetings.anuleaza'),command=self.cancel)
         self.cancel_btn.grid(row=1,column=0,columnspan=2,pady=(8,0))
         for button,mode in ((self.append_btn,'append'),(self.replace_btn,'replace')):
             button.bind('<Return>',lambda event,m=mode:self.choose(m))
@@ -102,9 +104,9 @@ class StepField(ttk.Frame):
         self.guide=guide
         head=ttk.Frame(self);head.pack(fill='x')
         self.label=ttk.Label(head,style='Section.TLabel');self.label.grid(row=0,column=0,sticky='w');head.columnconfigure(0,weight=1)
-        self.up=ttk.Button(head,text='Sus',command=lambda:guide.move_step(self,-1));self.up.grid(row=0,column=1,padx=3)
-        self.down=ttk.Button(head,text='Jos',command=lambda:guide.move_step(self,1));self.down.grid(row=0,column=2,padx=3)
-        ttk.Button(head,text='Șterge pasul',command=lambda:guide.remove_step(self)).grid(row=0,column=3,padx=(3,0))
+        self.up=ttk.Button(head,text=tr('ui.description_guide.sus'),command=lambda:guide.move_step(self,-1));self.up.grid(row=0,column=1,padx=3)
+        self.down=ttk.Button(head,text=tr('ui.description_guide.jos'),command=lambda:guide.move_step(self,1));self.down.grid(row=0,column=2,padx=3)
+        ttk.Button(head,text=tr('ui.description_guide.sterge_pasul'),command=lambda:guide.remove_step(self)).grid(row=0,column=3,padx=(3,0))
         self.text=guide.text_field(self,height=3)
 
 
@@ -113,27 +115,27 @@ class DescriptionGuide(NestedModal):
         super().__init__(editor)
         self.editor,self.context=editor,context
         self.choice=None;self.steps=[]
-        self.title('Completează descrierea cu ghid')
+        self.title(tr('ui.description_guide.completeaza_descrierea_cu_ghid'))
         self._focusdesk_sized=True
         width=min(px(self,760),self.winfo_screenwidth()-40)
         height=min(px(self,680),self.winfo_screenheight()-80)
         self.geometry(f'{width}x{height}')
         self.minsize(min(px(self,500),width),min(px(self,360),height));self.resizable(True,True)
         header=ttk.Frame(self,padding=(14,12));header.pack(fill='x')
-        ttk.Label(header,text='Completează descrierea',style='Title.TLabel').pack(anchor='w')
-        ttk.Label(header,text='Ciornă separată. Pașii sunt text, nu checklist sau subtaskuri.',style='Muted.TLabel',wraplength=px(self,650)).pack(anchor='w',pady=(4,0))
+        ttk.Label(header,text=tr('ui.description_guide.completeaza_descrierea'),style='Title.TLabel').pack(anchor='w')
+        ttk.Label(header,text=tr('ui.description_guide.ciorna_separata_pasii_sunt_text_nu_checklist_sau_subtaskuri'),style='Muted.TLabel',wraplength=px(self,650)).pack(anchor='w',pady=(4,0))
         # Footer is outside the scrolling form and always remains accessible.
         footer=ttk.Frame(self,padding=(12,8));footer.pack(side='bottom',fill='x');footer.columnconfigure(0,weight=1)
         self.error=ttk.Label(footer,text='',foreground=C.danger,wraplength=px(self,650));self.error.grid(row=0,column=0,columnspan=3,sticky='ew',pady=(0,6))
-        ttk.Button(footer,text='+ Adaugă pas',command=self.add_step).grid(row=1,column=0,sticky='w',padx=(0,6))
-        self.apply_btn=ttk.Button(footer,text='Aplică în descriere',style='Primary.TButton',command=self.apply)
+        ttk.Button(footer,text=tr('ui.description_guide.adauga_pas'),command=self.add_step).grid(row=1,column=0,sticky='w',padx=(0,6))
+        self.apply_btn=ttk.Button(footer,text=tr('ui.description_guide.aplica_in_descriere'),style='Primary.TButton',command=self.apply)
         self.apply_btn.grid(row=1,column=1,padx=(0,6))
-        ttk.Button(footer,text='Anulează',command=self.cancel).grid(row=1,column=2)
+        ttk.Button(footer,text=tr('ui.meetings.anuleaza'),command=self.cancel).grid(row=1,column=2)
         self.sf=ScrollFrame(self);self.sf.pack(fill='both',expand=True,padx=12)
-        self.goal=self.section(self.sf.inner,'Scop')
+        self.goal=self.section(self.sf.inner,tr('ui.description_guide.scop'))
         self.steps_frame=ttk.Frame(self.sf.inner);self.steps_frame.pack(fill='x')
         self.add_step(focus=False);self.add_step(focus=False)
-        self.result=self.section(self.sf.inner,'Rezultat așteptat')
+        self.result=self.section(self.sf.inner,tr('ui.description_guide.rezultat_asteptat'))
         self.bind('<Configure>',lambda event:self.error.configure(wraplength=max(220,self.winfo_width()-32)))
         self.bind('<Escape>',self.cancel);self.protocol('WM_DELETE_WINDOW',self.cancel)
         self.grab_set();self.goal.focus_set()
@@ -177,14 +179,14 @@ class DescriptionGuide(NestedModal):
     def render_steps(self):
         for field in self.steps:field.pack_forget()
         for index,field in enumerate(self.steps):
-            field.label.configure(text=f'Pasul {index+1}')
+            field.label.configure(text=tr('ui.description_guide.pasul_2', index_1=index+1))
             field.up.state(['disabled'] if index==0 else ['!disabled'])
             field.down.state(['disabled'] if index==len(self.steps)-1 else ['!disabled'])
             field.pack(fill='x',pady=(0,8))
 
     def can_apply(self):
         if not self.editor.winfo_exists() or self.editor.read_only or self.editor.guide_context() != self.context:
-            self.error.configure(text='Taskul nu mai este disponibil, contextul s-a schimbat sau este doar pentru citire. Ciorna ghidului nu a fost aplicată.')
+            self.error.configure(text=tr('ui.description_guide.taskul_nu_mai_este_disponibil_contextul_s_a_schimbat_sau_este_doar_pen'))
             return False
         return True
 
@@ -205,7 +207,7 @@ class DescriptionGuide(NestedModal):
     def finish_apply(self,mode,text,expected):
         if not self.can_apply():return False
         if self.editor.get()!=expected:
-            self.error.configure(text='Descrierea s-a schimbat între timp. Aplică din nou și alege cum păstrezi textul actual.')
+            self.error.configure(text=tr('ui.description_guide.descrierea_s_a_schimbat_intre_timp_aplica_din_nou_si_alege_cum_pastrez'))
             return False
         if mode not in ('append','replace'):return False
         value=append_description(expected,text) if mode=='append' else text

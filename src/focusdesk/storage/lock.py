@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import os
 from pathlib import Path
 
@@ -29,7 +31,7 @@ class WorkspaceLock:
         except (portalocker.LockException, OSError) as exc:
             fh.close()
             raise WorkspaceLockedError(
-                "Workspace-ul este deschis în altă instanță FocusDesk."
+                tr('storage.lock.workspace_ul_este_deschis_in_alta_instanta_focusdesk')
             ) from exc
         self._fh = fh
         try:

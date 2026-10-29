@@ -141,9 +141,9 @@ def test_project_and_day_filters_top_rest_granularity(ws):
     subset=model.report(focus,now=NOW)
     assert subset.worked==top[-1][2];assert_equal_views(subset)
     assert model.report(ActivityFilters(project_id=None),now=NOW).worked==600
-    assert data.time_buckets()[0]=='Zile'
-    assert report(ws,date(2026,8,1),date(2026,10,31)).time_buckets()[0]=='Săptămâni'
-    assert report(ws,date(2025,1,1),date(2026,10,31)).time_buckets()[0]=='Luni'
+    assert data.time_buckets()[0]=='days'
+    assert report(ws,date(2026,8,1),date(2026,10,31)).time_buckets()[0]=='weeks'
+    assert report(ws,date(2025,1,1),date(2026,10,31)).time_buckets()[0]=='months'
 
 
 def test_period_bounds_and_formula_safe_utf8_export(ws,tmp_path):
@@ -192,7 +192,7 @@ def test_real_dashboard_filters_keyboard_return_and_export(ui,tmp_path,monkeypat
     page.time_chart.activate();settle(ui)
     assert page._focus_first is not None and page.clear_btn.instate(['!disabled'])
     page.clear_focus();settle(ui)
-    tv=page.tables['Sesiuni'];tv.selection_set(page.report.rows[0].id)
+    tv=page.tables['sessions'];tv.selection_set(page.report.rows[0].id)
     page.sf.canvas.yview_moveto(.4);ui.root.update();scroll=page.sf.canvas.yview()[0]
     filters=page.current_filters();page.open_task();ui.show_view('activity');settle(ui)
     assert page.current_filters()==filters

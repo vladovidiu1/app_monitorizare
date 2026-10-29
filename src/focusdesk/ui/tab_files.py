@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from tkinter import filedialog, ttk
 from typing import TYPE_CHECKING
@@ -23,18 +25,18 @@ class ReferenceDialog(ModalDialog):
     enter_confirms = False
 
     def __init__(self, parent, node):
-        super().__init__(parent, "Legături și referințe existente", resizable=True, ok_text="Alege referința")
+        super().__init__(parent, tr('ui.tab_files.legaturi_si_referinte_existente'), resizable=True, ok_text=tr('ui.tab_files.alege_referinta'))
         self.geometry("740x400")
         self.minsize(520, 300)
         self.body.pack_forget()
         self.buttons.pack(side="bottom", fill="x")
         self.body.pack(fill="both", expand=True)
-        ttk.Label(self.body, text="Aceasta este lista referințelor salvate; exploratorul afișează separat discul real.",
+        ttk.Label(self.body, text=tr('ui.tab_files.aceasta_este_lista_referintelor_salvate_exploratorul_afiseaza_separat'),
                   style="Muted.TLabel", wraplength=440).pack(fill="x", pady=4)
-        self.tv, frame = make_tree(self.body, [("name", "Nume", 170), ("mode", "Mod", 90), ("path", "Cale", 390)])
+        self.tv, frame = make_tree(self.body, [("name", tr('ui.file_picker.nume'), 170), ("mode", tr('ui.tab_files.mod'), 90), ("path", tr('ui.tab_files.cale'), 390)])
         frame.pack(fill="both", expand=True)
         for att in node.attachments:
-            self.tv.insert("", "end", iid=att.id, values=(att.name, "Extern" if att.mode == "external" else "Administrat", att.path))
+            self.tv.insert("", "end", iid=att.id, values=(att.name, tr('ui.tab_files.extern') if att.mode == "external" else tr('ui.tab_files.administrat'), att.path))
         self.tv.bind("<Return>", lambda _e: self._on_ok())
         self.tv.bind("<Double-1>", lambda _e: self._on_ok())
 
@@ -47,45 +49,43 @@ class ReferenceDialog(ModalDialog):
 
 class AddAttachmentDialog(ModalDialog):
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, "Adaugă fișier sau folder", ok_text="Adaugă")
+        super().__init__(parent, tr('ui.tab_files.adauga_fisier_sau_folder'), ok_text=tr('ui.tab_subtasks.adauga'))
         self.mode = tk.StringVar(value="managed")
         self.paths: list[str] = []
         ttk.Radiobutton(self.body, variable=self.mode, value="managed",
-                        text="Copie administrată (în workspace)").pack(anchor="w")
+                        text=tr('ui.tab_files.copie_administrata_in_workspace')).pack(anchor="w")
         ttk.Label(self.body, style="Muted.TLabel", wraplength=440, text=(
-            "Fișierul se copiază în folderul nodului (files/). Rămâne alături de task, intră în backup-ul complet "
-            "și nu depinde de locul original.")).pack(anchor="w", padx=(22, 0), pady=(0, 8))
+            tr('ui.tab_files.fisierul_se_copiaza_in_folderul_nodului_files_ramane_alaturi_de_task_i'))).pack(anchor="w", padx=(22, 0), pady=(0, 8))
         ttk.Radiobutton(self.body, variable=self.mode, value="external",
-                        text="Legătură externă (rămâne unde este)").pack(anchor="w")
+                        text=tr('ui.tab_files.legatura_externa_ramane_unde_este')).pack(anchor="w")
         ttk.Label(self.body, style="Muted.TLabel", wraplength=440, text=(
-            "Se memorează doar calea. Nu se copiază nimic; dacă fișierul este mutat sau șters, legătura apare ca "
-            "„Lipsește” și o poți relocaliza. Ștergerea legăturii nu șterge fișierul original.")).pack(
+            tr('ui.tab_files.se_memoreaza_doar_calea_nu_se_copiaza_nimic_daca_fisierul_este_mutat_s'))).pack(
             anchor="w", padx=(22, 0), pady=(0, 8))
         row = ttk.Frame(self.body)
         row.pack(fill="x")
-        ttk.Button(row, text="Alege fișiere…", command=self._pick_files).pack(side="left")
-        ttk.Button(row, text="Alege folder…", command=self._pick_dir).pack(side="left", padx=6)
-        self.summary = ttk.Label(self.body, text="Nimic ales", style="Muted.TLabel", wraplength=440)
+        ttk.Button(row, text=tr('ui.tab_files.alege_fisiere'), command=self._pick_files).pack(side="left")
+        ttk.Button(row, text=tr('ui.tab_files.alege_folder'), command=self._pick_dir).pack(side="left", padx=6)
+        self.summary = ttk.Label(self.body, text=tr('ui.tab_files.nimic_ales'), style="Muted.TLabel", wraplength=440)
         self.summary.pack(anchor="w", pady=(8, 0))
 
     def _pick_files(self) -> None:
-        sel = filedialog.askopenfilenames(parent=self, title="Alege fișierele")
+        sel = filedialog.askopenfilenames(parent=self, title=tr('ui.tab_files.alege_fisierele'))
         if sel:
             self.paths = list(sel)
             self._summ()
 
     def _pick_dir(self) -> None:
-        d = filedialog.askdirectory(parent=self, title="Alege folderul")
+        d = filedialog.askdirectory(parent=self, title=tr('ui.tab_files.alege_folderul'))
         if d:
             self.paths = [d]
             self._summ()
 
     def _summ(self) -> None:
-        self.summary.configure(text="\n".join(self.paths[:6]) + (f"\n… și încă {len(self.paths) - 6}" if len(self.paths) > 6 else ""))
+        self.summary.configure(text="\n".join(self.paths[:6]) + (tr('ui.tab_files.si_inca', len_self_paths_6=len(self.paths) - 6) if len(self.paths) > 6 else ""))
 
     def validate(self) -> bool:
         if not self.paths:
-            show_error(self, "Alege cel puțin un fișier sau folder.")
+            show_error(self, tr('ui.tab_files.alege_cel_putin_un_fisier_sau_folder'))
             return False
         return True
 
@@ -103,38 +103,38 @@ class FilesTab(InspectorTab):
         self._action_serial = 0
         toolbar = ttk.Frame(self)
         toolbar.pack(fill="x", padx=8, pady=6)
-        self.btn_add = ttk.Button(toolbar, text="Adaugă…", command=self._add)
+        self.btn_add = ttk.Button(toolbar, text=tr('ui.tab_details.adauga'), command=self._add)
         self.btn_add.pack(side="left")
-        self.refresh_btn = ttk.Button(toolbar, text="Actualizează", command=self.refresh)
+        self.refresh_btn = ttk.Button(toolbar, text=tr('ui.tab_files.actualizeaza'), command=self.refresh)
         self.refresh_btn.pack(side="left", padx=4)
-        self.more = ttk.Menubutton(toolbar, text="Acțiuni")
+        self.more = ttk.Menubutton(toolbar, text=tr('ui.meetings.actiuni'))
         self.more.pack(side="left")
         self.menu = tk.Menu(self.more, tearoff=False)
         self.more.configure(menu=self.menu)
-        for label, command in (("Deschide", self._open), ("Deschide în Explorer", self._reveal),
-                               ("Deschide în VS Code", self._vscode), ("Copiază calea", self._copy_path),
-                               ("Atașează la e-mail…", self._email)):
+        for label, command in ((tr('ui.user_guide.deschide'), self._open), (tr('ui.tab_files.deschide_in_explorer'), self._reveal),
+                               (tr('ui.tab_files.deschide_in_vs_code'), self._vscode), (tr('ui.tab_files.copiaza_calea'), self._copy_path),
+                               (tr('ui.tab_files.ataseaza_la_e_mail'), self._email)):
             self.menu.add_command(label=label, command=command)
         self.menu.add_separator()
-        for label, command in (("Alege folderul proiectului…", self._set_code),
-                               ("Folosește folderul administrat existent (files/)", self._set_managed_code),
-                               ("Elimină asocierea / oprește moștenirea…", self._clear_code),
-                               ("Relocalizează legătura…", self._relocate),
-                               ("Elimină doar legătura/referința…", self._remove),
-                               ("Șterge copia administrată și referința…", self._remove_copy)):
+        for label, command in ((tr('ui.tab_files.alege_folderul_proiectului'), self._set_code),
+                               (tr('ui.tab_files.foloseste_folderul_administrat_existent_files'), self._set_managed_code),
+                               (tr('ui.tab_files.elimina_asocierea_opreste_mostenirea'), self._clear_code),
+                               (tr('ui.tab_files.relocalizeaza_legatura'), self._relocate),
+                               (tr('ui.tab_files.elimina_doar_legatura_referinta'), self._remove),
+                               (tr('ui.tab_files.sterge_copia_administrata_si_referinta'), self._remove_copy)):
             self.menu.add_command(label=label, command=command)
-        self.menu.add_command(label="Legături și referințe existente…", command=self._manage_references)
+        self.menu.add_command(label=tr('ui.tab_files.legaturi_si_referinte_existente_2'), command=self._manage_references)
         if on_expand:
-            self.menu.add_command(label="Mai mult spațiu pentru Fișiere", command=on_expand)
+            self.menu.add_command(label=tr('ui.tab_files.mai_mult_spatiu_pentru_fisiere'), command=on_expand)
         self.menu.configure(postcommand=self._menu_state)
         self.code_lbl = ttk.Label(self, text="", style="Muted.TLabel", wraplength=380, justify="left")
         self.code_lbl.pack(fill="x", padx=8)
-        self.path_tip = Tooltip(self.code_lbl, "Calea rădăcinii și a elementului selectat")
+        self.path_tip = Tooltip(self.code_lbl, tr('ui.tab_files.calea_radacinii_si_a_elementului_selectat'))
         self.code_note = ttk.Label(self, text="", style="Muted.TLabel", wraplength=380, justify="left")
         self.code_note.pack(fill="x", padx=8, pady=(2, 4))
         self.choose = ttk.Frame(self)
-        ttk.Button(self.choose, text="Alege folderul proiectului…", command=self._set_code).pack(side="left")
-        ttk.Button(self.choose, text="Folosește files/", command=self._set_managed_code).pack(side="left", padx=4)
+        ttk.Button(self.choose, text=tr('ui.tab_files.alege_folderul_proiectului'), command=self._set_code).pack(side="left")
+        ttk.Button(self.choose, text=tr('ui.tab_files.foloseste_files'), command=self._set_managed_code).pack(side="left", padx=4)
         self.explorer = FileExplorer(self, app, on_open=self._open, on_select=self._selection_changed)
         self.explorer.pack(fill="both", expand=True, padx=8, pady=4)
         self.tv = self.explorer.tv
@@ -166,8 +166,8 @@ class FilesTab(InspectorTab):
         sources = self.fs.explorer_sources(node.id)
         work = next((s for s in sources if s.key == 'work'), None)
         self.code_lbl.configure(text=str(work.path) if work and work.path else
-                                'Folderul de lucru este indisponibil.' if work else 'Niciun folder de lucru asociat.')
-        self.code_note.configure(text=(work.note or work.error) if work else 'Poți explora files/ sau asocia un folder extern, fără copiere.')
+                                tr('ui.tab_files.folderul_de_lucru_este_indisponibil') if work else tr('ui.tab_files.niciun_folder_de_lucru_asociat'))
+        self.code_note.configure(text=(work.note or work.error) if work else tr('ui.tab_files.poti_explora_files_sau_asocia_un_folder_extern_fara_copiere'))
         if work is None and not self.app.ws.read_only:
             self.choose.pack(fill='x', padx=8, before=self.explorer)
         else:
@@ -204,7 +204,7 @@ class FilesTab(InspectorTab):
             source = row.get('source') or next((s for s in self.explorer.sources if s.path == row['root']), None)
             path = row['entry'].path
             self.code_lbl.configure(text=str(row['root']))
-            self.path_tip.text = f"Rădăcină: {row['root']}\nSelectat: {path}"
+            self.path_tip.text = tr('ui.tab_files.radacina_selectat', row_root=row['root'], path=path)
             note = source.note if source else ''
             detail = row.get('error') or row['entry'].detail
             self.code_note.configure(text=note + ('\n' + detail if detail else ''))
@@ -244,11 +244,11 @@ class FilesTab(InspectorTab):
         try:
             att = self._selected_att()
             if att is None: return
-            choices = [('remove', 'Elimină doar referința')]
-            if att.mode == 'external': choices.insert(0, ('relocate', 'Relocalizează'))
-            if att.mode == 'managed': choices.append(('delete', 'Șterge copia administrată…'))
-            choices.append(('cancel', 'Anulează'))
-            choice = ask_choice(self, att.name, 'Eliminarea referinței nu șterge fișierul original.', choices)
+            choices = [('remove', tr('ui.tab_files.elimina_doar_referinta'))]
+            if att.mode == 'external': choices.insert(0, ('relocate', tr('ui.tab_files.relocalizeaza')))
+            if att.mode == 'managed': choices.append(('delete', tr('ui.tab_files.sterge_copia_administrata_2')))
+            choices.append(('cancel', tr('ui.meetings.anuleaza')))
+            choice = ask_choice(self, att.name, tr('ui.tab_files.eliminarea_referintei_nu_sterge_fisierul_original'), choices)
             if choice == 'relocate': self._relocate()
             elif choice == 'remove': self._remove()
             elif choice == 'delete': self._remove_copy()
@@ -319,9 +319,9 @@ class FilesTab(InspectorTab):
             if entries[0].is_dir:
                 for iid, _row in self.explorer.selected()[:1]: self.explorer.open_directory(iid)
             elif system.is_runnable(path):
-                choice = ask_choice(self, 'Script / executabil',
-                                    f'„{path.name}” nu este executat de FocusDesk. Alege deschiderea în editor sau afișarea în Explorer.',
-                                    [('editor', 'Deschide în VS Code'), ('explorer', 'Deschide în Explorer'), ('cancel', 'Anulează')])
+                choice = ask_choice(self, tr('ui.tab_files.script_executabil'),
+                                    tr('ui.tab_files.nu_este_executat_de_focusdesk_alege_deschiderea_in_editor_sau_afisarea', path_name=path.name),
+                                    [('editor', tr('ui.tab_files.deschide_in_vs_code')), ('explorer', tr('ui.tab_files.deschide_in_explorer')), ('cancel', tr('ui.meetings.anuleaza'))])
                 if choice == 'editor': self._vscode()
                 elif choice == 'explorer': self._reveal()
             else: system.open_with_default_app(path)
@@ -336,13 +336,13 @@ class FilesTab(InspectorTab):
     def _copy_path(self):
         def copied(entries):
             self.clipboard_clear(); self.clipboard_append('\n'.join(str(entry.path) for entry in entries))
-            self.explorer.status.configure(text='Calea a fost copiată.')
+            self.explorer.status.configure(text=tr('ui.tab_files.calea_a_fost_copiata'))
         self._action(copied, multiple=True)
 
     def _email(self):
         def attached(entries):
             if any(entry.is_dir for entry in entries):
-                raise FocusDeskError('Selectează documentele din interiorul folderelor. Directoarele nu sunt atașate sau arhivate automat.')
+                raise FocusDeskError(tr('ui.tab_files.selecteaza_documentele_din_interiorul_folderelor_directoarele_nu_sunt'))
             self.app.compose_mail(self.node_id, attachments=[entry.path for entry in entries])
         self._action(attached, multiple=True, readable=True)
 
@@ -374,28 +374,28 @@ class FilesTab(InspectorTab):
         def done(res) -> None:
             name, is_dir = res
             self.app.run_write(lambda: fs.register_managed(node_id, name, is_dir), refresh=True,
-                               success_text=f"Copiat: {name}")
+                               success_text=tr('ui.tab_files.copiat', name=name))
             if self.node_id == node_id:
                 self.load(self.app.ws.get(node_id))
 
         def error(exc: BaseException) -> None:
             if isinstance(exc, NameConflict):
-                ans = ask_choice(self, "Nume identic",
-                                 f"Există deja „{exc.name}” în fișierele acestui nod.",
-                                 [("keep_both", "Păstrează ambele"), ("replace", "Înlocuiește"), ("cancel", "Anulează")])
+                ans = ask_choice(self, tr('ui.tab_files.nume_identic'),
+                                 tr('ui.tab_files.exista_deja_in_fisierele_acestui_nod', exc_name=exc.name),
+                                 [("keep_both", tr('ui.tab_files.pastreaza_ambele')), ("replace", tr('ui.tab_files.inlocuieste')), ("cancel", tr('ui.meetings.anuleaza'))])
                 if ans in ("keep_both", "replace"):
                     self._copy_one(node_id, path, ans)
                 return
             show_error(self, str(exc))
 
-        self.app.run_job(work, done, on_error=error, name="copy-file", busy_text="Se copiază fișierul…")
+        self.app.run_job(work, done, on_error=error, name="copy-file", busy_text=tr('ui.tab_files.se_copiaza_fisierul'))
 
     def _relocate(self) -> None:
         if not self._writable(): return
         ws, node_id = self._ws, self.node_id
         att = self._selected_att()
         if att is None or att.mode != "external":
-            show_info(self, "Doar legăturile externe se pot relocaliza.")
+            show_info(self, tr('ui.tab_files.doar_legaturile_externe_se_pot_relocaliza'))
             return
         p = filedialog.askdirectory(parent=self) if att.is_dir else filedialog.askopenfilename(parent=self)
         if self._ws is not ws or self.node_id != node_id or not self._writable(): return
@@ -408,7 +408,7 @@ class FilesTab(InspectorTab):
         att = self._selected_att()
         if att is None:
             return
-        if confirm(self, f'Elimini doar referința „{att.name}”? Fișierul nu se șterge și poate rămâne vizibil în explorator, deoarece acesta arată discul real.'):
+        if confirm(self, tr('ui.tab_files.elimini_doar_referinta_fisierul_nu_se_sterge_si_poate_ramane_vizibil_i', att_name=att.name)):
             if self._ws is not ws or self.node_id != node_id or not self._writable(): return
             if self.app.run_write(lambda: self.fs.remove_attachment(node_id, att.id), refresh=True):
                 self.load(self.app.ws.get(self.node_id))
@@ -418,9 +418,9 @@ class FilesTab(InspectorTab):
         ws, node_id = self._ws, self.node_id
         att = self._selected_att()
         if att is None or att.mode != 'managed': return
-        choice = ask_choice(self, 'Șterge copia administrată',
-                            f'Ștergi fizic copia „{att.name}” din workspace și referința? Originalul extern nu este șters.',
-                            [('delete', 'Șterge copia și referința'), ('cancel', 'Anulează')])
+        choice = ask_choice(self, tr('ui.tab_files.sterge_copia_administrata'),
+                            tr('ui.tab_files.stergi_fizic_copia_din_workspace_si_referinta_originalul_extern_nu_est', att_name=att.name),
+                            [('delete', tr('ui.tab_files.sterge_copia_si_referinta')), ('cancel', tr('ui.meetings.anuleaza'))])
         if self._ws is not ws or self.node_id != node_id or not self._writable(): return
         if choice == 'delete' and self.app.run_write(lambda: self.fs.remove_attachment(node_id, att.id, delete_managed_copy=True), refresh=True):
             self.load(self.app.ws.get(self.node_id))
@@ -429,7 +429,7 @@ class FilesTab(InspectorTab):
     def _set_code(self) -> None:
         if not self._writable(): return
         ws, node_id = self._ws, self.node_id
-        d = filedialog.askdirectory(parent=self, title="Alege folderul proiectului / de lucru")
+        d = filedialog.askdirectory(parent=self, title=tr('ui.tab_files.alege_folderul_proiectului_de_lucru'))
         if self._ws is not ws or self.node_id != node_id or not self._writable(): return
         if d and self.app.run_write(lambda: self.fs.set_code_folder(node_id, d), refresh=True):
             self.load(self.app.ws.get(self.node_id))
@@ -438,7 +438,7 @@ class FilesTab(InspectorTab):
         if not self._writable():
             return
         ws, node_id = self._ws, self.node_id
-        if confirm(self, "Folosesc folderul administrat existent files/ ca folder de lucru și sursă pentru checkpointuri? Fișierele nu se mută; sunt incluse în backupul complet."):
+        if confirm(self, tr('ui.tab_files.folosesc_folderul_administrat_existent_files_ca_folder_de_lucru_si_sur')):
             if self._ws is not ws or self.node_id != node_id or not self._writable(): return
             if self.app.run_write(lambda: self.fs.set_code_folder(node_id, "files", mode="managed"),
                                   refresh=True):
@@ -450,7 +450,7 @@ class FilesTab(InspectorTab):
         try: source = self.fs.effective_source(self.node_id)
         except FocusDeskError: source = None
         inherited = source is not None and source.inherited
-        text = "Opresc moștenirea folderului pentru acest task? Asocierea proiectului și fișierele nu se schimbă." if inherited else "Elimin asocierea proprie? Fișierele nu se șterg. O sursă moștenită poate redeveni disponibilă."
+        text = tr('ui.tab_files.opresc_mostenirea_folderului_pentru_acest_task_asocierea_proiectului_s') if inherited else tr('ui.tab_files.elimin_asocierea_proprie_fisierele_nu_se_sterg_o_sursa_mostenita_poate')
         if confirm(self, text):
             if self._ws is not ws or self.node_id != node_id or not self._writable(): return
             action = self.fs.disable_code_folder if inherited else self.fs.clear_code_folder

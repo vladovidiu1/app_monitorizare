@@ -1,6 +1,8 @@
 """Nonmodal, single visible manual; modal hosts keep their existing grab unchanged."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 import re
 import tkinter as tk
 import tkinter.font as tkfont
@@ -92,8 +94,8 @@ class GuideController:
             if str(space.secondary) in space.body.panes():
                 for name, frame in space.scrolls.items():
                     if str(frame) == selected:
-                        return {'Pași':'organizare', 'Fișiere':'fisiere', 'Activitate':'sesiuni#jurnalul-taskului',
-                                'Planificare':'calendar', 'Versiuni':'versiuni'}[name]
+                        return {'steps':'organizare', 'files':'fisiere', 'journal':'sesiuni#jurnalul-taskului',
+                                'planning':'calendar', 'versions':'versiuni'}[name]
             return 'descriere'
         return {'today':'astazi','activity':'activitate','archive':'siguranta'}.get(view, 'organizare')
 
@@ -146,7 +148,7 @@ class GuideWindow(tk.Toplevel):
     def __init__(self, parent, controller, *, error=''):
         super().__init__(parent)
         self.controller, self.library = controller, controller.library
-        self.title('Ghid de utilizare · FocusDesk')
+        self.title(tr('ui.user_guide.ghid_de_utilizare_focusdesk'))
         self.transient(str(self.tk.call('winfo','toplevel',str(parent))))
         self.geometry('1060x730')
         self.minsize(px(self,760),px(self,500))
@@ -170,21 +172,21 @@ class GuideWindow(tk.Toplevel):
         top = ttk.Frame(self,padding=12)
         top.pack(fill='x')
         top.columnconfigure(1,weight=1)
-        ttk.Label(top,text='Caută în ghid').grid(row=0,column=0,padx=(0,8))
+        ttk.Label(top,text=tr('ui.user_guide.cauta_in_ghid')).grid(row=0,column=0,padx=(0,8))
         self.query = tk.StringVar(value=controller.query)
         self.search_entry = ttk.Entry(top,textvariable=self.query)
         self.search_entry.grid(row=0,column=1,sticky='ew')
-        self.clear_btn = ttk.Button(top,text='Golește',command=lambda:self.query.set(''))
+        self.clear_btn = ttk.Button(top,text=tr('ui.user_guide.goleste'),command=lambda:self.query.set(''))
         self.clear_btn.grid(row=0,column=2,padx=(8,0))
         nav = ttk.Frame(self,padding=(12,0,12,8)); nav.pack(fill='x')
-        self.back_btn = ttk.Button(nav,text='Înapoi',command=lambda:self.go(-1));self.back_btn.pack(side='left')
-        self.forward_btn = ttk.Button(nav,text='Înainte',command=lambda:self.go(1));self.forward_btn.pack(side='left',padx=6)
-        self.close_btn = ttk.Button(nav,text='Închide ghidul',command=self.close);self.close_btn.pack(side='right')
-        self.status = ttk.Label(self,text='Ajutor local · căutare numai în documentație',style='Muted.TLabel',padding=(12,5))
+        self.back_btn = ttk.Button(nav,text=tr('ui.meetings.inapoi'),command=lambda:self.go(-1));self.back_btn.pack(side='left')
+        self.forward_btn = ttk.Button(nav,text=tr('ui.user_guide.inainte'),command=lambda:self.go(1));self.forward_btn.pack(side='left',padx=6)
+        self.close_btn = ttk.Button(nav,text=tr('ui.user_guide.inchide_ghidul'),command=self.close);self.close_btn.pack(side='right')
+        self.status = ttk.Label(self,text=tr('ui.user_guide.ajutor_local_cautare_numai_in_documentatie'),style='Muted.TLabel',padding=(12,5))
         self.status.pack(side='bottom',fill='x')
         self.panes = ttk.PanedWindow(self,orient='horizontal');self.panes.pack(fill='both',expand=True,padx=12,pady=(0,8))
         self.left = ttk.Frame(self.panes);self.panes.add(self.left,weight=0)
-        self.count = ttk.Label(self.left,text='Cuprins',style='Section.TLabel');self.count.pack(anchor='w',pady=(0,6))
+        self.count = ttk.Label(self.left,text=tr('ui.user_guide.cuprins'),style='Section.TLabel');self.count.pack(anchor='w',pady=(0,6))
         wrap=ttk.Frame(self.left);wrap.pack(fill='both',expand=True)
         self.toc=ttk.Treeview(wrap,show='tree',selectmode='browse',style='Dense.Treeview')
         self.toc.column('#0',width=px(self,255),minwidth=px(self,160),stretch=True)
@@ -195,13 +197,13 @@ class GuideWindow(tk.Toplevel):
         self.toc.bind('<<TreeviewSelect>>',self._toc_selected)
         self.toc.bind('<Return>',lambda _e:self._activate_toc())
         self.toc.bind('<Double-1>',lambda _e:self._activate_toc())
-        self.path_tip=Tooltip(self.toc,'Selectează un capitol; Enter îl deschide.')
+        self.path_tip=Tooltip(self.toc,tr('ui.user_guide.selecteaza_un_capitol_enter_il_deschide'))
         right=ttk.Frame(self.panes);self.panes.add(right,weight=1)
         links=ttk.Frame(right);links.pack(side='bottom',fill='x',pady=(6,0));links.columnconfigure(1,weight=1)
-        ttk.Label(links,text='Legături în articol').grid(row=0,column=0,padx=(0,6))
+        ttk.Label(links,text=tr('ui.user_guide.legaturi_in_articol')).grid(row=0,column=0,padx=(0,6))
         self.link_combo=ttk.Combobox(links,state='readonly',width=15)
         self.link_combo.grid(row=0,column=1,sticky='ew')
-        self.link_btn=ttk.Button(links,text='Deschide',command=self._activate_link)
+        self.link_btn=ttk.Button(links,text=tr('ui.user_guide.deschide'),command=self._activate_link)
         self.link_btn.grid(row=0,column=2,padx=(6,0))
         self.link_combo.bind('<Return>',lambda _e:self._activate_link() or 'break')
         article=ttk.Frame(right);article.pack(fill='both',expand=True)
@@ -226,9 +228,9 @@ class GuideWindow(tk.Toplevel):
         self._query_trace=self.query.trace_add('write',self._query_changed)
         if self.library is None:
             self.search_entry.state(['disabled'])
-            self.status.configure(text='Ghid indisponibil · aplicația și datele rămân accesibile')
+            self.status.configure(text=tr('ui.user_guide.ghid_indisponibil_aplicatia_si_datele_raman_accesibile'))
             self.article.configure(state='normal');self.article.insert('1.0',error);self.article.configure(state='disabled')
-            self.retry_btn=ttk.Button(nav,text='Reîncearcă încărcarea',command=controller.reload);self.retry_btn.pack(side='left')
+            self.retry_btn=ttk.Button(nav,text=tr('ui.user_guide.reincearca_incarcarea'),command=controller.reload);self.retry_btn.pack(side='left')
         else:
             self.search()
             self.render()
@@ -260,11 +262,11 @@ class GuideWindow(tk.Toplevel):
             for hit in hits:
                 self._hits[hit.chapter_id]=hit
                 self.toc.insert('','end',iid=hit.chapter_id,text=hit.title)
-            self.count.configure(text=f'{len(hits)} capitole găsite' if hits else 'Niciun rezultat')
-            self.preview.configure(text='Selectează un rezultat pentru fragment; Enter îl deschide.' if hits else 'Nu există rezultate în ghid. Încearcă alte cuvinte, cu sau fără diacritice.')
+            self.count.configure(text=tr('ui.user_guide.capitole_gasite', count=len(hits), len_hits=len(hits)) if hits else tr('ui.user_guide.niciun_rezultat'))
+            self.preview.configure(text=tr('ui.user_guide.selecteaza_un_rezultat_pentru_fragment_enter_il_deschide') if hits else tr('ui.user_guide.nu_exista_rezultate_in_ghid_incearca_alte_cuvinte_cu_sau_fara_diacriti'))
         else:
             for chapter in self.library.chapters.values():self.toc.insert('','end',iid=chapter.id,text=chapter.title)
-            self.count.configure(text='Cuprins');self.preview.configure(text='')
+            self.count.configure(text=tr('ui.user_guide.cuprins'));self.preview.configure(text='')
         current=self.controller.history.current.chapter_id
         if self.toc.exists(current):self.toc.selection_set(current)
         self._toc_updating=False
@@ -362,7 +364,7 @@ class GuideWindow(tk.Toplevel):
         self.article.update_idletasks()
         self._rendering=False
         location.scroll=self.article.yview()[0]
-        self.status.configure(text='Ghid local · '+chapter.title)
+        self.status.configure(text=tr('ui.user_guide.ghid_local')+chapter.title)
         if self.toc.exists(chapter.id) and self.toc.selection() != (chapter.id,):self.toc.selection_set(chapter.id)
         self._history_buttons()
 

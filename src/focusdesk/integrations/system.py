@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import os
 import shutil
@@ -33,36 +35,35 @@ def reveal_in_explorer(path: Path) -> None:
     """Deschide folderul sau afiseaza fisierul selectat in Explorer."""
     path = Path(path)
     if not path.exists():
-        raise OpenError(f"Calea nu există: {path}")
+        raise OpenError(tr('integrations.system.calea_nu_exista', path=path))
     if sys.platform != "win32":
-        raise OpenError("Deschiderea în Explorer este disponibilă doar pe Windows.")
+        raise OpenError(tr('integrations.system.deschiderea_in_explorer_este_disponibila_doar_pe_windows'))
     try:
         if path.is_dir():
             os.startfile(str(path))  # type: ignore[attr-defined]
         else:
             subprocess.Popen(["explorer", f"/select,{path}"], shell=False)
     except OSError as exc:
-        raise OpenError(f"Nu s-a putut deschide Explorer: {exc}") from exc
+        raise OpenError(tr('extra.integrations.system.nu_s_a_putut_deschide_explorer', exc=exc)) from exc
 
 
 def open_with_default_app(path: Path) -> None:
     path = Path(path)
     if not path.exists():
-        raise OpenError(f"Fișierul nu există: {path}")
+        raise OpenError(tr('integrations.system.fisierul_nu_exista', path=path))
     if path.is_dir():
         reveal_in_explorer(path)
         return
     if is_runnable(path):
         raise OpenError(
-            f"„{path.name}” este un script/executabil și nu se deschide automat (ar putea rula). "
-            "Folosește „Deschide în VS Code” sau „Arată în Explorer”."
+            tr('integrations.system.este_un_script_executabil_si_nu_se_deschide_automat_ar_putea_rula_folo', path_name=path.name)
         )
     if sys.platform != "win32":
-        raise OpenError("Deschiderea cu aplicația asociată este disponibilă doar pe Windows.")
+        raise OpenError(tr('integrations.system.deschiderea_cu_aplicatia_asociata_este_disponibila_doar_pe_windows'))
     try:
         os.startfile(str(path))  # type: ignore[attr-defined]
     except OSError as exc:
-        raise OpenError(f"Nu s-a putut deschide fișierul: {exc}") from exc
+        raise OpenError(tr('integrations.system.nu_s_a_putut_deschide_fisierul', exc=exc)) from exc
 
 
 def find_vscode(configured: str | None = None) -> Path | None:
@@ -91,10 +92,10 @@ def find_vscode(configured: str | None = None) -> Path | None:
 def open_in_vscode(folder_or_file: Path, configured: str | None = None, *, extra_files: list[Path] | None = None) -> None:
     exe = find_vscode(configured)
     if exe is None:
-        raise OpenError("VS Code nu a fost găsit. Alege executabilul în Setări › Integrări.")
+        raise OpenError(tr('integrations.system.vs_code_nu_a_fost_gasit_alege_executabilul_in_setari_integrari'))
     target = Path(folder_or_file)
     if not target.exists():
-        raise OpenError(f"Calea nu există: {target}")
+        raise OpenError(tr('integrations.system.calea_nu_exista_2', target=target))
     # Caile sunt absolute (incep cu litera de unitate), deci nu pot fi interpretate ca optiuni.
     args = [str(exe), str(target.resolve())]
     for f in extra_files or []:
@@ -103,4 +104,4 @@ def open_in_vscode(folder_or_file: Path, configured: str | None = None, *, extra
     try:
         subprocess.Popen(args, shell=False, creationflags=CREATE_NO_WINDOW if sys.platform == "win32" else 0)
     except OSError as exc:
-        raise OpenError(f"VS Code nu a putut fi pornit: {exc}") from exc
+        raise OpenError(tr('extra.integrations.system.vs_code_nu_a_putut_fi_pornit', exc=exc)) from exc

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 from datetime import date, datetime
 from pathlib import Path
@@ -51,16 +53,15 @@ class Workspace:
         moved = ops.flatten_layout(repo)
         if moved:
             ws.recovery_messages.append(
-                f"Structura fizică a fost actualizată: {moved} directoare de task-uri au fost scoase din "
-                "foldere imbricate (ierarhia rămâne neschimbată; acum poate avea orice adâncime).")
+                tr('services.workspace.structura_fizica_a_fost_actualizata_directoare_de_task_uri_au_fost_sco', moved=moved))
         repo.load()
         from ..storage.followup_operations import recover_followups
         followup_recovery=recover_followups(repo)
         ws.recovery_messages.extend(followup_recovery)
-        if any(message.startswith("Cerința nouă întreruptă a fost recuperată") for message in followup_recovery):repo.load(force=True)
+        if any(message.startswith(tr('services.workspace.cerinta_noua_intrerupta_a_fost_recuperata')) for message in followup_recovery):repo.load(force=True)
         meeting_recovery=ws.meetings.recover()
         ws.recovery_messages.extend(meeting_recovery)
-        if any(message.startswith('Operația întâlnirii a fost recuperată') for message in meeting_recovery):repo.load(force=True)
+        if any(message.startswith(tr('services.workspace.operatia_intalnirii_a_fost_recuperata')) for message in meeting_recovery):repo.load(force=True)
         ws.meetings.store.summaries()
         for path,error in ws.meetings.store.issues:
             repo.issues.append(LoadIssue('error','meeting_corrupt',error,path))
@@ -125,7 +126,7 @@ class Workspace:
         try:
             return self.repo.nodes[node_id]
         except KeyError as exc:
-            raise NotFoundError(f"Nodul {node_id} nu există.") from exc
+            raise NotFoundError(tr('services.workspace.nodul_nu_exista', node_id=node_id)) from exc
 
     def node_dir(self, node_id: str) -> Path:
         return self.repo.dirs[node_id]
@@ -241,11 +242,11 @@ class Workspace:
             return
         parent = self.get(parent_id)
         if parent.kind == Kind.TASK and kind != Kind.TASK:
-            raise ValidationError("Un task poate conține doar subtask-uri.")
+            raise ValidationError(tr('services.workspace.un_task_poate_contine_doar_subtask_uri'))
         if parent.kind == Kind.PROJECT and kind == Kind.PROJECT:
-            raise ValidationError("Un proiect nu poate conține alt proiect; folosește o categorie.")
+            raise ValidationError(tr('services.workspace.un_proiect_nu_poate_contine_alt_proiect_foloseste_o_categorie'))
         if kind == Kind.PROJECT and parent.kind not in (Kind.FOLDER,):
-            raise ValidationError("Un proiect poate fi doar la rădăcină sau într-un folder.")
+            raise ValidationError(tr('services.workspace.un_proiect_poate_fi_doar_la_radacina_sau_intr_un_folder'))
 
     def _check_writable(self) -> None:
         self.repo._require_writable()
@@ -293,9 +294,9 @@ class Workspace:
         for key in ("related_node_ids", "depends_on_ids"):
             for ref in data.get(key, []) or []:
                 if ref not in self.repo.nodes:
-                    raise ValidationError("Referință către un nod inexistent.")
+                    raise ValidationError(tr('services.workspace.referinta_catre_un_nod_inexistent'))
                 if self_id and ref == self_id:
-                    raise ValidationError("Un nod nu poate face referire la sine.")
+                    raise ValidationError(tr('extra.services.workspace.un_nod_nu_poate_face_referire_la_sine'))
 
     # ---- update -----------------------------------------------------
     def update_node(self, node_id: str, **changes: Any) -> Node:
@@ -303,7 +304,7 @@ class Workspace:
         old = self.get(node_id)
         bad = set(changes) & _IMMUTABLE_FIELDS
         if bad:
-            raise ValidationError(f"Câmpuri care nu se modifică direct: {', '.join(sorted(bad))}")
+            raise ValidationError(tr('services.workspace.campuri_care_nu_se_modifica_direct', join_sorted_bad=', '.join(sorted(bad))))
         if "depends_on_ids" in changes:
             self._check_dependency_cycle(node_id, list(changes["depends_on_ids"]))
         self._check_references(changes, node_id)
@@ -338,7 +339,7 @@ class Workspace:
         self._check_writable()
         node=self.get(node_id)
         if node.kind != Kind.TASK or node.status not in CLOSED_STATUSES:
-            raise ValidationError('Selectează un task finalizat sau anulat pentru redeschidere.')
+            raise ValidationError(tr('services.workspace.selecteaza_un_task_finalizat_sau_anulat_pentru_redeschidere'))
         stored=self.update_node(node_id,status=Status.TODO)
         self.record_event('reopened',node_id,{'reason':reason,'from':node.status.value,'previous_completed_at':node.completed_at.isoformat() if node.completed_at else None})
         return stored
@@ -361,7 +362,7 @@ class Workspace:
                   if n.pinned_today == day and n.id != node_id and n.status not in CLOSED_STATUSES]
         if len(pinned) >= self.settings.max_today_priorities:
             raise ValidationError(
-                f"Poți marca cel mult {self.settings.max_today_priorities} priorități pentru o zi."
+                tr('services.workspace.poti_marca_cel_mult_prioritati_pentru_o_zi', self_settings_max_today_priorities=self.settings.max_today_priorities)
             )
 
     def set_description(self, node_id: str, text: str) -> None:
@@ -381,7 +382,7 @@ class Workspace:
         node = self.get(node_id)
         self.check_parent(node.kind, new_parent_id)
         if new_parent_id is not None and new_parent_id in self.subtree_ids(node_id):
-            raise CycleError("Nu poți muta un nod în interiorul propriilor descendenți.")
+            raise CycleError(tr('storage.operations.nu_poti_muta_un_nod_in_interiorul_propriilor_descendenti'))
         if sort_order is None and new_parent_id != node.parent_id:
             siblings = [n for n in self.repo.nodes.values() if n.parent_id == new_parent_id]
             sort_order = max((n.sort_order for n in siblings), default=0) + 10
@@ -416,7 +417,7 @@ class Workspace:
         node = self.get(node_id)
         self.get(other_id)
         if other_id == node_id:
-            raise ValidationError("Un nod nu poate face referire la sine.")
+            raise ValidationError(tr('extra.services.workspace.un_nod_nu_poate_face_referire_la_sine'))
         self.update_node(node_id, related_node_ids=[*node.related_node_ids, other_id])
 
     def remove_related(self, node_id: str, other_id: str) -> None:
@@ -434,19 +435,19 @@ class Workspace:
     def _check_dependency_cycle(self, node_id: str, new_deps: list[str]) -> None:
         node = self.get(node_id)
         if node.kind == Kind.FOLDER and new_deps:
-            raise ValidationError("Un folder nu are dependențe.")
+            raise ValidationError(tr('services.workspace.un_folder_nu_are_dependente'))
         for dep in new_deps:
             if dep == node_id:
-                raise CycleError("Un task nu poate depinde de el însuși.")
+                raise CycleError(tr('services.workspace.un_task_nu_poate_depinde_de_el_insusi'))
             if dep not in self.repo.nodes:
-                raise ValidationError("Dependență către un nod inexistent.")
+                raise ValidationError(tr('services.workspace.dependenta_catre_un_nod_inexistent'))
         # Cautam daca node_id este accesibil pornind de la oricare dintre noile dependente.
         seen: set[str] = set()
         stack = list(new_deps)
         while stack:
             cur = stack.pop()
             if cur == node_id:
-                raise CycleError("Dependența ar crea un ciclu.")
+                raise CycleError(tr('services.workspace.dependenta_ar_crea_un_ciclu'))
             if cur in seen or cur not in self.repo.nodes:
                 continue
             seen.add(cur)
@@ -479,7 +480,7 @@ class Workspace:
         pending = self.future_sessions(node_id)
         if pending:
             if future_sessions == "ask":
-                raise ValidationError(f"Nodul are {len(pending)} sesiuni viitoare; alege păstrarea sau anularea lor.")
+                raise ValidationError(tr('services.workspace.nodul_are_sesiuni_viitoare_alege_pastrarea_sau_anularea_lor', len_pending=len(pending)))
             if future_sessions == "cancel":
                 self.cancel_sessions(pending)
         node = self.update_node(node_id, archived_at=utcnow())
@@ -533,7 +534,7 @@ class Workspace:
         self.get(node_id)
         text = text.strip()
         if not text:
-            raise ValidationError("Notița este goală.")
+            raise ValidationError(tr('services.workspace.notita_este_goala'))
         entry = NoteEntry(node_id=node_id, text=text, kind=kind, **extra)  # type: ignore[arg-type]
         self.repo.notes_store(node_id).save(entry)
         self.emit("notes_changed", node_id=node_id)

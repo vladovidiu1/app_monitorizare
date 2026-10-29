@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from datetime import date
 from enum import StrEnum
 from pathlib import Path, PureWindowsPath
@@ -54,17 +56,17 @@ class _Base(BaseModel):
 def validate_managed_relpath(path: str) -> str:
     p = PureWindowsPath(path)
     if p.is_absolute() or p.drive or p.root:
-        raise ValueError("calea administrata trebuie sa fie relativa")
+        raise ValueError(tr('extra.domain.models.calea_administrata_trebuie_sa_fie_relativa'))
     if any(part in ("..",) for part in p.parts):
-        raise ValueError("calea administrata nu poate contine '..'")
+        raise ValueError(tr('extra.domain.models.calea_administrata_nu_poate_contine'))
     if not p.parts:
-        raise ValueError("calea administrata este goala")
+        raise ValueError(tr('extra.domain.models.calea_administrata_este_goala'))
     return path.replace("\\", "/")
 
 
 def validate_external_path(path: str) -> str:
     if not (PureWindowsPath(path).is_absolute() or Path(path).is_absolute()):
-        raise ValueError("calea externa trebuie sa fie absoluta")
+        raise ValueError(tr('extra.domain.models.calea_externa_trebuie_sa_fie_absoluta'))
     return path
 
 
@@ -79,10 +81,10 @@ class SourceWorkspace(_Base):
     @model_validator(mode="after")
     def _check_path(self) -> "SourceWorkspace":
         if self.mode == 'disabled':
-            if self.path or self.owner_node_id or self.shared_mode: raise ValueError('Acces dezactivat cu referință invalidă')
+            if self.path or self.owner_node_id or self.shared_mode: raise ValueError(tr('extra.domain.models.acces_dezactivat_cu_referinta_invalida'))
         elif self.mode == 'shared':
             if not self.owner_node_id or not is_uuid(self.owner_node_id) or self.shared_mode is None:
-                raise ValueError('Sursa comună necesită proprietar UUID și mod explicit')
+                raise ValueError(tr('extra.domain.models.sursa_comuna_necesita_proprietar_uuid_si_mod_explicit'))
             if self.shared_mode == 'managed': validate_managed_relpath(self.path)
             else: validate_external_path(self.path)
         elif self.mode == "managed":
@@ -168,7 +170,7 @@ class Node(_Base):
     def _uuid_list(cls, v: list[str]) -> list[str]:
         for item in v:
             if not is_uuid(item):
-                raise ValueError(f"UUID invalid: {item}")
+                raise ValueError(tr('extra.domain.models.uuid_invalid', item=item))
         return list(dict.fromkeys(v))
 
     @field_validator("title")
@@ -176,9 +178,9 @@ class Node(_Base):
     def _title(cls, v: str) -> str:
         v = " ".join(v.split())
         if not v:
-            raise ValueError("titlul nu poate fi gol")
+            raise ValueError(tr('extra.domain.models.titlul_nu_poate_fi_gol'))
         if len(v) > 300:
-            raise ValueError("titlul este prea lung (max 300)")
+            raise ValueError(tr('extra.domain.models.titlul_este_prea_lung_max_300'))
         return v
 
     @field_validator("tags")
@@ -191,7 +193,7 @@ class Node(_Base):
     @classmethod
     def _minutes(cls, v: int | None) -> int | None:
         if v is not None and v < 0:
-            raise ValueError("durata nu poate fi negativa")
+            raise ValueError(tr('extra.domain.models.durata_nu_poate_fi_negativa'))
         return v
 
     @model_validator(mode="after")
@@ -202,18 +204,18 @@ class Node(_Base):
                 self.due_date, self.due_at, self.waiting_reason,
             ]
             if any(x is not None for x in forbidden) or self.depends_on_ids:
-                raise ValueError("un folder nu are status, estimari, termen sau dependente")
+                raise ValueError(tr('extra.domain.models.un_folder_nu_are_status_estimari_termen_sau_dependente'))
         elif self.kind == Kind.PROJECT:
             if self.estimated_minutes is not None or self.remaining_minutes is not None:
-                raise ValueError("estimarile unui proiect sunt agregate, nu se seteaza direct")
+                raise ValueError(tr('extra.domain.models.estimarile_unui_proiect_sunt_agregate_nu_se_seteaza_direct'))
         if self.kind == Kind.TASK and self.status is None:
-            raise ValueError("un task are nevoie de status")
+            raise ValueError(tr('extra.domain.models.un_task_are_nevoie_de_status'))
         if self.parent_id is not None and self.parent_id == self.id:
-            raise ValueError("un nod nu poate fi propriul parinte")
-        if self.continuation_of == self.id: raise ValueError('O cerință nu poate continua propriul task')
-        if self.continuation_of is not None and self.kind != Kind.TASK: raise ValueError('Numai taskurile pot fi cerințe ulterioare')
+            raise ValueError(tr('extra.domain.models.un_nod_nu_poate_fi_propriul_parinte'))
+        if self.continuation_of == self.id: raise ValueError(tr('extra.domain.models.o_cerinta_nu_poate_continua_propriul_task'))
+        if self.continuation_of is not None and self.kind != Kind.TASK: raise ValueError(tr('extra.domain.models.numai_taskurile_pot_fi_cerinte_ulterioare'))
         if self.id in self.related_node_ids or self.id in self.depends_on_ids:
-            raise ValueError("un nod nu poate face referire la sine")
+            raise ValueError(tr('extra.domain.models.un_nod_nu_poate_face_referire_la_sine'))
         return self
 
     @property

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from ..i18n import date_text
+
+from ..i18n import tr
+
 import calendar
 import tkinter as tk
 from datetime import date
@@ -19,9 +23,9 @@ from .tree_rows import sync_rows
 if TYPE_CHECKING:
     from .app import FocusDeskApp
 
-MONTHS = ["Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie", "Iulie", "August", "Septembrie",
-          "Octombrie", "Noiembrie", "Decembrie"]
-WEEKDAYS = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"]
+from ..i18n import month_name, weekday_name
+MONTHS = [month_name(month) for month in range(1,13)]
+WEEKDAYS = [weekday_name(day)[:3] for day in range(7)]
 
 
 def _short(seconds: int) -> str:
@@ -35,7 +39,7 @@ class DashboardWindow(tk.Toplevel):
     def __init__(self, app: "FocusDeskApp") -> None:
         super().__init__(app.root)
         self.app = app
-        self.title("Activitate — calendar lunar")
+        self.title(tr('ui.dashboard.activitate_calendar_lunar'))
         self.project_id = app.activity_page._project_options.get(app.activity_page.project.get(), "*")
         self.focus_projects = app.activity_page._focus_projects
         self._focus_day = None
@@ -52,7 +56,7 @@ class DashboardWindow(tk.Toplevel):
         self.month_lbl = ttk.Label(top, text="", style="Title.TLabel", width=20, anchor="center")
         self.month_lbl.pack(side="left", padx=6)
         ttk.Button(top, text="▶", width=3, command=lambda: self._shift(1)).pack(side="left")
-        tb.Button(top, text="Luna curentă", command=self._go_today, bootstyle="secondary-outline"
+        tb.Button(top, text=tr('ui.dashboard.luna_curenta'), command=self._go_today, bootstyle="secondary-outline"
                   ).pack(side="left", padx=(12, 0))
         self.summary_lbl = ttk.Label(top, text="", style="Muted.TLabel")
         self.summary_lbl.pack(side="right")
@@ -73,12 +77,12 @@ class DashboardWindow(tk.Toplevel):
         head.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
         self.side_lbl = ttk.Label(head, text="", style="Section.TLabel")
         self.side_lbl.pack(side="left")
-        self.month_btn = ttk.Button(head, text="Toată luna", command=lambda: self._select(None))
+        self.month_btn = ttk.Button(head, text=tr('ui.dashboard.toata_luna'), command=lambda: self._select(None))
         self.month_btn.pack(side="right")
         self.tv = ttk.Treeview(side, columns=("task", "where", "time"), show="headings", selectmode="browse")
-        self.tv.heading("task", text="Task", anchor="w")
-        self.tv.heading("where", text="Locație", anchor="w")
-        self.tv.heading("time", text="Lucrat", anchor="w")
+        self.tv.heading("task", text=tr('ui.outlook_ui.task'), anchor="w")
+        self.tv.heading("where", text=tr('ui.dashboard.locatie'), anchor="w")
+        self.tv.heading("time", text=tr('ui.dashboard.lucrat'), anchor="w")
         self.tv.column("task", width=170)
         self.tv.column("where", width=120)
         self.tv.column("time", width=80, stretch=False)
@@ -90,8 +94,7 @@ class DashboardWindow(tk.Toplevel):
         self.tv.bind("<Return>", self._open_task)
         self.total_lbl = ttk.Label(side, text="", style="Muted.TLabel")
         self.total_lbl.grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
-        ttk.Label(side, text="Dublu-clic pe un task îl deschide în aplicație. Contează doar sesiunile pornite din "
-                  "actual_seconds; timpul live este separat, fără dublare.", style="Muted.TLabel", wraplength=380, justify="left"
+        ttk.Label(side, text=tr('ui.dashboard.dublu_clic_pe_un_task_il_deschide_in_aplicatie_conteaza_doar_sesiunile'), style="Muted.TLabel", wraplength=380, justify="left"
                   ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 0))
         self.bind("<Escape>", lambda _e: self.destroy())
         self.refresh()
@@ -140,7 +143,7 @@ class DashboardWindow(tk.Toplevel):
         total = sum(sum(d.values()) for d in self._data.values())
         tasks = {n for d in self._data.values() for n in d}
         self.summary_lbl.configure(
-            text=f"Salvat: {format_worked(total) or '0 min'} · Live separat: {format_worked(self.report.live) or '0 min'}")
+            text=tr('ui.dashboard.salvat_live_separat', format_worked_total_or_0_min=format_worked(total) or '0 min', format_worked_self_report_live_or_0_min=format_worked(self.report.live) or '0 min'))
 
     def _draw_grid(self, first: date, last: date) -> None:
         for w in self.grid_frame.winfo_children():
@@ -175,7 +178,7 @@ class DashboardWindow(tk.Toplevel):
                     tk.Label(cell, text=_short(secs), background=bg, foreground=text_fg,
                              font=(self._root()._focusdesk_family, 11, "bold")).pack(expand=True)
                     n = len(self._data[day])
-                    tk.Label(cell, text=f"{n} task-uri" if n != 1 else "1 task", background=bg, foreground=text_fg,
+                    tk.Label(cell, text=tr('items.tasks',count=n), background=bg, foreground=text_fg,
                              font=(self._root()._focusdesk_family, 8)).pack(side="bottom", pady=(0, 3))
                 if in_month:
                     cell.configure(takefocus=True)
@@ -193,23 +196,23 @@ class DashboardWindow(tk.Toplevel):
         ws = self.app.ws
         if self.selected is not None:
             rows = dict(self._data.get(self.selected, {}))
-            self.side_lbl.configure(text=f"{self.selected:%d.%m.%Y}")
+            self.side_lbl.configure(text=f'{date_text(self.selected)}')
             self.month_btn.state(["!disabled"])
         else:
             rows = {}
             for d in self._data.values():
                 for nid, s in d.items():
                     rows[nid] = rows.get(nid, 0) + s
-            self.side_lbl.configure(text=f"{MONTHS[self.month - 1]} — toată luna")
+            self.side_lbl.configure(text=tr('ui.dashboard.toata_luna_2', months_self_month_1=MONTHS[self.month - 1]))
             self.month_btn.state(["disabled"])
         rendered = []
         for nid, secs in sorted(rows.items(), key=lambda kv: kv[1], reverse=True):
             node = ws.nodes.get(nid)
             where = " › ".join(a.title for a in ws.ancestors(nid)) if node else ''
-            rendered.append(('',nid,dict(values=(node.title if node else 'Task indisponibil',where,format_worked(secs)))))
+            rendered.append(('',nid,dict(values=(node.title if node else tr('ui.meetings.task_indisponibil'),where,format_worked(secs)))))
         sync_rows(self.tv,rendered)
         total = sum(rows.values())
-        self.total_lbl.configure(text=f"Total: {format_worked(total) or '0 min'}" if rows else "Nicio sesiune lucrată.")
+        self.total_lbl.configure(text=tr('ui.dashboard.total', format_worked_total_or_0_min=format_worked(total) or '0 min') if rows else tr('ui.dashboard.nicio_sesiune_lucrata'))
 
     def _open_task(self, _event=None) -> None:
         sel = self.tv.selection()

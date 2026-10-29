@@ -1,14 +1,18 @@
 """Nonmodal central task workspace. Editors are views of the inspector's state."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from tkinter import ttk
 from ..domain.models import Kind, CLOSED_STATUSES
 from ..domain.labels import PRIORITY_LABELS, format_seconds
-from .common import SessionButton, ScrollFrame
+from .common import SessionButton, ScrollFrame, heading_width
 from .markdown_editor import MarkdownEditor
 from .status_visuals import node_icon, node_label
 from .formats import format_date
+from .navigation_controls import AdaptiveNotebook
+from .identifiers import tab_id, tab_label, TabMap
 from .design import C
 from .tab_subtasks import SubtasksTab
 from .tab_files import FilesTab
@@ -31,13 +35,13 @@ class TaskSpace(ttk.Frame):
         super().__init__(parent,padding=(12,8))
         self.app=app;self.node_id=None;self.history=[];self.focus_layout=None
         self.positions={};self._missing_discarded=False
-        self.details=app.inspector.tab_by_title('Detalii')
-        self.journal_source=app.inspector.tab_by_title('Activitate')
+        self.details=app.inspector.tab_by_id('details')
+        self.journal_source=app.inspector.tab_by_id('journal')
         nav=ttk.Frame(self);nav.pack(fill='x')
-        ttk.Button(nav,text='Înapoi',command=self.back).pack(side='left')
-        self.focus_btn=ttk.Button(nav,text='Concentrare · F11',command=self.toggle_focus)
+        ttk.Button(nav,text=tr('ui.meetings.inapoi'),command=self.back).pack(side='left')
+        self.focus_btn=ttk.Button(nav,text=tr('ui.task_space.concentrare_f11'),command=self.toggle_focus)
         self.focus_btn.pack(side='right')
-        self.panel_btn=ttk.Button(nav,text='Ascunde panoul taskului',command=self.toggle_panel)
+        self.panel_btn=ttk.Button(nav,text=tr('ui.task_space.ascunde_panoul_taskului'),command=self.toggle_panel)
         self.panel_btn.pack(side='right',padx=6)
         self.breadcrumb=ttk.Label(self,style='Crumb.TLabel',wraplength=900)
         self.breadcrumb.pack(fill='x',pady=(6,2))
@@ -47,21 +51,23 @@ class TaskSpace(ttk.Frame):
         self.summary.pack(fill='x',pady=(2,4))
         actions=ttk.Frame(self);actions.pack(fill='x')
         self.start_btn=SessionButton(actions,app,lambda:self.node_id);self.start_btn.pack(side='left')
-        self.stop_btn=ttk.Button(actions,text='Încheie sesiunea…',command=app.stop_session)
+        self.stop_btn=ttk.Button(actions,text=tr('ui.task_space.incheie_sesiunea'),command=app.stop_session)
         self.stop_btn.pack(side='left',padx=4)
         self.done_btn=ttk.Button(actions,command=app.toggle_done_selected);self.done_btn.pack(side='left')
-        self.save_btn=ttk.Button(actions,text='Salvează · Ctrl+S',command=self.save)
+        self.save_btn=ttk.Button(actions,text=tr('ui.meetings.salveaza_ctrl_s'),command=self.save)
         self.save_btn.pack(side='left',padx=4)
-        more=ttk.Menubutton(actions,text='Mai multe');more.pack(side='left')
+        more=ttk.Menubutton(actions,text=tr('ui.meetings.mai_multe'));more.pack(side='left')
         self.menu=tk.Menu(more,tearoff=False)
-        for label,command in [('Compune e-mail…',app.compose_mail),('Mută / proiect…',app.move_selected),
-                              ('Arhivează / restaurează',app.toggle_archive_selected),
-                              ('Cod în VS Code',lambda:app.open_code_in_vscode(self.node_id)),
-                              ('Copiază descrierea',self.copy_description)]:
+        for label,command in [(tr('ui.inspector.compune_e_mail'),app.compose_mail),(tr('ui.task_space.muta_proiect'),app.move_selected),
+                              (tr('ui.inspector.arhiveaza_restaureaza'),app.toggle_archive_selected),
+                              (tr('ui.task_space.cod_in_vs_code'),lambda:app.open_code_in_vscode(self.node_id)),
+                              (tr('ui.task_space.copiaza_descrierea'),self.copy_description)]:
             self.menu.add_command(label=label,command=command)
-        self.menu.add_command(label='Adaugă cerință nouă…',command=lambda:app.add_followup(self.node_id))
-        self.menu.add_command(label='Redeschide cu motiv…',command=lambda:app.reopen_with_reason(self.node_id))
+        self.menu.add_command(label=tr('ui.app.adauga_cerinta_noua'),command=lambda:app.add_followup(self.node_id))
+        self.menu.add_command(label=tr('ui.app.redeschide_cu_motiv'),command=lambda:app.reopen_with_reason(self.node_id))
         more.configure(menu=self.menu)
+        from .design import wrap_actions
+        wrap_actions(actions)
         self.timer_lbl=ttk.Label(self,style='Muted.TLabel');self.timer_lbl.pack(fill='x',pady=(4,0))
         self.state=ttk.Label(self,style='Muted.TLabel',wraplength=900);self.state.pack(fill='x',pady=(2,5))
         from .meetings import MeetingLinks
@@ -72,27 +78,27 @@ class TaskSpace(ttk.Frame):
         self.editor=MarkdownEditor(self.body,source=self.details.desc,on_change=self.changed,on_save=self.save,guide_context=self.details.description_context,on_guide_applied=self.guide_applied)
         self.body.add(self.editor,weight=3)
         self.secondary=ttk.Frame(self.body,padding=(6,0))
-        ttk.Label(self.secondary,text='Următorul pas',style='Section.TLabel').pack(anchor='w')
+        ttk.Label(self.secondary,text=tr('ui.tab_details.urmatorul_pas'),style='Section.TLabel').pack(anchor='w')
         self.next_entry=ttk.Entry(self.secondary,textvariable=self.details.vars['next'])
         self.next_entry.pack(fill='x',pady=(4,8))
-        self.nb=ttk.Notebook(self.secondary);self.nb.pack(fill='both',expand=True)
-        self.sections={};self.scrolls={}
-        specs=[('Pași',SubtasksTab,dict(drafts_from=app.inspector.tab_by_title('Subtaskuri'),on_open=app.open_task_space,checklist_first=True)),
-               ('Fișiere',FilesTab,dict(on_expand=self.widen_files)),('Activitate',JournalTab,dict(source_entry=self.journal_source.entry,source_kind=self.journal_source.kind_var)),
-               ('Planificare',PlanTab,{}),('Versiuni',VersionsTab,{})]
+        self.nb=AdaptiveNotebook(self.secondary);self.nb.pack(fill='both',expand=True)
+        self.sections=TabMap();self.scrolls=TabMap()
+        specs=[('steps',SubtasksTab,dict(drafts_from=app.inspector.tab_by_id('subtasks'),on_open=app.open_task_space,checklist_first=True)),
+               ('files',FilesTab,dict(on_expand=self.widen_files)),('journal',JournalTab,dict(source_entry=self.journal_source.entry,source_kind=self.journal_source.kind_var)),
+               ('planning',PlanTab,{}),('versions',VersionsTab,{})]
         for label,cls,options in specs:
-            scroll=ttk.Frame(self.nb) if label=='Fișiere' else ScrollFrame(self.nb)
-            self.nb.add(scroll,text=label)
-            tab=cls(scroll if label=='Fișiere' else scroll.inner,app,**options);tab.pack(fill='both',expand=True)
-            if label=='Pași':
-                tab.check_frame.configure(text='Checklist')
+            scroll=ttk.Frame(self.nb) if label=='files' else ScrollFrame(self.nb)
+            self.nb.add(scroll,text=tab_label(label))
+            tab=cls(scroll if label=='files' else scroll.inner,app,**options);tab.pack(fill='both',expand=True)
+            if label=='steps':
+                tab.check_frame.configure(text=tr('ui.task_space.checklist'))
                 tab.tv.configure(displaycolumns=('title','status','progress'))
                 tab.tv.column('#0',width=42,minwidth=42,stretch=False)
                 tab.tv.column('title',width=180,minwidth=120,stretch=True)
                 tab.tv.column('status',width=90,minwidth=80,stretch=False)
-                tab.tv.column('progress',width=76,minwidth=70,stretch=False)
+                tab.tv.column('progress',width=max(76,heading_width(tab.tv,tab.tv.heading('progress','text'))),minwidth=heading_width(tab.tv,tab.tv.heading('progress','text')),stretch=False)
             self.sections[label]=tab;self.scrolls[label]=scroll
-        self.nb.bind("<<NotebookTabChanged>>",lambda event:self._load_section())
+        self.nb.bind("<<NotebookTabChanged>>",lambda event:self._load_section(),add="+")
         self.body.add(self.secondary,weight=2)
         self._split=False
         self.body.bind('<Configure>',self._size_body)
@@ -100,9 +106,9 @@ class TaskSpace(ttk.Frame):
         self.details.desc.bind('<<Modified>>',lambda e:self.update_state(),add='+')
         self.journal_source.entry.bind('<<Modified>>',lambda e:self.update_state(),add='+')
         self.details.vars['next'].trace_add('write',lambda *_:self.update_state())
-        drafts=app.inspector.tab_by_title('Subtaskuri')
+        drafts=app.inspector.tab_by_id('subtasks')
         for value in (drafts.add_var,drafts.check_var): value.trace_add('write',lambda *_:self.update_state())
-        self.missing_help=ttk.Label(self.secondary,text='Task indisponibil. Folosește Înapoi sau copiază descrierea.',style='Muted.TLabel',wraplength=300)
+        self.missing_help=ttk.Label(self.secondary,text=tr('ui.task_space.task_indisponibil_foloseste_inapoi_sau_copiaza_descrierea'),style='Muted.TLabel',wraplength=300)
 
     @property
     def active(self):return self.app.current_view=='task_space'
@@ -124,29 +130,29 @@ class TaskSpace(ttk.Frame):
 
     def save(self):
         if not self.app.ws or self.node_id not in self.app.ws.nodes:
-            self.state.configure(text='Taskul nu mai există. Copiază descrierea înainte de a renunța la ciornă.',foreground=C.danger)
+            self.state.configure(text=tr('ui.task_space.taskul_nu_mai_exista_copiaza_descrierea_inainte_de_a_renunta_la_ciorna'),foreground=C.danger)
             return False
         if self.app.ws.read_only:return False
         self.remember_position()
         ok=self.app.inspector.save()
         if ok:
-            self.state.configure(text='Salvat',foreground=C.success)
+            self.state.configure(text=tr('ui.tab_details.salvat'),foreground=C.success)
             self.refresh()
             self.restore_position()
-        else:self.state.configure(text='Salvarea a eșuat. Ciorna este păstrată.',foreground=C.danger)
+        else:self.state.configure(text=tr('ui.task_space.salvarea_a_esuat_ciorna_este_pastrata'),foreground=C.danger)
         return ok
 
     def update_state(self):
         if not self.node_id or not self.app.ws:return
         if self.node_id not in self.app.ws.nodes:return
-        if self.app.ws.read_only:text='Doar citire';color=C.muted
-        elif self.is_dirty():text='Modificări nesalvate · Ctrl+S';color=C.warning
-        else:text='Salvat';color=C.muted
+        if self.app.ws.read_only:text=tr('ui.meetings.doar_citire');color=C.muted
+        elif self.is_dirty():text=tr('ui.task_space.modificari_nesalvate_ctrl_s');color=C.warning
+        else:text=tr('ui.tab_details.salvat');color=C.muted
         self.state.configure(text=text,foreground=color)
 
     def copy_description(self):
         self.clipboard_clear();self.clipboard_append(self.editor.get())
-        self.state.configure(text='Descriere copiată',foreground=C.success)
+        self.state.configure(text=tr('ui.task_space.descriere_copiata'),foreground=C.success)
 
     def discard_missing(self):
         self._missing_discarded=True
@@ -189,7 +195,7 @@ class TaskSpace(ttk.Frame):
             self.body.add(self.secondary,weight=2)
             self._load_section()
             self.body.sashpos(0,max(330,self.body.winfo_width()-365))
-        self.panel_btn.configure(text='Ascunde panoul taskului' if str(self.secondary) in self.body.panes() else 'Arată panoul taskului')
+        self.panel_btn.configure(text=tr('ui.task_space.ascunde_panoul_taskului') if str(self.secondary) in self.body.panes() else tr('ui.task_space.arata_panoul_taskului'))
 
     def widen_files(self):
         if str(self.secondary) not in self.body.panes(): self.toggle_panel()
@@ -206,7 +212,7 @@ class TaskSpace(ttk.Frame):
             if str(widget) in self.app.paned.panes():self.app.paned.forget(widget)
         if str(self.secondary) not in self.body.panes():self.toggle_panel()
         self.nb.select(0)
-        self.focus_btn.configure(text='Ieși din concentrare · F11')
+        self.focus_btn.configure(text=tr('ui.task_space.iesi_din_concentrare_f11'))
 
     def exit_focus(self):
         value=self.focus_layout
@@ -214,7 +220,7 @@ class TaskSpace(ttk.Frame):
         self.focus_layout=None;self.restore_layout(value)
         if value['panel'] != (str(self.secondary) in self.body.panes()):self.toggle_panel()
         if value['split'] is not None and len(self.body.panes())>1:self.body.sashpos(0,value['split'])
-        self.nb.select(value['section']);self.focus_btn.configure(text='Concentrare · F11')
+        self.nb.select(value['section']);self.focus_btn.configure(text=tr('ui.task_space.concentrare_f11'))
 
     def snapshot(self):
         app=self.app
@@ -223,7 +229,7 @@ class TaskSpace(ttk.Frame):
             'calendar':viewport(app.calendar_page.tv),'today':app.today.sf.canvas.yview()[0],
             'filters':{name:getattr(app.tasklist,name).get() for name in ('status_var','prio_var','due_var','proj_var','requester_var','text_var','closed_var')},
             'focus':dict(self.focus_layout) if self.focus_layout is not None else None,
-            'inspector_tab':app.inspector.nb.tab(app.inspector.nb.select(),'text') if app.inspector.nb.select() else 'Detalii'}
+            'inspector_tab':app.inspector.current_tab_id()}
 
     def open(self,node_id):
         app=self.app
@@ -268,7 +274,7 @@ class TaskSpace(ttk.Frame):
         app.inspector.show_tab(value['inspector_tab']);self.restore_layout(value['layout'])
         if self.active:
             self.focus_layout=value['focus']
-            self.focus_btn.configure(text='Ieși din concentrare · F11' if self.focus_layout is not None else 'Concentrare · F11')
+            self.focus_btn.configure(text=tr('ui.task_space.iesi_din_concentrare_f11') if self.focus_layout is not None else tr('ui.task_space.concentrare_f11'))
             self.restore_position()
         return True
 
@@ -279,8 +285,8 @@ class TaskSpace(ttk.Frame):
         if not self.active or not self.node_id:return
         app=self.app;node=app.ws.nodes.get(self.node_id)
         if node is None:
-            self.title.configure(text='Task indisponibil')
-            self.state.configure(text='Taskul a fost șters sau mutat în coș. Ciorna rămâne disponibilă în Mai multe → Copiază descrierea.',foreground=C.danger)
+            self.title.configure(text=tr('ui.meetings.task_indisponibil'))
+            self.state.configure(text=tr('ui.task_space.taskul_a_fost_sters_sau_mutat_in_cos_ciorna_ramane_disponibila_in_mai'),foreground=C.danger)
             self.editor.set_read_only(True);self.next_entry.configure(state='disabled')
             for b in (self.start_btn,self.stop_btn,self.done_btn,self.save_btn):b.state(['disabled'])
             self.meeting_links.pack_forget()
@@ -298,7 +304,7 @@ class TaskSpace(ttk.Frame):
         self.menu.entryconfigure(0,state='normal');self.menu.entryconfigure(3,state='normal')
         self.title.configure(text=node.title)
         self.breadcrumb.configure(text=' › '.join(n.title for n in [*app.ws.ancestors(node.id),node]))
-        self.summary.configure(text=f'{node_label(node)} · {PRIORITY_LABELS.get(node.priority, "")} · {format_date(app.q.due_day(node)) or "Fără termen"}'+(' · Arhivat' if app.q.is_archived(node) else ''),image=node_icon(self,node))
+        self.summary.configure(text=tr('ui.task_space.task_summary', node_label_node=node_label(node), priority_labels_get_node_priority=PRIORITY_LABELS.get(node.priority, ""), format_date_app_q_due_day_node_or_fara_termen=format_date(app.q.due_day(node)) or tr('ui.inspector.fara_termen'))+(tr('extra.ui.task_space.arhivat') if app.q.is_archived(node) else ''),image=node_icon(self,node))
         ro=app.ws.read_only
         self.meeting_links.load(node,self.body)
         self.followup_context.pack(fill='x',before=self.body);self.followup_context.load(node)
@@ -306,7 +312,7 @@ class TaskSpace(ttk.Frame):
         self.menu.entryconfigure(6,state='normal' if not ro and node.status in CLOSED_STATUSES else 'disabled')
         self.editor.set_read_only(ro);self.next_entry.configure(state='disabled' if ro else 'normal')
         self.save_btn.state(['disabled'] if ro else ['!disabled']);self.done_btn.state(['disabled'] if ro else ['!disabled'])
-        self.done_btn.configure(text='Redeschide' if node.status in CLOSED_STATUSES else 'Finalizează')
+        self.done_btn.configure(text=tr('ui.task_space.redeschide') if node.status in CLOSED_STATUSES else tr('ui.inspector.finalizeaza'))
         self.menu.entryconfigure(1,state='disabled' if ro else 'normal');self.menu.entryconfigure(2,state='disabled' if ro else 'normal')
         if not self.details.is_dirty():self.editor.clear_guide_notice()
         self._load_section()
@@ -320,7 +326,7 @@ class TaskSpace(ttk.Frame):
             if tab.node_id == self.node_id and tab.is_dirty(): return
             node = self.app.ws.get(self.node_id)
             tab.load(node)
-            if label == 'Pași': tab.check_tv.configure(height=max(1,min(5,len(node.checklist))))
+            if label == 'steps': tab.check_tv.configure(height=max(1,min(5,len(node.checklist))))
 
     def update_timer(self):
         if not self.active or not self.app.ws:return
@@ -331,5 +337,5 @@ class TaskSpace(ttk.Frame):
         self.stop_btn.state(['!disabled'] if active and not self.app.ws.read_only else ['disabled'])
         if active:
             node=self.app.ws.nodes.get(t.node_id)
-            self.timer_lbl.configure(text=f'{"În lucru" if t.running else "În pauză"} · {node.title if node else "Task"} · {format_seconds(t.seconds)}')
-        else:self.timer_lbl.configure(text='Nicio sesiune de lucru pornită')
+            self.timer_lbl.configure(text=tr('ui.task_space.timer_summary', in_lucru_if_t_running_else_in_pauza=tr('ui.session_ui.in_lucru') if t.running else tr('ui.session_ui.in_pauza'), node_title_if_node_else_task=node.title if node else tr('ui.outlook_ui.task'), format_seconds_t_seconds=format_seconds(t.seconds)))
+        else:self.timer_lbl.configure(text=tr('ui.session_ui.nicio_sesiune_de_lucru_pornita'))

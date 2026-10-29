@@ -1,24 +1,13 @@
 """Single-field description editing with a shared Tk text buffer."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 import re
 import tkinter as tk
 from tkinter import ttk, simpledialog
 
-STRUCTURED = '''## Obiectiv
-
-## Context
-
-## Pași / cerințe
-
-- 
-
-## Rezultat așteptat
-
-## Criterii de finalizare
-
-## Observații
-'''
+STRUCTURED = tr('ui.markdown_editor.obiectiv_context_pasi_cerinte_rezultat_asteptat_criterii_de_finalizare')
 LIST = re.compile(r'^(\s*)([-+*]|\d+[.)])\s+(\[[ xX]\]\s+)?(.*)$')
 
 
@@ -43,13 +32,13 @@ class MarkdownEditor(ttk.Frame):
         self.guide_btn = None
         heading = ttk.Frame(self)
         heading.pack(fill='x')
-        ttk.Label(heading, text='Descriere', style='Section.TLabel').grid(row=0,column=0,sticky='w')
+        ttk.Label(heading, text=tr('ui.tab_versions.descriere'), style='Section.TLabel').grid(row=0,column=0,sticky='w')
         self.expand_btn = None
         if expand:
-            self.expand_btn = ttk.Button(heading, text='Extinde descrierea', command=expand)
+            self.expand_btn = ttk.Button(heading, text=tr('ui.markdown_editor.extinde_descrierea'), command=expand)
             self.expand_btn.grid(row=0,column=2,sticky='e')
         if guide_context is not None:
-            self.guide_btn = ttk.Button(heading,text='Completează cu ghid…',style='Quiet.TButton',command=self.open_guide)
+            self.guide_btn = ttk.Button(heading,text=tr('ui.markdown_editor.completeaza_cu_ghid'),style='Quiet.TButton',command=self.open_guide)
             self.guide_btn._focusdesk_accessible = True  # Keep the complete, intentional dialog label.
             self.guide_btn.grid(row=0,column=1,sticky='w',padx=6)
             def arrange(event):
@@ -219,7 +208,7 @@ class MarkdownEditor(ttk.Frame):
     def link(self):
         if self.read_only:
             return
-        url = simpledialog.askstring('Link Markdown', 'Adresă (se inserează ca text, fără accesare automată):', parent=self)
+        url = simpledialog.askstring(tr('ui.markdown_editor.link_markdown'), tr('ui.markdown_editor.adresa_se_insereaza_ca_text_fara_accesare_automata'), parent=self)
         if url:
             self.wrap('[', '](' + url.replace('\n', '').replace(')', '%29') + ')')
 
@@ -235,17 +224,17 @@ class ExpandedDescription(tk.Toplevel):
         super().__init__(details)
         self.details = details
         self.before, self.was_dirty = details.editor.get(), details.is_dirty()
-        self.title('Descriere — ' + details.vars['title'].get())
+        self.title(tr('ui.markdown_editor.descriere') + details.vars['title'].get())
         self.geometry('1050x760')
         self.minsize(700, 500)
         self.transient(details.winfo_toplevel())
         self.editor = MarkdownEditor(self, source=details.desc, on_change=details._desc_changed, on_save=self.save, guide_context=details.description_context, on_guide_applied=details._mark_dirty)
         self.editor.pack(fill='both', expand=True)
-        ttk.Label(self, text='Salvează: scrie descrierea și detaliile taskului. Anulează: revine la textul de la deschidere.', style='Muted.TLabel', wraplength=800).pack(fill='x', padx=12)
+        ttk.Label(self, text=tr('ui.markdown_editor.salveaza_scrie_descrierea_si_detaliile_taskului_anuleaza_revine_la_tex'), style='Muted.TLabel', wraplength=800).pack(fill='x', padx=12)
         bar = ttk.Frame(self, padding=10)
         bar.pack(fill='x')
-        ttk.Button(bar, text='Salvează (Ctrl+S)', command=self.save).pack(side='right')
-        ttk.Button(bar, text='Anulează', command=self.cancel).pack(side='right', padx=8)
+        ttk.Button(bar, text=tr('ui.tab_details.salveaza_ctrl_s'), command=self.save).pack(side='right')
+        ttk.Button(bar, text=tr('ui.meetings.anuleaza'), command=self.cancel).pack(side='right', padx=8)
         self.protocol('WM_DELETE_WINDOW', self.cancel)
         self.bind('<Escape>', lambda e: self.cancel())
         self.bind('<Control-s>', lambda e: self.save())

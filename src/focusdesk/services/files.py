@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr, number
+
 import logging
 import ntpath
 import os
@@ -24,7 +26,7 @@ log = logging.getLogger(__name__)
 
 class NameConflict(StorageError):
     def __init__(self, name: str) -> None:
-        super().__init__(f"Există deja un fișier cu numele „{name}”.")
+        super().__init__(tr('services.files.exista_deja_un_fisier_cu_numele', name=name))
         self.name = name
 
 
@@ -65,7 +67,7 @@ def format_size(value: int) -> str:
     amount = float(value)
     for unit in ("B", "KB", "MB", "GB"):
         if amount < 1024 or unit == "GB":
-            return f"{amount:.1f} {unit}" if unit != "B" else f"{value} B"
+            return f"{number(amount,1)} {unit}" if unit != "B" else f"{number(value)} B"
         amount /= 1024
     raise AssertionError("unreachable")
 
@@ -76,14 +78,14 @@ def inspect_local_file(path: str | os.PathLike) -> LocalFile:
     try:
         info = Path(value).stat()
         if stat.S_ISDIR(info.st_mode):
-            return LocalFile(value, state="directory", detail="Selectează documentele din interiorul folderului.")
+            return LocalFile(value, state="directory", detail=tr('services.files.selecteaza_documentele_din_interiorul_folderului'))
         if not stat.S_ISREG(info.st_mode):
-            return LocalFile(value, state="inaccessible", detail="Calea nu este un fișier obișnuit.")
+            return LocalFile(value, state="inaccessible", detail=tr('services.files.calea_nu_este_un_fisier_obisnuit'))
         with Path(value).open("rb") as stream:
             stream.read(1)
         return LocalFile(value, info.st_size)
     except FileNotFoundError:
-        return LocalFile(value, state="missing", detail="Fișierul nu mai există.")
+        return LocalFile(value, state="missing", detail=tr('services.files.fisierul_nu_mai_exista'))
     except OSError as exc:
         return LocalFile(value, state="inaccessible", detail=str(exc))
 
@@ -140,7 +142,7 @@ class FileService:
                 locations.append(FileLocation(label, path))
 
         for node in (self.ws.get(node_id), *reversed(self.ws.ancestors(node_id))):
-            add(f"{node.title} — fișiere", self.files_dir(node.id))
+            add(tr('services.files.fisiere', node_title=node.title), self.files_dir(node.id))
             for att in node.attachments:
                 try:
                     path = self.resolve(node.id, att)
@@ -152,7 +154,7 @@ class FileService:
         except (NotFoundError, ValidationError):
             source = None
         if source:
-            add("Folder de cod", source.path)
+            add(tr('extra.services.files.folder_de_cod'), source.path)
         return locations
 
     def explorer_sources(self, node_id: str) -> list[ExplorerSource]:
@@ -163,23 +165,23 @@ class FileService:
             source = self.effective_source(node_id)
             if source:
                 owner = self.ws.get(source.owner_id)
-                note = f"Moștenit de la {owner.title}. " if source.inherited else ""
+                note = tr('services.files.mostenit_de_la', owner_title=owner.title) if source.inherited else ""
                 if source.mode == "shared":
-                    note += "Folder de cod comun. "
-                note += "Administrat în workspace." if (source.source_mode or source.mode) == "managed" else "Extern; nu intră automat în backup."
-                sources.append(ExplorerSource("work", "Folderul proiectului / de lucru", source.path, note))
+                    note += tr('extra.services.files.folder_de_cod_comun')
+                note += tr('services.files.administrat_in_workspace') if (source.source_mode or source.mode) == "managed" else tr('services.files.extern_nu_intra_automat_in_backup')
+                sources.append(ExplorerSource('work', tr('extra.services.files.folderul_proiectului_de_lucru'), source.path, note))
         except (NotFoundError, UnsafePathError, ValidationError) as exc:
-            sources.append(ExplorerSource("work", "Folderul proiectului / de lucru", None, error=str(exc)))
+            sources.append(ExplorerSource('work', tr('extra.services.files.folderul_proiectului_de_lucru'), None, error=str(exc)))
         own = self.files_dir(node_id)
         same = next((s for s in sources if s.path and normalized_file_key(s.path) == normalized_file_key(own)), None)
         if same:
-            sources[sources.index(same)] = ExplorerSource(same.key, same.label + " · Fișierele taskului", own, same.note)
+            sources[sources.index(same)] = ExplorerSource(same.key, same.label + tr('services.files.fisierele_taskului'), own, same.note)
         else:
-            sources.append(ExplorerSource("files", "Fișierele taskului" if node.kind == Kind.TASK else "Fișierele proiectului", own,
-                                          "Conținutul real din files/; inclus în backupul complet."))
+            sources.append(ExplorerSource("files", tr('services.files.fisierele_taskului_2') if node.kind == Kind.TASK else tr('services.files.fisierele_proiectului'), own,
+                                          tr('services.files.continutul_real_din_files_inclus_in_backupul_complet')))
         roots = [s for s in sources if s.path]
         if len(roots) == 2 and (is_within(roots[0].path, roots[1].path) or is_within(roots[1].path, roots[0].path)):
-            sources = [ExplorerSource(s.key, s.label, s.path, s.note + " Suprapunere între rădăcini: conținut comun, fără copii suplimentare.") for s in sources]
+            sources = [ExplorerSource(s.key, s.label, s.path, s.note + tr('services.files.suprapunere_intre_radacini_continut_comun_fara_copii_suplimentare')) for s in sources]
         seen = set()
         for att in sorted(node.attachments, key=lambda a: (not a.is_dir, len(a.path))):
             try:
@@ -196,7 +198,7 @@ class FileService:
             seen.add(key)
             ids = tuple(a.id for a in node.attachments if a.mode == att.mode and a.path == att.path)
             sources.append(ExplorerSource("link-" + att.id, att.name, path,
-                                          "Legătură externă." if att.mode == "external" else "Referință administrată existentă.",
+                                          tr('services.files.legatura_externa') if att.mode == "external" else tr('services.files.referinta_administrata_existenta'),
                                           att.is_dir, ids))
         return sources
 
@@ -208,11 +210,11 @@ class FileService:
         """
         root, candidate = Path(clean_abs(root)), Path(clean_abs(candidate))
         if not is_within(root, candidate):
-            raise UnsafePathError("Calea iese din rădăcina aleasă.")
+            raise UnsafePathError(tr('services.files.calea_iese_din_radacina_aleasa'))
         ensure_path_fits(candidate, reserve=0)
         for parent in (root, *root.parents):
             if is_reparse_point(parent):
-                raise UnsafePathError(f"Legătură/junction fără traversare automată: {parent}")
+                raise UnsafePathError(tr('services.files.legatura_junction_fara_traversare_automata', parent=parent))
         rel = candidate.relative_to(root)
         return resolve_inside(root, rel.as_posix()) if rel.parts else root
 
@@ -223,7 +225,7 @@ class FileService:
             info = checked.lstat()
             directory = stat.S_ISDIR(info.st_mode)
             if not directory and not stat.S_ISREG(info.st_mode):
-                raise UnsafePathError("Calea nu este un fișier sau folder obișnuit.")
+                raise UnsafePathError(tr('services.files.calea_nu_este_un_fisier_sau_folder_obisnuit'))
             if readable:
                 if directory:
                     with os.scandir(checked):
@@ -233,7 +235,7 @@ class FileService:
                         stream.read(1)
             return DirectoryEntry(checked, directory, None if directory else info.st_size, info.st_mtime_ns)
         except OSError as exc:
-            raise StorageError(f"Calea nu este disponibilă: {checked}\n{exc}") from exc
+            raise StorageError(tr('services.files.calea_nu_este_disponibila', checked=checked, exc=exc)) from exc
 
     @staticmethod
     def browse_directory(directory: Path, *, root: Path | None = None, include_links: bool = False,
@@ -256,22 +258,22 @@ class FileService:
                         entries.append(DirectoryEntry(Path(child.path), directory_child,
                                                       info.st_size if stat.S_ISREG(info.st_mode) and not link else None,
                                                       info.st_mtime_ns, link, state,
-                                                      "Legătură/junction: fără traversare automată." if link else
-                                                      "Element special; nu se deschide automat." if state == "unsupported" else ""))
+                                                      tr('services.files.legatura_junction_fara_traversare_automata_2') if link else
+                                                      tr('extra.services.files.element_special_nu_se_deschide_automat') if state == 'unsupported' else ""))
                     except FileNotFoundError:
                         continue  # Removed during listing; the next refresh reconciles it.
                     except OSError as exc:
                         entries.append(DirectoryEntry(Path(child.path), False, None, state="inaccessible", detail=str(exc)))
             return sorted(entries, key=lambda item: (not item.is_dir, item.path.name.casefold()))
         except OSError as exc:
-            raise StorageError(f"Folderul nu poate fi citit: {directory}\n{exc}") from exc
+            raise StorageError(tr('extra.services.files.folderul_nu_poate_fi_citit', directory=directory, exc=exc)) from exc
 
     def add_external(self, node_id: str, path: str | os.PathLike, name: str | None = None) -> Attachment:
         p = Path(path)
         if not p.is_absolute():
-            raise ValidationError("Calea externă trebuie să fie absolută.")
+            raise ValidationError(tr('services.files.calea_externa_trebuie_sa_fie_absoluta'))
         if not p.exists():
-            raise NotFoundError(f"Calea nu există: {p}")
+            raise NotFoundError(tr('services.files.calea_nu_exista', p=p))
         node = self.ws.get(node_id)
         att = Attachment(name=name or p.name, mode="external", path=str(p), is_dir=p.is_dir())
         self.ws.update_node(node_id, attachments=[*node.attachments, att])
@@ -287,9 +289,9 @@ class FileService:
         self.ws.repo._require_writable()
         src_p = Path(src)
         if not src_p.exists():
-            raise NotFoundError(f"Sursa nu există: {src_p}")
+            raise NotFoundError(tr('services.files.sursa_nu_exista', src_p=src_p))
         if is_reparse_point(src_p):
-            raise UnsafePathError("Nu se copiază symlink-uri/junctions.")
+            raise UnsafePathError(tr('services.files.nu_se_copiaza_symlink_uri_junctions'))
         files = self.files_dir(node_id)
         files.mkdir(parents=True, exist_ok=True)
         name = sanitize_filename(src_p.name)
@@ -301,7 +303,7 @@ class FileService:
                 target = self._unique_name(files, name)
                 name = target.name
             elif on_conflict != "replace":
-                raise ValidationError(f"Politică necunoscută: {on_conflict}")
+                raise ValidationError(tr('services.files.politica_necunoscuta', on_conflict=on_conflict))
         ensure_path_fits(target, reserve=10)
         tmp = files / f".{uuid.uuid4().hex[:8]}.tmp"
         try:
@@ -315,7 +317,7 @@ class FileService:
                 os.replace(tmp, target)
         except OSError as exc:
             self._remove_path(tmp, ignore=True)
-            raise StorageError(f"Copierea a eșuat: {exc}") from exc
+            raise StorageError(tr('services.files.copierea_a_esuat', exc=exc)) from exc
         return name, src_p.is_dir()
 
     def register_managed(self, node_id: str, name: str, is_dir: bool) -> Attachment:
@@ -366,7 +368,7 @@ class FileService:
         node = self.ws.get(node_id)
         att = next((a for a in node.attachments if a.id == attachment_id), None)
         if att is None:
-            raise NotFoundError("Atașamentul nu există.")
+            raise NotFoundError(tr('services.files.atasamentul_nu_exista'))
         if att.mode == "managed" and delete_managed_copy:
             p = self.resolve(node_id, att)
             self._remove_path(p, ignore=False)
@@ -389,10 +391,10 @@ class FileService:
         node = self.ws.get(node_id)
         att = next((a for a in node.attachments if a.id == attachment_id), None)
         if att is None or att.mode != "external":
-            raise ValidationError("Doar legăturile externe pot fi relocate.")
+            raise ValidationError(tr('services.files.doar_legaturile_externe_pot_fi_relocate'))
         p = Path(new_path)
         if not p.exists() or not p.is_absolute():
-            raise ValidationError("Noua cale trebuie să existe și să fie absolută.")
+            raise ValidationError(tr('services.files.noua_cale_trebuie_sa_existe_si_sa_fie_absoluta'))
         updated = [a.model_copy(update={"path": str(p), "is_dir": p.is_dir()}) if a.id == attachment_id else a
                    for a in node.attachments]
         self.ws.update_node(node_id, attachments=updated)
@@ -401,11 +403,11 @@ class FileService:
     def set_code_folder(self, node_id: str, path: str | os.PathLike, mode: str = "external") -> None:
         node = self.ws.get(node_id)
         if node.kind == Kind.FOLDER:
-            raise ValidationError("Folderul de cod se asociază proiectelor sau task-urilor.")
+            raise ValidationError(tr('services.files.folderul_de_cod_se_asociaza_proiectelor_sau_task_urilor'))
         if mode == "external":
             p = Path(path)
             if not p.is_absolute() or not p.is_dir():
-                raise ValidationError("Folderul de cod extern trebuie să existe și să fie o cale absolută.")
+                raise ValidationError(tr('services.files.folderul_de_cod_extern_trebuie_sa_existe_si_sa_fie_o_cale_absoluta'))
             sw = SourceWorkspace(path=str(p), mode="external")
         else:
             rel = str(path).replace("\\", "/")
@@ -432,7 +434,7 @@ class FileService:
             if sw.mode == 'shared':
                 if sw.shared_mode == 'managed':
                     if sw.owner_node_id not in self.ws.nodes:
-                        raise NotFoundError('Folder de cod comun indisponibil: nodul care păstrează codul este în coș sau lipsește. Restaurează-l sau alege alt folder.')
+                        raise NotFoundError(tr('services.files.folder_de_cod_comun_indisponibil_nodul_care_pastreaza_codul_este_in_co'))
                     path = resolve_inside(self.ws.node_dir(sw.owner_node_id),sw.path)
                 else: path = Path(sw.path)
                 # Checkpoints belong to the referencing requirement, not the code owner.
@@ -460,7 +462,7 @@ class FileService:
     def shared_access(self,node_id):
         """Snapshot a code location without copying it or inheriting its checkpoint owner."""
         src=self.effective_source(node_id)
-        if src is None: raise ValidationError('Sursa nu are folder de cod. Alege un folder sau continuă fără acces la cod.')
+        if src is None: raise ValidationError(tr('services.files.sursa_nu_are_folder_de_cod_alege_un_folder_sau_continua_fara_acces_la'))
         return SourceWorkspace(mode='shared',path=src.source_path,owner_node_id=src.code_owner_id,shared_mode=src.source_mode)
 
     def shared_users(self,node_id):

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import re
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -19,7 +21,7 @@ class Colleague(BaseModel):
     def _name(cls, value: str) -> str:
         value = " ".join(value.split())
         if not value:
-            raise ValueError("Numele colegului este obligatoriu.")
+            raise ValueError(tr('extra.domain.colleagues.numele_colegului_este_obligatoriu'))
         return value
 
     @field_validator("code")
@@ -29,20 +31,20 @@ class Colleague(BaseModel):
         if not value:
             return value
         if not re.fullmatch(r"[a-z0-9]+(?:[._-][a-z0-9]+)*", value):
-            raise ValueError("Codul trebuie sa fie un identificator, fara @ sau spatii.")
+            raise ValueError(tr('extra.domain.colleagues.codul_trebuie_sa_fie_un_identificator_fara_sau_spatii'))
         return value
 
     @field_validator("email_address")
     @classmethod
     def _smtp(cls, value):
         if value is not None and not re.fullmatch(r"[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+", value):
-            raise ValueError("Adresă SMTP invalidă.")
+            raise ValueError(tr('domain.colleagues.adresa_smtp_invalida'))
         return value
 
     @model_validator(mode="after")
     def _identity(self):
         if not self.code and not self.email_address:
-            raise ValueError("Codul colegului sau adresa SMTP explicită este obligatorie.")
+            raise ValueError(tr('domain.colleagues.codul_colegului_sau_adresa_smtp_explicita_este_obligatorie'))
         return self
 
     @property

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
 
@@ -19,9 +21,9 @@ def local_to_utc(day: date, at: time, tz_name: str, *, ambiguous: str = "error")
     utc_first = first.astimezone(timezone.utc)
     utc_second = second.astimezone(timezone.utc)
     if utc_first != utc_second and ambiguous == "error":
-        raise AmbiguousLocalTime(f"Ora {at:%H:%M} din {day:%d.%m.%Y} este ambiguă la schimbarea orei.")
+        raise AmbiguousLocalTime(tr('domain.timeutil.ora_din_este_ambigua_la_schimbarea_orei', at=at, day=day))
     if utc_first.astimezone(tz).replace(tzinfo=None) != naive:
-        raise AmbiguousLocalTime(f"Ora {at:%H:%M} din {day:%d.%m.%Y} nu există (schimbarea orei).")
+        raise AmbiguousLocalTime(tr('domain.timeutil.ora_din_nu_exista_schimbarea_orei', at=at, day=day))
     return utc_first
 
 

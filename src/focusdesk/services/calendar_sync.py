@@ -6,6 +6,8 @@ Serviciul ruleaza pe thread-ul UI si lucreaza doar cu tipuri primitive; apeluril
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -61,7 +63,7 @@ class CalendarSyncService:
         for op in self.ws.repo.operations.list_all():
             if op.type.startswith(CAL_OP_PREFIX) and op.state == "pending":
                 op.state = "failed"
-                op.error = "Întreruptă înainte de rezultat; reîncearcă (se caută evenimentul după UUID, fără duplicat)."
+                op.error = tr('services.calendar_sync.intrerupta_inainte_de_rezultat_reincearca_se_cauta_evenimentul_dupa_uu')
                 op.updated_at = utcnow()
                 self.ws.repo.operations.save(op)
                 sid = op.data.get("session_id")
@@ -160,7 +162,7 @@ class CalendarSyncService:
         try:
             s = self.ws.repo.sessions.get(planned.session_id)
         except Exception:
-            self._finish(planned.op, "failed", "sesiune inexistentă")
+            self._finish(planned.op, "failed", tr('services.calendar_sync.sesiune_inexistenta'))
             return None
         now = utcnow()
         state = result.state
@@ -189,12 +191,12 @@ class CalendarSyncService:
                 s.status = "cancelled"
                 s.sync.state = "detached"
                 s.reserve_calendar = False
-                s.sync.error = "Evenimentul a fost șters în Outlook; sesiunea locală a fost anulată."
+                s.sync.error = tr('services.calendar_sync.evenimentul_a_fost_sters_in_outlook_sesiunea_locala_a_fost_anulata')
                 summary.updated += 1
                 self._finish(planned.op, "done")
             else:
                 s.sync.state = "conflict"
-                s.sync.error = result.message or "Conflict cu Outlook"
+                s.sync.error = result.message or tr('ui.planning.conflict_cu_outlook')
                 summary.conflicts += 1
                 summary.messages.append(f"Conflict: {result.message}")
                 self._finish(planned.op, "failed", result.message)

@@ -6,6 +6,8 @@ noile cereri sunt refuzate pana cand apelul blocat se termina (sau pana la repor
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import queue
 import threading
@@ -64,11 +66,10 @@ class ComWorker:
                on_error: Callable[[BaseException], None], *, timeout_s: float = 30.0, name: str = "outlook") -> ComTask | None:
         """`fn(backend)` ruleaza in thread-ul COM; `on_done/on_error` pe thread-ul UI. Rezultatele trebuie sa fie primitive."""
         if self._stopped:
-            on_error(ComBlocked("Worker-ul COM este oprit."))
+            on_error(ComBlocked(tr('extra.workers.com_worker.worker_ul_com_este_oprit')))
             return None
         if self.blocked:
-            on_error(ComBlocked("Un apel anterior către Outlook nu s-a terminat (posibil blocat de un dialog sau de "
-                                "Outlook). Închide dialogurile din Outlook sau repornește Outlook/FocusDesk."))
+            on_error(ComBlocked(tr('workers.com_worker.un_apel_anterior_catre_outlook_nu_s_a_terminat_posibil_blocat_de_un_di')))
             return None
         self._ensure_thread()
         task = ComTask(fn, name)
@@ -77,8 +78,7 @@ class ComWorker:
             if task.finished.is_set() or task.timed_out:
                 return
             task.timed_out = True
-            on_error(ComTimeout(f"Outlook nu a răspuns în {int(timeout_s)} s. Apelul poate fi blocat; rezultatul "
-                                "tardiv va fi ignorat."))
+            on_error(ComTimeout(tr('workers.com_worker.outlook_nu_a_raspuns_in_s_apelul_poate_fi_blocat_rezultatul_tardiv_va', int_timeout_s=int(timeout_s))))
 
         task._on_done = on_done  # type: ignore[attr-defined]
         task._on_error = on_error  # type: ignore[attr-defined]

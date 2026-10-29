@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from ..i18n import tr, date_text
+
 import re
 from datetime import date, time, timedelta
 
 from ..domain.timeutil import AmbiguousLocalTime, local_to_utc, utc_to_local  # noqa: F401
 
-_WORDS = {"azi": 0, "astazi": 0, "astăzi": 0, "maine": 1, "mâine": 1, "poimaine": 2, "poimâine": 2}
+_WORDS = {"azi": 0, "astazi": 0, "astăzi": 0, "maine": 1, "mâine": 1, "poimaine": 2, "poimâine": 2, "today":0, "tomorrow":1, "heute":0, "morgen":1, "aujourd’hui":0, "aujourd'hui":0, "demain":1, "hoy":0, "mañana":1}
 
 
 def parse_date(text: str, today: date | None = None) -> date | None:
@@ -28,12 +30,12 @@ def parse_date(text: str, today: date | None = None) -> date | None:
             try:
                 return date(a, b, c) if order == "ymd" else date(c, b, a)
             except ValueError as exc:
-                raise ValueError(f"Dată invalidă: {text!r}") from exc
-    raise ValueError(f"Format de dată necunoscut: {text!r} (folosește ZZ.LL.AAAA)")
+                raise ValueError(tr('ui.formats.data_invalida', text=text)) from exc
+    raise ValueError(tr('ui.formats.format_de_data_necunoscut_foloseste_zz_ll_aaaa', text=text))
 
 
 def format_date(d: date | None) -> str:
-    return d.strftime("%d.%m.%Y") if d else ""
+    return date_text(d)
 
 
 def parse_time(text: str) -> time | None:
@@ -42,10 +44,10 @@ def parse_time(text: str) -> time | None:
         return None
     m = re.fullmatch(r"(\d{1,2})[:.](\d{2})", t)
     if not m:
-        raise ValueError(f"Oră invalidă: {text!r} (folosește HH:MM)")
+        raise ValueError(tr('ui.formats.ora_invalida_foloseste_hh_mm', text=text))
     h, mi = int(m.group(1)), int(m.group(2))
     if h > 23 or mi > 59:
-        raise ValueError(f"Oră invalidă: {text!r}")
+        raise ValueError(tr('ui.formats.ora_invalida', text=text))
     return time(h, mi)
 
 
@@ -65,7 +67,7 @@ def parse_duration(text: str) -> int | None:
         return int(round(hours * 60)) + (int(m.group(2)) if m.group(2) else 0)
     if re.fullmatch(r"\d+", t):
         return int(t)
-    raise ValueError(f"Durată invalidă: {text!r} (ex: 90, 1h30, 2h)")
+    raise ValueError(tr('ui.formats.durata_invalida_ex_90_1h30_2h', text=text))
 
 
 def duration_to_text(minutes: int | None) -> str:

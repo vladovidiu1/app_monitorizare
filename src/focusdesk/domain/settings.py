@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from datetime import date, time
 from typing import Literal
 
@@ -33,7 +35,7 @@ class DaySchedule(_Base):
     @model_validator(mode="after")
     def _order(self) -> "DaySchedule":
         if self.enabled and _parse_hhmm(self.start) >= _parse_hhmm(self.end):
-            raise ValueError("ora de inceput trebuie sa fie inainte de sfarsit")
+            raise ValueError(tr('extra.domain.settings.ora_de_inceput_trebuie_sa_fie_inainte_de_sfarsit'))
         return self
 
     def start_time(self) -> time:
@@ -134,13 +136,13 @@ class Settings(_Base):
         try:
             ZoneInfo(v)
         except Exception as exc:  # ZoneInfoNotFoundError, ModuleNotFoundError, ValueError...
-            raise ValueError(f"Fus orar necunoscut: {v!r}") from exc
+            raise ValueError(tr('extra.domain.settings.fus_orar_necunoscut', v=v)) from exc
         return v
 
     @model_validator(mode="after")
     def _limits(self) -> "Settings":
         if self.min_session_minutes <= 0 or self.max_session_minutes < self.min_session_minutes:
-            raise ValueError("durata minima/maxima a sesiunii este invalida")
+            raise ValueError(tr('extra.domain.settings.durata_minima_maxima_a_sesiunii_este_invalida'))
         if self.gap_minutes < 0 or self.daily_reserve_minutes < 0:
-            raise ValueError("pauza si rezerva nu pot fi negative")
+            raise ValueError(tr('extra.domain.settings.pauza_si_rezerva_nu_pot_fi_negative'))
         return self

@@ -1,6 +1,8 @@
 """JSON records with disposable metadata indexes and bounded, copy-on-read payloads."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 from collections import OrderedDict
 from pathlib import Path
 from threading import RLock
@@ -62,7 +64,7 @@ class RecordStore(Generic[M]):
     def _path(self, record_id):
         # No caller-controlled path traversal, including malformed cache contents.
         if Path(record_id).name != record_id or record_id in ('.','..'):
-            raise NotFoundError('Identificator de înregistrare invalid.')
+            raise NotFoundError(tr('storage.records.identificator_de_inregistrare_invalid'))
         return self.directory / f'{record_id}.json'
 
     def invalidate(self):
@@ -95,7 +97,7 @@ class RecordStore(Generic[M]):
                     data, digest, _ = read_json(path)
                     record = self.model.model_validate(data)
                     if record.id != path.stem:
-                        raise ValueError('UUID diferit de numele fișierului')
+                        raise ValueError(tr('storage.records.uuid_diferit_de_numele_fisierului'))
                     entry = self._entry(record, stamp, digest)
                 valid[path.stem] = entry
             except (CorruptFileError, PydanticValidationError, OSError, ValueError) as exc:
@@ -121,7 +123,7 @@ class RecordStore(Generic[M]):
         return {'stamp':stamp,'digest':digest,'summary':summary}
 
     def _mark(self):
-        if not self.writable(): raise ReadOnlyError("Workspace-ul este deschis doar pentru citire.")
+        if not self.writable(): raise ReadOnlyError(tr('ui.app.workspace_ul_este_deschis_doar_pentru_citire'))
         self.before_write()
         if self.writable() and not self.marker.exists():
             atomic_write_json(self.marker, {'dirty': True}, keep_backup=False)
@@ -132,9 +134,9 @@ class RecordStore(Generic[M]):
             path = self._path(rid)
             old = self._entries.get(rid) if self._entries is not None else self._observed.get(rid)
             if old is None and path.exists():
-                raise ExternalModificationError('Înregistrare existentă necitită. Reîncarcă înainte de scriere.')
+                raise ExternalModificationError(tr('storage.records.inregistrare_existenta_necitita_reincarca_inainte_de_scriere'))
             if old and (not path.exists() or sha256_file(path) != old['digest']):
-                raise ExternalModificationError('Înregistrarea a fost modificată extern. Reîncarcă workspace-ul.')
+                raise ExternalModificationError(tr('storage.records.inregistrarea_a_fost_modificata_extern_reincarca_workspace_ul'))
             self._mark()
             digest = atomic_write_json(path, record.model_dump(mode='json'), keep_backup=self.keep_backup)
             entry = self._entry(record, signature(path), digest)
@@ -158,7 +160,7 @@ class RecordStore(Generic[M]):
     def get(self, record_id: str) -> M:
         with self._mutex:
             path = self._path(record_id)
-            if not path.exists(): raise NotFoundError(f'Înregistrarea {record_id} nu există.')
+            if not path.exists(): raise NotFoundError(tr('storage.records.inregistrarea_nu_exista', record_id=record_id))
             stamp = signature(path)
             entry = self._entries.get(record_id) if self._entries is not None else None
             if record_id in self._payloads and entry and entry['stamp'] == stamp:
@@ -183,7 +185,7 @@ class RecordStore(Generic[M]):
             path = self._path(record_id)
             old = self._entries.get(record_id)
             if old and path.exists() and sha256_file(path) != old['digest']:
-                raise ExternalModificationError('Înregistrarea a fost modificată extern. Reîncarcă înainte de ștergere.')
+                raise ExternalModificationError(tr('storage.records.inregistrarea_a_fost_modificata_extern_reincarca_inainte_de_stergere'))
             self._mark()
             path.unlink(missing_ok=True)
             old = self._entries.pop(record_id, None)

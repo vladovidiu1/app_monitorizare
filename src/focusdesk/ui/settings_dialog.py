@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr, LANGUAGES, language
+
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, ttk
@@ -16,7 +18,8 @@ from .formats import format_date, parse_date, parse_tags
 if TYPE_CHECKING:
     from .app import FocusDeskApp
 
-DAY_NAMES = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
+from ..i18n import weekday_name
+DAY_NAMES = [weekday_name(day) for day in range(7)]
 
 # Etapele ulterioare adauga pagini: (titlu, builder(page_frame, dialog) -> collect_fn(settings) -> None)
 EXTRA_PAGES: list[tuple[str, Callable]] = []
@@ -24,12 +27,19 @@ EXTRA_PAGES: list[tuple[str, Callable]] = []
 
 class SettingsDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, app: "FocusDeskApp") -> None:
-        super().__init__(parent, "Setări", resizable=True, ok_text="Salvează")
+        super().__init__(parent, tr('ui.settings_dialog.setari'), resizable=True, ok_text=tr('ui.settings_dialog.salveaza'))
         self.app = app
-        self.s: Settings = app.ws.settings.model_copy(deep=True)
+        self._language_only = app.ws is None
         self.nb = ttk.Notebook(self.body)
         self.nb.pack(fill="both", expand=True)
         self.collectors: list[Callable[[Settings], None]] = []
+        if self._language_only:
+            page=ttk.Frame(self.nb,padding=12);page.columnconfigure(0,weight=1);page.columnconfigure(1,weight=1)
+            self.nb.add(page,text=tr('ui.settings_dialog.general'))
+            self._language_fields(page,row=0)
+            self.geometry('760x420');self.minsize(640,300)
+            return
+        self.s: Settings = app.ws.settings.model_copy(deep=True)
         self._page_general()
         self._page_colleagues()
         self._page_schedule()
@@ -37,7 +47,7 @@ class SettingsDialog(ModalDialog):
         self._page_checkpoints()
         from .outlook_ui import build_outlook_settings_page
 
-        extra: list[tuple[str, Callable]] = [("Outlook", build_outlook_settings_page), *EXTRA_PAGES]
+        extra: list[tuple[str, Callable]] = [(tr('ui.outlook_ui.outlook'), build_outlook_settings_page), *EXTRA_PAGES]
         for title, builder in extra:
             page = ttk.Frame(self.nb, padding=12)
             self.nb.add(page, text=title)
@@ -50,24 +60,25 @@ class SettingsDialog(ModalDialog):
     # ---- pages ------------------------------------------------------
     def _page_general(self) -> None:
         p = ttk.Frame(self.nb, padding=12)
-        self.nb.add(p, text="General")
+        self.nb.add(p, text=tr('ui.settings_dialog.general'))
         p.columnconfigure(1, weight=1)
         ws = self.app.ws
         self.name_var = tk.StringVar(value=ws.name)
-        ttk.Label(p, text="Nume workspace").grid(row=0, column=0, sticky="w", pady=4)
+        ttk.Label(p, text=tr('ui.settings_dialog.nume_workspace')).grid(row=0, column=0, sticky="w", pady=4)
         ttk.Entry(p, textvariable=self.name_var).grid(row=0, column=1, sticky="ew", pady=4)
-        ttk.Label(p, text="Folder date").grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Label(p, text=tr('ui.settings_dialog.folder_date')).grid(row=1, column=0, sticky="w", pady=4)
         ttk.Label(p, text=str(ws.root)).grid(row=1, column=1, sticky="w", pady=4)
         self.tz_var = tk.StringVar(value=self.s.timezone)
-        ttk.Label(p, text="Fus orar").grid(row=2, column=0, sticky="w", pady=4)
+        ttk.Label(p, text=tr('ui.settings_dialog.fus_orar')).grid(row=2, column=0, sticky="w", pady=4)
         ttk.Entry(p, textvariable=self.tz_var).grid(row=2, column=1, sticky="ew", pady=4)
         self.max_today_var = tk.StringVar(value=str(self.s.max_today_priorities))
-        ttk.Label(p, text="Priorități maxime pe zi").grid(row=3, column=0, sticky="w", pady=4)
+        ttk.Label(p, text=tr('ui.settings_dialog.prioritati_maxime_pe_zi')).grid(row=3, column=0, sticky="w", pady=4)
         ttk.Entry(p, textvariable=self.max_today_var, width=6).grid(row=3, column=1, sticky="w", pady=4)
         ttk.Label(p, style="Muted.TLabel", wraplength=560, text=(
-            "Datele sunt stocate în afara executabilului, în folderul de mai sus. Actualizarea aplicației nu le șterge. "
-            "Indexul din _system/index.json este doar cache și poate fi șters oricând.")).grid(
+            tr('ui.settings_dialog.datele_sunt_stocate_in_afara_executabilului_in_folderul_de_mai_sus_act'))).grid(
             row=4, column=0, columnspan=2, sticky="w", pady=(14, 0))
+
+        self._language_fields(p,row=5)
 
         def collect(s: Settings) -> None:
             s.timezone = self.tz_var.get().strip()
@@ -75,22 +86,49 @@ class SettingsDialog(ModalDialog):
 
         self.collectors.append(collect)
 
+    def _language_fields(self,p,*,row):
+        language_box = ttk.LabelFrame(p, text=tr('settings.language'), padding=10)
+        language_box.grid(row=row, column=0, columnspan=2, sticky='ew', pady=(18,0))
+        language_box.columnconfigure(0, weight=1)
+        self.language_var = tk.StringVar(value=LANGUAGES[self.app.config.language])
+        ttk.Combobox(language_box, textvariable=self.language_var, values=list(LANGUAGES.values()),
+                     state='readonly').grid(row=0,column=0,sticky='ew')
+        ttk.Button(language_box, text=tr('settings.language_apply'), command=self.save_language).grid(row=1,column=0,sticky='w',pady=(8,0))
+        self.language_notice=ttk.Label(language_box,text=tr('settings.language_restart'),wraplength=600)
+        self.language_notice.grid(row=2,column=0,sticky='ew',pady=(8,0))
+        language_box.bind('<Configure>',lambda event:self.language_notice.configure(wraplength=max(200,event.width-24)))
+
+
+    def save_language(self):
+        code=next(code for code,name in LANGUAGES.items() if name==self.language_var.get())
+        previous=self.app.config.language
+        self.app.config.language=code
+        try:
+            from ..storage.atomic import atomic_write_json
+            atomic_write_json(self.app.config.path(),self.app.config.model_dump(mode='json'),keep_backup=False)
+        except Exception as exc:
+            self.app.config.language=previous
+            show_error(self,tr('settings.language_error',detail=str(exc)))
+            return False
+        self.language_notice.configure(text=tr('settings.language_saved',name=LANGUAGES[code]))
+        return True
+
     def _page_colleagues(self) -> None:
         page = ttk.Frame(self.nb, padding=12)
-        self.nb.add(page, text="Colegi")
+        self.nb.add(page, text=tr('ui.settings_dialog.colegi'))
         self.colleagues_status = tk.StringVar()
         try:
-            self.colleagues_status.set(f"Colegi salvați: {len(load_colleagues(self.app.ws))}")
+            self.colleagues_status.set(tr('ui.settings_dialog.colegi_salvati', len_load_colleagues_self_app_ws=len(load_colleagues(self.app.ws))))
         except FocusDeskError as exc:
             self.colleagues_status.set(str(exc))
         ttk.Label(page, textvariable=self.colleagues_status, wraplength=600).pack(anchor="w", pady=(0, 12))
-        self.import_colleagues_btn = ttk.Button(page, text="Încarcă Excel colegi…", command=self._import_colleagues)
+        self.import_colleagues_btn = ttk.Button(page, text=tr('ui.settings_dialog.incarca_excel_colegi'), command=self._import_colleagues)
         self.import_colleagues_btn.pack(anchor="w")
         if self.app.ws.read_only:
             self.import_colleagues_btn.state(["disabled"])
 
     def _import_colleagues(self) -> None:
-        path = filedialog.askopenfilename(parent=self, title="Lista de colegi", filetypes=[("Excel", "*.xlsx")])
+        path = filedialog.askopenfilename(parent=self, title=tr('ui.settings_dialog.lista_de_colegi'), filetypes=[(tr('ui.settings_dialog.excel'), "*.xlsx")])
         if not path:
             return
         people = []
@@ -98,17 +136,17 @@ class SettingsDialog(ModalDialog):
         def perform() -> None:
             people.extend(import_colleagues(self.app.ws, Path(path)))
 
-        if self.app.run_write(perform, success_text="Lista de colegi a fost importată"):
-            self.colleagues_status.set(f"Colegi salvați: {len(people)}")
+        if self.app.run_write(perform, success_text=tr('ui.settings_dialog.lista_de_colegi_a_fost_importata')):
+            self.colleagues_status.set(tr('ui.settings_dialog.colegi_salvati_2', len_people=len(people)))
 
     def _page_schedule(self) -> None:
         p = ttk.Frame(self.nb, padding=12)
-        self.nb.add(p, text="Program de lucru")
+        self.nb.add(p, text=tr('ui.settings_dialog.program_de_lucru'))
         p.columnconfigure(5, weight=1)
-        ttk.Label(p, text="Zi", style="Section.TLabel").grid(row=0, column=0, sticky="w")
-        ttk.Label(p, text="Activă").grid(row=0, column=1)
-        ttk.Label(p, text="De la").grid(row=0, column=2)
-        ttk.Label(p, text="Până la").grid(row=0, column=3)
+        ttk.Label(p, text=tr('ui.settings_dialog.zi'), style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(p, text=tr('ui.settings_dialog.activa')).grid(row=0, column=1)
+        ttk.Label(p, text=tr('ui.meetings.de_la')).grid(row=0, column=2)
+        ttk.Label(p, text=tr('ui.meetings.pana_la')).grid(row=0, column=3)
         self.day_vars: list[tuple[tk.BooleanVar, tk.StringVar, tk.StringVar]] = []
         for i, name in enumerate(DAY_NAMES):
             d = self.s.work_hours.get(str(i), DaySchedule(enabled=False))
@@ -119,11 +157,11 @@ class SettingsDialog(ModalDialog):
             ttk.Entry(p, textvariable=en_t, width=7).grid(row=i + 1, column=3, padx=4)
             self.day_vars.append((en, st, en_t))
         r = 9
-        ttk.Label(p, text="Pauze (HH:MM-HH:MM, separate prin virgulă)").grid(row=r, column=0, columnspan=3, sticky="w",
+        ttk.Label(p, text=tr('ui.settings_dialog.pauze_hh_mm_hh_mm_separate_prin_virgula')).grid(row=r, column=0, columnspan=3, sticky="w",
                                                                               pady=(10, 2))
         self.breaks_var = tk.StringVar(value=", ".join(f"{b.start}-{b.end}" for b in self.s.breaks))
         ttk.Entry(p, textvariable=self.breaks_var, width=40).grid(row=r + 1, column=0, columnspan=4, sticky="w")
-        ttk.Label(p, text="Zile nelucrătoare (ZZ.LL.AAAA, separate prin virgulă)").grid(
+        ttk.Label(p, text=tr('ui.settings_dialog.zile_nelucratoare_zz_ll_aaaa_separate_prin_virgula')).grid(
             row=r + 2, column=0, columnspan=4, sticky="w", pady=(10, 2))
         self.hol_var = tk.StringVar(value=", ".join(format_date(h) for h in self.s.holidays))
         ttk.Entry(p, textvariable=self.hol_var, width=70).grid(row=r + 3, column=0, columnspan=6, sticky="ew")
@@ -134,8 +172,8 @@ class SettingsDialog(ModalDialog):
             "daily_reserve_minutes": tk.StringVar(value=str(self.s.daily_reserve_minutes)),
         }
         labels = {
-            "min_session_minutes": "Durată minimă sesiune (min)", "max_session_minutes": "Durată maximă sesiune (min)",
-            "gap_minutes": "Pauză între sesiuni (min)", "daily_reserve_minutes": "Rezervă zilnică pentru urgențe (min)",
+            "min_session_minutes": tr('ui.settings_dialog.durata_minima_sesiune_min'), "max_session_minutes": tr('ui.settings_dialog.durata_maxima_sesiune_min'),
+            "gap_minutes": tr('ui.settings_dialog.pauza_intre_sesiuni_min'), "daily_reserve_minutes": tr('ui.settings_dialog.rezerva_zilnica_pentru_urgente_min'),
         }
         for j, (k, var) in enumerate(self.num_vars.items()):
             ttk.Label(p, text=labels[k]).grid(row=r + 4 + j, column=0, columnspan=3, sticky="w", pady=2)
@@ -159,25 +197,24 @@ class SettingsDialog(ModalDialog):
 
     def _page_backup(self) -> None:
         p = ttk.Frame(self.nb, padding=12)
-        self.nb.add(p, text="Backup")
+        self.nb.add(p, text=tr('ui.settings_dialog.backup'))
         p.columnconfigure(1, weight=1)
         b = self.s.backup
         self.b_daily = tk.BooleanVar(value=b.daily)
         self.b_full = tk.BooleanVar(value=b.include_files)
         self.b_ret = tk.StringVar(value=str(b.retention))
         self.b_ext = tk.StringVar(value=b.external_dir or "")
-        ttk.Checkbutton(p, text="Backup zilnic la prima pornire a zilei", variable=self.b_daily).grid(
+        ttk.Checkbutton(p, text=tr('ui.settings_dialog.backup_zilnic_la_prima_pornire_a_zilei'), variable=self.b_daily).grid(
             row=0, column=0, columnspan=3, sticky="w", pady=3)
-        ttk.Checkbutton(p, text="Backup zilnic complet (cu fișiere administrate); altfel doar metadate",
+        ttk.Checkbutton(p, text=tr('ui.settings_dialog.backup_zilnic_complet_cu_fisiere_administrate_altfel_doar_metadate'),
                         variable=self.b_full).grid(row=1, column=0, columnspan=3, sticky="w", pady=3)
-        ttk.Label(p, text="Păstrează ultimele").grid(row=2, column=0, sticky="w", pady=3)
+        ttk.Label(p, text=tr('ui.settings_dialog.pastreaza_ultimele')).grid(row=2, column=0, sticky="w", pady=3)
         ttk.Entry(p, textvariable=self.b_ret, width=6).grid(row=2, column=1, sticky="w")
-        ttk.Label(p, text="Folder extern (opțional)").grid(row=3, column=0, sticky="w", pady=3)
+        ttk.Label(p, text=tr('ui.settings_dialog.folder_extern_optional')).grid(row=3, column=0, sticky="w", pady=3)
         ttk.Entry(p, textvariable=self.b_ext).grid(row=3, column=1, sticky="ew", pady=3)
-        ttk.Button(p, text="Alege…", command=self._pick_ext).grid(row=3, column=2, padx=4)
+        ttk.Button(p, text=tr('common.choose'), command=self._pick_ext).grid(row=3, column=2, padx=4)
         ttk.Label(p, style="Muted.TLabel", wraplength=560, justify="left", text=(
-            "Un backup pe același disc cu datele nu protejează de defectarea discului; alege un folder pe alt disc "
-            "sau o partajare de rețea. Backup-urile nu se includ în propriul backup.")).grid(
+            tr('ui.settings_dialog.un_backup_pe_acelasi_disc_cu_datele_nu_protejeaza_de_defectarea_discul'))).grid(
             row=4, column=0, columnspan=3, sticky="w", pady=(12, 0))
 
         def collect(s: Settings) -> None:
@@ -190,7 +227,7 @@ class SettingsDialog(ModalDialog):
 
     def _page_checkpoints(self) -> None:
         p = ttk.Frame(self.nb, padding=12)
-        self.nb.add(p, text="Versiuni & VS Code")
+        self.nb.add(p, text=tr('ui.settings_dialog.versiuni_vs_code'))
         p.columnconfigure(1, weight=1)
         c = self.s.checkpoints
         self.c_end = tk.BooleanVar(value=c.on_session_end)
@@ -201,30 +238,27 @@ class SettingsDialog(ModalDialog):
         self.c_file = tk.StringVar(value=str(c.max_file_mb))
         self.c_excl = tk.StringVar(value=", ".join(c.exclude_names))
         self.vs_var = tk.StringVar(value=self.s.vscode_path or "")
-        ttk.Checkbutton(p, text="Checkpoint automat la finalul sesiunii (dacă există folder de cod)",
+        ttk.Checkbutton(p, text=tr('ui.settings_dialog.checkpoint_automat_la_finalul_sesiunii_daca_exista_folder_de_cod'),
                         variable=self.c_end).grid(row=0, column=0, columnspan=3, sticky="w", pady=3)
-        ttk.Checkbutton(p, text="Checkpoint zilnic programat", variable=self.c_daily).grid(
+        ttk.Checkbutton(p, text=tr('ui.settings_dialog.checkpoint_zilnic_programat'), variable=self.c_daily).grid(
             row=1, column=0, columnspan=2, sticky="w", pady=3)
-        ttk.Label(p, text="Ora (HH:MM)").grid(row=2, column=0, sticky="w")
+        ttk.Label(p, text=tr('ui.settings_dialog.ora_hh_mm')).grid(row=2, column=0, sticky="w")
         ttk.Entry(p, textvariable=self.c_time, width=8).grid(row=2, column=1, sticky="w")
         ttk.Label(p, style="Muted.TLabel", wraplength=600, text=(
-            "Programarea funcționează doar cât timp FocusDesk rulează. La repornire, dacă ora programată a fost "
-            "ratată, se creează un checkpoint al stării curente și se notează că ora a fost ratată; starea istorică "
-            "din momentul în care aplicația era închisă nu poate fi reconstruită.")).grid(
+            tr('ui.settings_dialog.programarea_functioneaza_doar_cat_timp_focusdesk_ruleaza_la_repornire'))).grid(
             row=3, column=0, columnspan=3, sticky="w", pady=(2, 8))
-        for r, (lbl, var) in enumerate((("Păstrează ultimele (checkpoint-uri)", self.c_ret),
-                                        ("Limită totală (MB)", self.c_total), ("Limită pe fișier (MB)", self.c_file)), 4):
+        for r, (lbl, var) in enumerate(((tr('ui.settings_dialog.pastreaza_ultimele_checkpoint_uri'), self.c_ret),
+                                        (tr('ui.settings_dialog.limita_totala_mb'), self.c_total), (tr('ui.settings_dialog.limita_pe_fisier_mb'), self.c_file)), 4):
             ttk.Label(p, text=lbl).grid(row=r, column=0, sticky="w", pady=2)
             ttk.Entry(p, textvariable=var, width=8).grid(row=r, column=1, sticky="w")
-        ttk.Label(p, text="Excluderi (nume/șabloane, separate prin virgulă)").grid(row=7, column=0, columnspan=3,
+        ttk.Label(p, text=tr('ui.settings_dialog.excluderi_nume_sabloane_separate_prin_virgula')).grid(row=7, column=0, columnspan=3,
                                                                                     sticky="w", pady=(8, 2))
         ttk.Entry(p, textvariable=self.c_excl).grid(row=8, column=0, columnspan=3, sticky="ew")
-        ttk.Label(p, text="Executabil VS Code (opțional)").grid(row=9, column=0, sticky="w", pady=(12, 2))
+        ttk.Label(p, text=tr('ui.settings_dialog.executabil_vs_code_optional')).grid(row=9, column=0, sticky="w", pady=(12, 2))
         ttk.Entry(p, textvariable=self.vs_var).grid(row=9, column=1, sticky="ew", pady=(12, 2))
-        ttk.Button(p, text="Alege…", command=self._pick_vscode).grid(row=9, column=2, padx=4, pady=(12, 2))
+        ttk.Button(p, text=tr('common.choose'), command=self._pick_vscode).grid(row=9, column=2, padx=4, pady=(12, 2))
         ttk.Label(p, style="Muted.TLabel", wraplength=600, text=(
-            "FocusDesk vede doar fișierele salvate pe disc, nu textul nesalvat din VS Code. Poți activa Auto Save în "
-            "VS Code; aplicația nu modifică setările VS Code. Lipsă = detectare automată.")).grid(
+            tr('ui.settings_dialog.focusdesk_vede_doar_fisierele_salvate_pe_disc_nu_textul_nesalvat_din_v'))).grid(
             row=10, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
         def collect(s: Settings) -> None:
@@ -240,17 +274,18 @@ class SettingsDialog(ModalDialog):
         self.collectors.append(collect)
 
     def _pick_vscode(self) -> None:
-        f = filedialog.askopenfilename(parent=self, title="Code.exe", filetypes=[("Executabil", "*.exe")])
+        f = filedialog.askopenfilename(parent=self, title="Code.exe", filetypes=[(tr('ui.settings_dialog.executabil'), "*.exe")])
         if f:
             self.vs_var.set(f)
 
     def _pick_ext(self) -> None:
-        d = filedialog.askdirectory(parent=self, title="Folder extern pentru backup")
+        d = filedialog.askdirectory(parent=self, title=tr('ui.settings_dialog.folder_extern_pentru_backup'))
         if d:
             self.b_ext.set(d)
 
     # ---- result -----------------------------------------------------
     def validate(self) -> bool:
+        if self._language_only:return True
         try:
             new = self.s.model_copy(deep=True)
             for c in self.collectors:
@@ -259,14 +294,16 @@ class SettingsDialog(ModalDialog):
             self._new = new
             return True
         except (ValueError, FocusDeskError) as exc:
-            show_error(self, f"Setări invalide: {exc}")
+            show_error(self, tr('ui.settings_dialog.setari_invalide', exc=exc))
             return False
 
     def collect(self) -> bool:
+        if self._language_only:return self.save_language()
         ws = self.app.ws
         ok = self.app.run_write(lambda: (ws.update_settings(self._new),
                                          ws.repo.rename_workspace(self.name_var.get())))
         if ok:
+            self.save_language()
             self.app.ws_label.configure(text=ws.name)
-            self.app.root.title(f"FocusDesk — {ws.name}")
+            self.app.root.title(tr('ui.settings_dialog.focusdesk', ws_name=ws.name))
         return ok

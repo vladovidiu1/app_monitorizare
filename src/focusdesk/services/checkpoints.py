@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import difflib
 import fnmatch
 import hashlib
@@ -112,7 +114,7 @@ class CheckpointService:
         for m in self.list_for_node(node_id):
             if m.id == checkpoint_id:
                 return m
-        raise NotFoundError("Checkpoint-ul nu există.")
+        raise NotFoundError(tr('services.checkpoints.checkpoint_ul_nu_exista'))
 
     # ---- create -----------------------------------------------------
     def create(self, node_id: str, description: str = "", *, trigger: str = "manual", session_id: str | None = None,
@@ -122,16 +124,15 @@ class CheckpointService:
         self.ws.repo._require_writable()
         src = self.files.effective_source(node_id)
         if src is None:
-            raise ValidationError("Nu există un folder de cod asociat acestui nod sau unui părinte.")
+            raise ValidationError(tr('services.checkpoints.nu_exista_un_folder_de_cod_asociat_acestui_nod_sau_unui_parinte'))
         if not src.path.is_dir():
-            raise NotFoundError(f"Folderul de cod nu există: {src.path}")
+            raise NotFoundError(tr('services.checkpoints.folderul_de_cod_nu_exista', src_path=src.path))
         cfg = self.ws.settings.checkpoints
         files, excluded, large = list_included(src.path, cfg)
         total = sum(st.st_size for _, _, st in files)
         if total > cfg.max_total_mb * 1024 * 1024:
             raise StorageError(
-                f"Sursa ({total // 1024 // 1024} MB) depășește limita de {cfg.max_total_mb} MB. "
-                "Adaugă excluderi sau mărește limita în Setări."
+                tr('services.checkpoints.sursa_mb_depaseste_limita_de_mb_adauga_excluderi_sau_mareste_limita_in', total_1024_1024=total // 1024 // 1024, cfg_max_total_mb=cfg.max_total_mb)
             )
         previous = (self.list_for_owner(src.owner_id) or [None])[0]
         if previous is not None and not force and self._quick_same(previous, files):
@@ -195,11 +196,10 @@ class CheckpointService:
                     out.write(chunk)
             st1 = path.stat()
         except OSError as exc:
-            raise SourceChangedDuringCapture(f"Fișierul {rel} nu a putut fi citit: {exc}") from exc
+            raise SourceChangedDuringCapture(tr('services.checkpoints.fisierul_nu_a_putut_fi_citit', rel=rel, exc=exc)) from exc
         if st1.st_size != st0.st_size or st1.st_mtime_ns != st0.st_mtime_ns or size != st0.st_size:
             raise SourceChangedDuringCapture(
-                f"Fișierul {rel} s-a modificat în timpul capturii. Salvează în editor și reîncearcă; "
-                "checkpoint-ul incomplet nu a fost păstrat."
+                tr('services.checkpoints.fisierul_s_a_modificat_in_timpul_capturii_salveaza_in_editor_si_reince', rel=rel)
             )
         return CheckpointFile(path=rel, size=size, sha256=h.hexdigest(), mtime_ns=st0.st_mtime_ns)
 
@@ -210,8 +210,7 @@ class CheckpointService:
         b = {(rel, st.st_size, st.st_mtime_ns) for rel, _, st in after}
         if a != b:
             raise SourceChangedDuringCapture(
-                "Sursa s-a modificat în timpul capturii (fișiere adăugate/șterse/modificate). "
-                "Checkpoint-ul incomplet nu a fost păstrat."
+                tr('services.checkpoints.sursa_s_a_modificat_in_timpul_capturii_fisiere_adaugate_sterse_modific')
             )
 
     def _apply_retention(self, owner_id: str, keep: int) -> None:
@@ -226,7 +225,7 @@ class CheckpointService:
         """Compara checkpoint-ul cu starea curenta a sursei: noi / modificate / sterse."""
         source = Path(manifest.source_root)
         if not source.is_dir():
-            raise NotFoundError(f"Folderul sursă nu există: {source}")
+            raise NotFoundError(tr('services.checkpoints.folderul_sursa_nu_exista', source=source))
         cfg = self.ws.settings.checkpoints
         files, _, _ = list_included(source, cfg)
         old = {f.path: f for f in manifest.files}
@@ -267,24 +266,24 @@ class CheckpointService:
                 old_bytes = b""
             else:
                 if info.file_size > max_bytes:
-                    return f"(Fișier prea mare pentru diff: {info.file_size // 1024} KB > {max_bytes // 1024} KB)"
+                    return tr('services.checkpoints.fisier_prea_mare_pentru_diff_kb_kb', info_file_size_1024=info.file_size // 1024, max_bytes_1024=max_bytes // 1024)
                 old_bytes = zf.read(member)
         cur_path = Path(manifest.source_root) / rel_path
         if not is_within(manifest.source_root, cur_path):
-            raise ValidationError("Cale invalidă.")
+            raise ValidationError(tr('services.checkpoints.cale_invalida'))
         new_bytes = b""
         if cur_path.is_file() and not is_reparse_point(cur_path):
             if cur_path.stat().st_size > max_bytes:
-                return f"(Fișier curent prea mare pentru diff: {cur_path.stat().st_size // 1024} KB)"
+                return tr('services.checkpoints.fisier_curent_prea_mare_pentru_diff_kb', cur_path_stat_st_size_1024=cur_path.stat().st_size // 1024)
             new_bytes = cur_path.read_bytes()
         if b"\x00" in old_bytes[:8192] or b"\x00" in new_bytes[:8192]:
-            return "(Fișier binar — fără diff text.)"
+            return tr('services.checkpoints.fisier_binar_fara_diff_text')
         a = old_bytes.decode("utf-8", errors="replace").splitlines()
         b = new_bytes.decode("utf-8", errors="replace").splitlines()
         lines = list(difflib.unified_diff(a, b, "checkpoint/" + rel_path, "curent/" + rel_path, lineterm=""))
         if len(lines) > max_lines:
-            lines = lines[:max_lines] + [f"… (diff trunchiat la {max_lines} linii)"]
-        return "\n".join(lines) if lines else "(Fără diferențe de text.)"
+            lines = lines[:max_lines] + [tr('extra.services.checkpoints.diff_trunchiat_la_linii', max_lines=max_lines)]
+        return "\n".join(lines) if lines else tr('services.checkpoints.fara_diferente_de_text')
 
     # ---- restore ----------------------------------------------------
     def restore(self, manifest: CheckpointManifest, dest: Path, *, overwrite_source: bool = False,
@@ -294,19 +293,19 @@ class CheckpointService:
         owner_dir = self.snapshots_dir(manifest.owner_node_id)
         zip_path = owner_dir / manifest.archive
         if not zip_path.exists():
-            raise NotFoundError("Arhiva checkpoint-ului lipsește.")
+            raise NotFoundError(tr('services.checkpoints.arhiva_checkpoint_ului_lipseste'))
         source_root = Path(manifest.source_root)
         if overwrite_source:
             if os.path.normcase(clean_abs(dest)) != os.path.normcase(clean_abs(source_root)):
-                raise ValidationError("Suprascrierea este permisă doar peste folderul sursă al checkpoint-ului.")
+                raise ValidationError(tr('services.checkpoints.suprascrierea_este_permisa_doar_peste_folderul_sursa_al_checkpoint_ulu'))
             if source_root.is_dir():
-                self.create(manifest.node_id, "Copie de siguranță înainte de restaurare", trigger="pre_restore",
+                self.create(manifest.node_id, tr('services.checkpoints.copie_de_siguranta_inainte_de_restaurare'), trigger="pre_restore",
                             force=True)
         else:
             if is_within(source_root, dest) or is_within(dest, source_root):
-                raise ValidationError("Restaurează într-un folder separat, în afara folderului sursă.")
+                raise ValidationError(tr('services.checkpoints.restaureaza_intr_un_folder_separat_in_afara_folderului_sursa'))
             if dest.exists() and any(dest.iterdir()):
-                raise ValidationError("Folderul de destinație trebuie să fie gol.")
+                raise ValidationError(tr('services.checkpoints.folderul_de_destinatie_trebuie_sa_fie_gol'))
         expected = {f.path: f for f in manifest.files}
         dest.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(zip_path) as zf:
@@ -319,7 +318,7 @@ class CheckpointService:
                 rel = info.filename[len(ZIP_PREFIX):]
                 target = Path(clean_abs(dest / rel))
                 if not is_within(dest, target):
-                    raise ValidationError(f"Intrare nesigură în arhivă: {info.filename!r}")
+                    raise ValidationError(tr('services.checkpoints.intrare_nesigura_in_arhiva', info_filename=info.filename))
                 target.parent.mkdir(parents=True, exist_ok=True)
                 tmp = target.with_name(f".{target.name}.{uuid.uuid4().hex[:6]}.restoring")
                 h = hashlib.sha256()
@@ -330,7 +329,7 @@ class CheckpointService:
                 exp = expected.get(rel)
                 if exp is not None and exp.sha256 != h.hexdigest():
                     tmp.unlink(missing_ok=True)
-                    raise StorageError(f"Sumă de control invalidă pentru {rel}; arhiva pare coruptă.")
+                    raise StorageError(tr('services.checkpoints.suma_de_control_invalida_pentru_arhiva_pare_corupta', rel=rel))
                 os.replace(tmp, target)
         return dest
 

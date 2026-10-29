@@ -1,6 +1,8 @@
 """Read-only, one-directory-at-a-time picker shared with task file services."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 from pathlib import Path
 from tkinter import ttk
 
@@ -13,8 +15,8 @@ class TaskFilePicker(ModalDialog):
     enter_confirms = False
 
     def __init__(self, parent, files, node_id):
-        super().__init__(parent, "Din fișierele taskului/proiectului", resizable=True,
-                         ok_text="Adaugă fișierele selectate")
+        super().__init__(parent, tr('ui.file_picker.din_fisierele_taskului_proiectului'), resizable=True,
+                         ok_text=tr('ui.file_picker.adauga_fisierele_selectate'))
         self.geometry("800x480")
         self.minsize(580, 360)
         self.files = files
@@ -29,16 +31,16 @@ class TaskFilePicker(ModalDialog):
         self.location.bind("<<ComboboxSelected>>", lambda _e: self._select_location())
         row = ttk.Frame(self.body)
         row.pack(fill="x", pady=6)
-        self.up = ttk.Button(row, text="↑ Folder părinte", command=self._up)
+        self.up = ttk.Button(row, text=tr('ui.file_picker.folder_parinte'), command=self._up)
         self.up.pack(side="left")
         self.path = ttk.Label(row, style="Muted.TLabel", wraplength=540)
         self.path.pack(side="left", fill="x", expand=True, padx=8)
         self.notice = ttk.Label(self.body, style="Muted.TLabel", wraplength=720,
-                                text="Selectează documente cu Ctrl/Shift. Enter sau dublu-click deschide un folder.")
+                                text=tr('ui.file_picker.selecteaza_documente_cu_ctrl_shift_enter_sau_dublu_click_deschide_un_f'))
         self.notice.pack(side="bottom", fill="x", pady=6)
-        self.more = ttk.Button(self.body, text="Încarcă următoarele 200", command=self._append)
+        self.more = ttk.Button(self.body, text=tr('ui.file_picker.incarca_urmatoarele_200'), command=self._append)
         self.more.pack(side="bottom", anchor="w")
-        self.tree, frame = make_tree(self.body, [("name", "Nume", 380), ("size", "Dimensiune", 110)], height=10)
+        self.tree, frame = make_tree(self.body, [("name", tr('ui.file_picker.nume'), 380), ("size", tr('ui.file_picker.dimensiune'), 110)], height=10)
         self.tree.configure(selectmode="extended")
         frame.pack(fill="both", expand=True)
         self.tree.bind("<Return>", self._activate)
@@ -70,8 +72,8 @@ class TaskFilePicker(ModalDialog):
         except FocusDeskError as exc:
             self.notice.configure(text=str(exc))
             return
-        self.notice.configure(text="Selectează documente cu Ctrl/Shift. Enter sau dublu-click deschide un folder."
-                              if entries else "Folder gol. Poți alege altă locație.")
+        self.notice.configure(text=tr('ui.file_picker.selecteaza_documente_cu_ctrl_shift_enter_sau_dublu_click_deschide_un_f')
+                              if entries else tr('ui.file_picker.folder_gol_poti_alege_alta_locatie'))
         self._remaining = entries
         self._append()
 
@@ -83,7 +85,7 @@ class TaskFilePicker(ModalDialog):
             self.entries[key] = entry
             self.tree.insert("", "end", iid=key, values=(
                 ("▣ " if entry.is_dir else "") + entry.path.name,
-                "Folder" if entry.is_dir else format_size(entry.size_bytes or 0)))
+                tr('ui.file_picker.folder') if entry.is_dir else format_size(entry.size_bytes or 0)))
         self.more.state(["!disabled"] if self._remaining else ["disabled"])
 
     def _up(self):
@@ -104,7 +106,7 @@ class TaskFilePicker(ModalDialog):
     def validate(self):
         selected = [self.entries[key] for key in self.tree.selection()]
         if not selected or any(item.is_dir for item in selected):
-            show_error(self, "Selectează fișiere. Deschide folderele pentru a alege documentele din interior.")
+            show_error(self, tr('ui.file_picker.selecteaza_fisiere_deschide_folderele_pentru_a_alege_documentele_din_i'))
             return False
         return True
 

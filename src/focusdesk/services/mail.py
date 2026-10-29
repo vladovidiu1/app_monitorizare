@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr, date_text, datetime_text
+
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,7 +44,7 @@ def validate_attachments(paths: Iterable[str | Path | LocalFile]) -> list[LocalF
     selected = attachment_selection(paths)
     bad = [item for item in selected if item.state != "ready"]
     if bad:
-        raise ValidationError("Corectează atașamentele înainte de a continua:\n" + "\n".join(
+        raise ValidationError(tr('services.mail.corecteaza_atasamentele_inainte_de_a_continua') + "\n".join(
             f"{item.path}: {item.detail}" for item in bad))
     return selected
 
@@ -50,14 +52,12 @@ def validate_attachments(paths: Iterable[str | Path | LocalFile]) -> list[LocalF
 def attachment_summary(attachments: list[LocalFile]) -> str:
     size = format_size(sum(item.size_bytes or 0 for item in attachments))
     unknown = sum(item.size_bytes is None for item in attachments)
-    suffix = f" cunoscuți · {unknown} dimensiuni indisponibile" if unknown else ""
-    return f"{len(attachments)} atașamente · {size}{suffix}"
+    suffix = tr('services.mail.cunoscuti_dimensiuni_indisponibile', unknown=unknown) if unknown else ""
+    return tr('services.mail.atasamente', count=len(attachments), len_attachments=len(attachments), size=size, suffix=suffix)
 
 
 def confirmation_text(draft: MailDraft) -> str:
-    return (f"Predau Outlook pentru trimitere către:\n{', '.join(draft.to)}\n"
-            f"CC: {', '.join(draft.cc) or '—'}\n\nSubiect: {draft.subject}\n\n"
-            f"{attachment_summary(draft.attachments)}\n\nLivrarea efectivă nu este confirmată de FocusDesk.")
+    return (tr('services.mail.predau_outlook_pentru_trimitere_catre_cc_subiect_livrarea_efectiva_nu', join_draft_to=', '.join(draft.to), join_draft_cc_or=', '.join(draft.cc) or '—', draft_subject=draft.subject, attachment_summary_draft_attachments=attachment_summary(draft.attachments)))
 
 
 def parse_addresses(text: str) -> list[str]:
@@ -69,7 +69,7 @@ def parse_addresses(text: str) -> list[str]:
         m = _NAME_ADDR_RE.search(part)
         addr = m.group(1).strip() if m else part
         if not _EMAIL_RE.match(addr):
-            raise ValidationError(f"Adresă de e-mail invalidă: {part}")
+            raise ValidationError(tr('services.mail.adresa_de_e_mail_invalida', part=part))
         if addr.lower() not in {a.lower() for a in out}:
             out.append(addr)
     return out
@@ -87,37 +87,37 @@ def build_draft(to: str, cc: str, subject: str, body: str, *, for_send: bool = T
     subject = clean_subject(subject)
     if for_send:
         if not recipients:
-            raise ValidationError("Adaugă cel puțin un destinatar.")
+            raise ValidationError(tr('services.mail.adauga_cel_putin_un_destinatar'))
         if not subject:
-            raise ValidationError("Subiectul este obligatoriu.")
+            raise ValidationError(tr('extra.services.mail.subiectul_este_obligatoriu'))
         if not body.strip():
-            raise ValidationError("Mesajul este gol.")
+            raise ValidationError(tr('extra.services.mail.mesajul_este_gol'))
     return MailDraft(to=recipients, cc=parse_addresses(cc), subject=subject, body=body,
                      attachments=validate_attachments(attachments))
 
 
 def default_subject(node: Node) -> str:
-    return f"Nelămuriri: {node.title}"
+    return tr('services.mail.nelamuriri', node_title=node.title)
 
 
 def default_body(ws: Workspace, node: Node, *, description: str | None = None) -> str:
     """Text de pornire: loc pentru intrebare + contextul task-ului (editabil inainte de trimitere)."""
-    lines = ["Bună ziua,", "", f"Am o nelămurire legată de „{node.title}”:", "", "", "", "Mulțumesc!", "",
-             "— Context —", f"Task: {node.title}"]
+    lines = [tr('services.mail.buna_ziua'), "", tr('services.mail.am_o_nelamurire_legata_de', node_title=node.title), "", "", "", tr('services.mail.multumesc'), "",
+             tr('extra.services.mail.context'), tr('ui.mail_ui.task', node_title=node.title)]
     path = ws.breadcrumb(node.id)
     if path != node.title:
-        lines.append(f"Locație: {path}")
+        lines.append(tr('services.mail.locatie', path=path))
     if node.kind != Kind.FOLDER:
         if node.status:
-            lines.append(f"Status: {STATUS_LABELS[node.status]}")
+            lines.append(tr('mail.status',status=STATUS_LABELS[node.status]))
         if node.priority:
-            lines.append(f"Prioritate: {PRIORITY_LABELS[node.priority]}")
+            lines.append(tr('mail.priority',priority=PRIORITY_LABELS[node.priority]))
     if node.due_date:
-        lines.append(f"Termen: {node.due_date:%d.%m.%Y}")
+        lines.append(tr('mail.deadline',date=date_text(node.due_date)))
     elif node.due_at:
-        lines.append(f"Termen: {node.due_at.astimezone(ZoneInfo(ws.settings.timezone)):%d.%m.%Y %H:%M}")
+        lines.append(tr('mail.deadline',date=datetime_text(node.due_at.astimezone(ZoneInfo(ws.settings.timezone)))))
     if node.next_action:
-        lines.append(f"Următorul pas: {node.next_action}")
+        lines.append(tr('services.mail.urmatorul_pas', node_next_action=node.next_action))
     desc = ws.get_description(node.id, observe=False) if description is None else description
     if desc.strip():
         lines += ["", desc]
@@ -125,9 +125,9 @@ def default_body(ws: Workspace, node: Node, *, description: str | None = None) -
 
 
 def journal_text(draft: MailDraft, result: str = "submitted") -> str:
-    cc = f"\nCC: {', '.join(draft.cc)}" if draft.cc else ""
-    outcome = {"submitted": "E-mail predat Outlook pentru trimitere (livrare neconfirmată)",
-               "displayed": "Ciornă e-mail deschisă în Outlook (fără trimitere)",
-               "uncertain": "Rezultat e-mail incert; verifică în Outlook înainte de reîncercare"}[result]
-    names = "; ".join(item.name for item in draft.attachments) or "Fără atașamente"
-    return f"{outcome}\nCătre: {', '.join(draft.to)}{cc}\nSubiect: {draft.subject}\nAtașamente: {names}"
+    cc = tr('mail.cc',addresses=', '.join(draft.cc)) if draft.cc else ""
+    outcome = {"submitted": tr('services.mail.e_mail_predat_outlook_pentru_trimitere_livrare_neconfirmata'),
+               "displayed": tr('services.mail.ciorna_e_mail_deschisa_in_outlook_fara_trimitere'),
+               "uncertain": tr('services.mail.rezultat_e_mail_incert_verifica_in_outlook_inainte_de_reincercare')}[result]
+    names = "; ".join(item.name for item in draft.attachments) or tr('services.mail.fara_atasamente')
+    return tr('services.mail.catre_subiect_atasamente', outcome=outcome, join_draft_to=', '.join(draft.to), cc=cc, draft_subject=draft.subject, names=names)

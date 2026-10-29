@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
@@ -14,7 +16,7 @@ from .workspace import Workspace
 
 log = logging.getLogger(__name__)
 
-TITLE_PREFIX = "[FocusDesk] Lucru — "
+TITLE_PREFIX = tr('extra.services.sessions.focusdesk_lucru')
 
 
 def _minute(d: datetime) -> datetime:
@@ -24,13 +26,13 @@ def _minute(d: datetime) -> datetime:
 
 class OverlapError(ValidationError):
     def __init__(self, conflicts: list[SessionRecord]) -> None:
-        super().__init__(f"Intervalul se suprapune cu {len(conflicts)} sesiune(i) existente.")
+        super().__init__(tr('extra.services.sessions.intervalul_se_suprapune_cu_sesiune_i_existente', len_conflicts=len(conflicts)))
         self.conflicts = conflicts
 
 
 class BlockedByDependencies(ValidationError):
     def __init__(self, blockers: list[Node]) -> None:
-        super().__init__("Task-ul depinde de task-uri nefinalizate: " + ", ".join(b.title for b in blockers))
+        super().__init__(tr('extra.services.sessions.task_ul_depinde_de_task_uri_nefinalizate') + tr('extra.integrations.outlook_com.').join(b.title for b in blockers))
         self.blockers = blockers
 
 
@@ -65,13 +67,13 @@ class SessionService:
         node = self.ws.get(node_id)
         start, end = _minute(start), _minute(end)
         if node.kind != Kind.TASK:
-            raise ValidationError("Sesiunile se planifică pentru task-uri.")
+            raise ValidationError(tr('services.sessions.sesiunile_se_planifica_pentru_task_uri'))
         if node.status in CLOSED_STATUSES:
-            raise ValidationError("Task-ul este finalizat sau anulat.")
+            raise ValidationError(tr('extra.services.sessions.task_ul_este_finalizat_sau_anulat'))
         if end <= start:
-            raise ValidationError("Sfârșitul trebuie să fie după început.")
+            raise ValidationError(tr('services.sessions.sfarsitul_trebuie_sa_fie_dupa_inceput'))
         if end <= utcnow():
-            raise ValidationError("Sesiunea se termină în trecut.")
+            raise ValidationError(tr('services.sessions.sesiunea_se_termina_in_trecut'))
         blockers = self.ws.unfinished_dependencies(node_id)
         if blockers and not override_dependencies:
             raise BlockedByDependencies(blockers)
@@ -93,10 +95,10 @@ class SessionService:
         self.ws.repo._require_writable()
         s = self.ws.repo.sessions.get(session_id)
         if s.status not in ("planned",):
-            raise ValidationError("Se pot modifica doar sesiunile planificate.")
+            raise ValidationError(tr('ui.calendar_page.se_pot_modifica_doar_sesiunile_planificate'))
         new_start, new_end = _minute(start or s.start_at), _minute(end or s.end_at)
         if new_end <= new_start:
-            raise ValidationError("Sfârșitul trebuie să fie după început.")
+            raise ValidationError(tr('services.sessions.sfarsitul_trebuie_sa_fie_dupa_inceput'))
         conflicts = self.overlaps(new_start, new_end, ignore_id=s.id)
         if conflicts and not allow_overlap:
             raise OverlapError(conflicts)
@@ -118,7 +120,7 @@ class SessionService:
         self.ws.repo._require_writable()
         s = self.ws.repo.sessions.get(session_id)
         if s.status not in ("planned",):
-            raise ValidationError("Doar rezervările programate pot fi anulate. Încheie sesiunea curentă din timer.")
+            raise ValidationError(tr('services.sessions.doar_rezervarile_programate_pot_fi_anulate_incheie_sesiunea_curenta_di'))
         s.status = "cancelled"
         if s.sync.entry_id and s.sync.state in ("saved_locally", "pending", "conflict"):
             s.sync.state = "pending"
@@ -146,21 +148,21 @@ class SessionService:
     # ---- calendar text ------------------------------------------------
     @staticmethod
     def title_for(node: Node) -> str:
-        return f"{TITLE_PREFIX}{node.title}"
+        return tr('session.title',title=node.title)
 
     def description_for(self, node: Node, session: SessionRecord, *, include_details: bool = False) -> str:
         """Fara cai locale; fragment din descriere doar cu optiune explicita."""
         lines = [
-            "Rezervare de timp creată de FocusDesk (sesiune de lucru personală).",
-            f"Task: {node.title}",
-            f"Task UUID: {node.id}",
-            f"Sesiune UUID: {session.id}",
-            f"Workspace UUID: {self.ws.id}",
+            tr('services.sessions.rezervare_de_timp_creata_de_focusdesk_sesiune_de_lucru_personala'),
+            tr('ui.mail_ui.task', node_title=node.title),
+            tr('session.task_uuid',id=node.id),
+            tr('session.uuid',id=session.id),
+            tr('session.workspace_uuid',id=self.ws.id),
         ]
         if node.next_action:
-            lines.append(f"Următorul pas: {node.next_action}")
+            lines.append(tr('services.mail.urmatorul_pas', node_next_action=node.next_action))
         if session.note:
-            lines.append(f"Notă: {session.note}")
+            lines.append(tr('services.sessions.nota', session_note=session.note))
         if include_details:
             try:
                 desc = self.ws.get_description(node.id).strip()
@@ -177,26 +179,26 @@ class SessionService:
         self.ws.repo._require_writable()
         s = self.ws.repo.sessions.get(session_id)
         if expected is not None and s!=expected:
-            raise ExternalModificationError('Sesiunea s-a modificat după deschiderea dialogului. Reîncarcă datele înainte de corecție.')
+            raise ExternalModificationError(tr('services.sessions.sesiunea_s_a_modificat_dupa_deschiderea_dialogului_reincarca_datele_in'))
         timer_path=self.ws.repo.system_dir/'timer.json'
         if timer_path.exists():
             from ..storage.atomic import read_json
             state,_,_=read_json(timer_path)
             if state.get('session_id')==session_id:
-                raise ValidationError('Încheie mai întâi recuperarea timerului acestei sesiuni.')
-        if s.status != 'done': raise ValidationError('Se corectează numai sesiuni încheiate.')
+                raise ValidationError(tr('services.sessions.incheie_mai_intai_recuperarea_timerului_acestei_sesiuni'))
+        if s.status != 'done': raise ValidationError(tr('services.sessions.se_corecteaza_numai_sesiuni_incheiate'))
         if isinstance(seconds, bool) or not isinstance(seconds, int) or seconds < 0:
-            raise ValidationError('Durata trebuie să fie un număr întreg de secunde, pozitiv sau zero.')
+            raise ValidationError(tr('services.sessions.durata_trebuie_sa_fie_un_numar_intreg_de_secunde_pozitiv_sau_zero'))
         start = started_at if started_at is not None else s.started_actual_at
         end = stopped_at if stopped_at is not None else s.stopped_actual_at
         if any(value is not None and (value.tzinfo is None or value.utcoffset() is None) for value in (start,end)):
-            raise ValidationError('Intervalul trebuie să includă fusul orar.')
+            raise ValidationError(tr('services.sessions.intervalul_trebuie_sa_includa_fusul_orar'))
         if (started_at is not None or stopped_at is not None) and end and end>utcnow():
-            raise ValidationError('Sfârșitul efectiv nu poate fi în viitor.')
+            raise ValidationError(tr('services.sessions.sfarsitul_efectiv_nu_poate_fi_in_viitor'))
         if start and end and (end < start or seconds > (end-start).total_seconds()):
-            raise ValidationError('Durata lucrată nu poate depăși intervalul efectiv ales.')
+            raise ValidationError(tr('services.sessions.durata_lucrata_nu_poate_depasi_intervalul_efectiv_ales'))
         if (started_at is not None or stopped_at is not None) and (not start or not end):
-            raise ValidationError('Specifică ambele capete ale intervalului efectiv.')
+            raise ValidationError(tr('services.sessions.specifica_ambele_capete_ale_intervalului_efectiv'))
         start=start.astimezone(timezone.utc) if start else None
         end=end.astimezone(timezone.utc) if end else None
         before = dict(seconds=s.actual_seconds,started_at=s.started_actual_at.isoformat() if s.started_actual_at else None,

@@ -1,6 +1,8 @@
 """Strict, portable templates. Local keys are never workspace UUIDs or file paths."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 import re
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -8,10 +10,7 @@ from .common import new_id, is_uuid
 from .models import Kind, Priority, Node, Status
 
 MAX_TEMPLATE_BYTES = 2 * 1024 * 1024
-EXCLUDED = ('ID-uri originale; istoric, notițe, sesiuni și timp lucrat; sincronizări Outlook; '
-            'checkpointuri și Git; solicitant și adrese de colegi; fișiere și căi locale; '
-            'referințe externe structurii; termene calendaristice și prioritate azi; '
-            'statusuri și bife de checklist. Textul liber este păstrat: verifică manual datele personale din descrieri.')
+EXCLUDED = (tr('extra.domain.templates.id_uri_originale_istoric_notite_sesiuni_si_timp_lucrat_sincroniza'))
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra='forbid', validate_assignment=True)
@@ -41,47 +40,47 @@ class StructureTemplate(Strict):
     @field_validator('schema_version', mode='before')
     @classmethod
     def version(cls, value):
-        if type(value) is not int or value != 1:raise ValueError('Versiune de schemă incompatibilă')
+        if type(value) is not int or value != 1:raise ValueError(tr('extra.domain.templates.versiune_de_schema_incompatibila'))
         return value
 
     @field_validator('name')
     @classmethod
     def name_not_blank(cls, value):
-        if not value.strip():raise ValueError('Numele șablonului nu poate fi gol')
+        if not value.strip():raise ValueError(tr('extra.domain.templates.numele_sablonului_nu_poate_fi_gol'))
         return value.strip()
 
     @field_validator('id')
     @classmethod
     def valid_id(cls, value):
-        if not is_uuid(value): raise ValueError('ID șablon invalid')
+        if not is_uuid(value): raise ValueError(tr('services.templates.id_sablon_invalid'))
         return value
 
     @field_validator('variables')
     @classmethod
     def variable_names(cls, values):
         if len(set(values)) != len(values) or any(not re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_]{0,63}', v) for v in values):
-            raise ValueError('Variabilele trebuie să aibă nume distincte: litere, cifre și underscore.')
+            raise ValueError(tr('extra.domain.templates.variabilele_trebuie_sa_aiba_nume_distincte_litere_cifre_si_unders'))
         return values
 
     @model_validator(mode='after')
     def graph(self):
         by = {i.key:i for i in self.items}
-        if len(by) != len(self.items): raise ValueError('Chei de element duplicate')
+        if len(by) != len(self.items): raise ValueError(tr('extra.domain.templates.chei_de_element_duplicate'))
         roots = [i for i in self.items if i.parent is None]
         if len(roots) != 1 or roots[0].kind not in (Kind.PROJECT, Kind.TASK):
-            raise ValueError('Este necesară o singură rădăcină proiect/task')
+            raise ValueError(tr('extra.domain.templates.este_necesara_o_singura_radacina_proiect_task'))
         for item in self.items:
             if item.parent is not None:
-                if item.parent not in by: raise ValueError('Părinte inexistent')
+                if item.parent not in by: raise ValueError(tr('extra.domain.templates.parinte_inexistent'))
                 parent = by[item.parent]
-                if parent.kind == Kind.TASK and item.kind != Kind.TASK: raise ValueError('Un task conține doar taskuri')
-                if item.kind == Kind.PROJECT and parent.kind != Kind.FOLDER: raise ValueError('Proiectul necesită părinte folder')
+                if parent.kind == Kind.TASK and item.kind != Kind.TASK: raise ValueError(tr('extra.domain.templates.un_task_contine_doar_taskuri'))
+                if item.kind == Kind.PROJECT and parent.kind != Kind.FOLDER: raise ValueError(tr('extra.domain.templates.proiectul_necesita_parinte_folder'))
             for ref in item.depends_on + item.related:
-                if ref not in by or ref == item.key: raise ValueError('Referință internă invalidă')
+                if ref not in by or ref == item.key: raise ValueError(tr('extra.domain.templates.referinta_interna_invalida'))
             # Reuse Node's kind/title/estimate rules without preserving any UUID.
             Node(kind=item.kind, title=item.title, status=Status.TODO if item.kind != Kind.FOLDER else None,
                  estimated_minutes=item.estimated_minutes)
-            if item.kind == Kind.FOLDER and item.depends_on: raise ValueError('Folderul nu are dependențe')
+            if item.kind == Kind.FOLDER and item.depends_on: raise ValueError(tr('extra.domain.templates.folderul_nu_are_dependente'))
         for edges in ({i.key:[i.parent] if i.parent else [] for i in self.items}, {i.key:i.depends_on for i in self.items}):
             # Iterative Kahn traversal: imported deep structures cannot overflow Python recursion.
             pending={key:set(values) for key,values in edges.items()}
@@ -95,7 +94,7 @@ class StructureTemplate(Strict):
                 for child in reverse[key]:
                     pending[child].discard(key)
                     if not pending[child] and child not in visited:ready.append(child)
-            if len(visited)!=len(by):raise ValueError('Ciclu în ierarhie sau dependențe')
+            if len(visited)!=len(by):raise ValueError(tr('extra.domain.templates.ciclu_in_ierarhie_sau_dependente'))
         return self
 
     def ordered(self):
@@ -116,7 +115,7 @@ def substitute(text: str, values: dict[str,str], *, limit=500_000) -> str:
     for match in re.finditer(r'\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}',text):
         prefix=text[end:match.start()];replacement=values.get(match[1],match[0])
         size+=len(prefix)+len(replacement)
-        if size>limit:raise ValueError('Textul rezultat depășește limita permisă.')
+        if size>limit:raise ValueError(tr('extra.domain.templates.textul_rezultat_depaseste_limita_permisa'))
         parts.extend((prefix,replacement));end=match.end()
-    if size+len(text)-end>limit:raise ValueError('Textul rezultat depășește limita permisă.')
+    if size+len(text)-end>limit:raise ValueError(tr('extra.domain.templates.textul_rezultat_depaseste_limita_permisa'))
     parts.append(text[end:]);return ''.join(parts)

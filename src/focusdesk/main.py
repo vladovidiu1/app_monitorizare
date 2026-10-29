@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .i18n import tr
+
 import argparse
 import logging
 import logging.handlers
@@ -26,7 +28,7 @@ def _setup_logging() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="focusdesk")
-    parser.add_argument("--workspace", type=Path, help="folderul workspace-ului de deschis")
+    parser.add_argument('--workspace', type=Path, help=tr('extra.main.folderul_workspace_ului_de_deschis'))
     parser.add_argument("--smoke-test", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--smoke-report", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)

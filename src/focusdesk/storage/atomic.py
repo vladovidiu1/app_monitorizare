@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import hashlib
 import json
 import os
@@ -58,7 +60,7 @@ def atomic_write_bytes(path: Path, data: bytes, *, keep_backup: bool = False) ->
             tmp.unlink(missing_ok=True)
         except OSError:
             pass
-        raise StorageError(f"Scrierea fișierului {path.name} a eșuat: {exc}") from exc
+        raise StorageError(tr('storage.atomic.scrierea_fisierului_a_esuat', path_name=path.name, exc=exc)) from exc
     return sha256_bytes(data)
 
 
@@ -92,7 +94,7 @@ def read_json(path: Path, *, allow_backup: bool = True) -> tuple[Any, str, bool]
     try:
         raw = path.read_bytes()
     except OSError as exc:
-        raise CorruptFileError(f"Nu se poate citi {path}: {exc}") from exc
+        raise CorruptFileError(tr('extra.storage.atomic.nu_se_poate_citi', path=path, exc=exc)) from exc
     digest = sha256_bytes(raw)
     try:
         return json.loads(raw.decode("utf-8-sig")), digest, False
@@ -103,4 +105,4 @@ def read_json(path: Path, *, allow_backup: bool = True) -> tuple[Any, str, bool]
                 return json.loads(bak.read_text(encoding="utf-8")), digest, True
             except (ValueError, OSError):
                 pass
-        raise CorruptFileError(f"JSON invalid în {path}: {primary}") from primary
+        raise CorruptFileError(tr('storage.atomic.json_invalid_in', path=path, primary=primary)) from primary

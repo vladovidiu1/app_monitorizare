@@ -2,37 +2,39 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from .models import Kind, Priority, Status
 
 STATUS_LABELS: dict[Status, str] = {
-    Status.INBOX: "De făcut",
-    Status.TODO: "De făcut",
-    Status.IN_PROGRESS: "În lucru",
-    Status.WAITING: "În așteptare",
-    Status.TESTING: "În testare",
-    Status.DONE: "Finalizat",
-    Status.CANCELLED: "Anulat",
+    Status.INBOX: tr('ui.meetings.de_facut'),
+    Status.TODO: tr('ui.meetings.de_facut'),
+    Status.IN_PROGRESS: tr('ui.session_ui.in_lucru'),
+    Status.WAITING: tr('ui.tasklist.in_asteptare'),
+    Status.TESTING: tr('domain.labels.in_testare'),
+    Status.DONE: tr('extra.domain.labels.finalizat'),
+    Status.CANCELLED: tr('ui.planning.anulat'),
 }
 
 PRIORITY_LABELS: dict[Priority, str] = {
-    Priority.URGENT: "Urgentă",
-    Priority.HIGH: "Ridicată",
-    Priority.NORMAL: "Normală",
-    Priority.LOW: "Redusă",
+    Priority.URGENT: tr('domain.labels.urgenta'),
+    Priority.HIGH: tr('domain.labels.ridicata'),
+    Priority.NORMAL: tr('domain.labels.normala'),
+    Priority.LOW: tr('domain.labels.redusa'),
 }
 
 KIND_LABELS: dict[Kind, str] = {
-    Kind.FOLDER: "Folder",
-    Kind.PROJECT: "Proiect",
-    Kind.TASK: "Task",
+    Kind.FOLDER: tr('ui.file_picker.folder'),
+    Kind.PROJECT: tr('ui.app.proiect'),
+    Kind.TASK: tr('ui.outlook_ui.task'),
 }
 
 SESSION_STATUS_LABELS = {
-    "planned": "Programată",
-    "active": "În lucru",
-    "done": "Încheiată",
-    "cancelled": "Anulată",
-    "missed": "Ratată",
+    "planned": tr('domain.labels.programata'),
+    "active": tr('ui.session_ui.in_lucru'),
+    "done": tr('domain.labels.incheiata'),
+    "cancelled": tr('domain.labels.anulata'),
+    "missed": tr('domain.labels.ratata'),
 }
 
 STATUS_FROM_LABEL = {v: k for k, v in STATUS_LABELS.items()}
@@ -57,13 +59,13 @@ def priority_label(priority: Priority | None) -> str:
 def format_minutes(minutes: int | None) -> str:
     """Formateaza durata; `None` inseamna neestimat, nu zero."""
     if minutes is None:
-        return "Neestimat"
+        return tr('ui.planning.neestimat')
     h, m = divmod(int(minutes), 60)
     if h and m:
-        return f"{h} h {m:02d} min"
+        return tr('format.hours_minutes',hours=h,minutes=m)
     if h:
-        return f"{h} h"
-    return f"{m} min"
+        return tr('format.hours',hours=h)
+    return tr('format.minutes',minutes=m)
 
 
 def format_seconds(seconds: float) -> str:
@@ -78,7 +80,7 @@ def format_worked(seconds: float) -> str:
     if seconds <= 0:
         return ""
     if seconds < 60:
-        return "< 1 min"
+        return tr('format.less_minute')
     return format_minutes(round(seconds / 60))
 
 
@@ -86,8 +88,8 @@ def session_status_text(session, timer=None):
     """The persisted active flag is qualified by the unique current timer."""
     if session.status == 'active':
         if timer and timer.state and timer.state.session_id == session.id:
-            if timer.recovered: return 'De recuperat — ultima stare: ' + ('În pauză' if timer.state.state == 'paused' else 'În lucru')
-            return '▶ În lucru' if timer.running else 'Ⅱ În pauză'
-        return '⚠ De verificat (fără timer curent)'
+            if timer.recovered: return tr('status.recovered',state=tr('ui.session_ui.in_pauza') if timer.state.state == 'paused' else tr('ui.session_ui.in_lucru'))
+            return tr('domain.labels.in_lucru') if timer.running else tr('domain.labels.ii_in_pauza')
+        return tr('domain.labels.de_verificat_fara_timer_curent')
     label = SESSION_STATUS_LABELS[session.status]
-    return '▦ Rezervare · ' + label if session.status == 'planned' else label
+    return tr('status.booking',status=label) if session.status == 'planned' else label

@@ -1,4 +1,6 @@
 """Local meetings are calendar context, never work sessions or task nodes."""
+
+from ..i18n import tr
 from datetime import date
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -31,20 +33,20 @@ class MeetingSource(BaseModel):
     @field_validator('id')
     @classmethod
     def uuid(cls,value):
-        if not is_uuid(value):raise ValueError('UUID întâlnire invalid')
+        if not is_uuid(value):raise ValueError(tr('extra.domain.meeting.uuid_intalnire_invalid'))
         return value
 
     @field_validator('title')
     @classmethod
     def title_valid(cls,value):
-        if not value.strip() or len(value)>1000:raise ValueError('Titlu obligatoriu, maximum 1000 caractere')
+        if not value.strip() or len(value)>1000:raise ValueError(tr('extra.domain.meeting.titlu_obligatoriu_maximum_1000_caractere'))
         return value.strip()
 
     @model_validator(mode='after')
     def interval(self):
-        if self.end_at<=self.start_at:raise ValueError('Sfârșitul trebuie să fie după început')
+        if self.end_at<=self.start_at:raise ValueError(tr('extra.domain.meeting.sfarsitul_trebuie_sa_fie_dupa_inceput'))
         if self.all_day_start and self.all_day_end and self.all_day_end<=self.all_day_start:
-            raise ValueError('Interval all-day invalid; sfârșitul este exclusiv')
+            raise ValueError(tr('extra.domain.meeting.interval_all_day_invalid_sfarsitul_este_exclusiv'))
         return self
 
 class MeetingAction(BaseModel):
@@ -59,13 +61,13 @@ class MeetingAction(BaseModel):
     @field_validator('id','node_id')
     @classmethod
     def uuid(cls,value):
-        if value is not None and not is_uuid(value):raise ValueError('UUID acțiune invalid')
+        if value is not None and not is_uuid(value):raise ValueError(tr('extra.domain.meeting.uuid_actiune_invalid'))
         return value
 
     @field_validator('text')
     @classmethod
     def text_valid(cls,value):
-        if not value.strip():raise ValueError('Textul acțiunii este obligatoriu')
+        if not value.strip():raise ValueError(tr('extra.domain.meeting.textul_actiunii_este_obligatoriu'))
         return value.strip()
 
 class MeetingLocal(BaseModel):
@@ -75,11 +77,11 @@ class MeetingLocal(BaseModel):
 
     @model_validator(mode='after')
     def unique_actions(self):
-        if len({a.id for a in self.actions})!=len(self.actions):raise ValueError('Identificatori de acțiuni duplicați')
+        if len({a.id for a in self.actions})!=len(self.actions):raise ValueError(tr('extra.domain.meeting.identificatori_de_actiuni_duplicati'))
         return self
 
     @field_validator('linked_node_ids')
     @classmethod
     def ids(cls,value):
-        if any(not is_uuid(v) for v in value):raise ValueError('Referință la nod invalidă')
+        if any(not is_uuid(v) for v in value):raise ValueError(tr('extra.domain.meeting.referinta_la_nod_invalida'))
         return list(dict.fromkeys(value))

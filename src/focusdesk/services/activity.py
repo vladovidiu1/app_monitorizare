@@ -1,6 +1,8 @@
 """One local activity calculation model for cards, charts, calendar, tables and CSV."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 from bisect import bisect_left
 from collections import OrderedDict, Counter
 from dataclasses import dataclass, replace
@@ -19,11 +21,11 @@ from ..storage.atomic import atomic_write_text
 
 ALL_PROJECTS = '*'
 DEFINITIONS = {
-    'worked': 'Actual_seconds salvat, o singură dată pe sesiune; fără rollup părinte/copil. Ziua: started_actual_at, fallback start_at, în fusul workspace-ului.',
-    'planned': 'Durata rezervată la data start_at, fără cancelled/missed și fără timer pornit direct. Nu reprezintă muncă efectuată.',
-    'completed': 'Taskuri distincte cu tranziție la done în perioada aleasă. Redeschiderea nu anulează evenimentul; refinalizările aceluiași task se numără o singură dată.',
-    'overdue': 'Situație curentă: taskuri deschise, nearhivate, cu termen depășit acum. Nu este o reconstrucție istorică.',
-    'live': 'Separat de lucrat înregistrat: max(0, secunde timer - actual_seconds deja salvat pentru aceeași sesiune), atribuit zilei de început efectiv.',
+    'worked': tr('services.activity.actual_seconds_salvat_o_singura_data_pe_sesiune_fara_rollup_parinte_co'),
+    'planned': tr('services.activity.durata_rezervata_la_data_start_at_fara_cancelled_missed_si_fara_timer'),
+    'completed': tr('services.activity.taskuri_distincte_cu_tranzitie_la_done_in_perioada_aleasa_redeschidere'),
+    'overdue': tr('services.activity.situatie_curenta_taskuri_deschise_nearhivate_cu_termen_depasit_acum_nu'),
+    'live': tr('services.activity.separat_de_lucrat_inregistrat_max_0_secunde_timer_actual_seconds_deja'),
 }
 
 
@@ -77,7 +79,7 @@ class ActivityReport:
     statuses: dict
     legacy_done: int
     issues: tuple[str, ...] = ()
-    project_filter_label: str = 'Toate proiectele'
+    project_filter_label: str = tr('ui.activity_page.toate_proiectele')
 
     @property
     def worked(self): return sum(r.worked for r in self.rows)
@@ -106,11 +108,11 @@ class ActivityReport:
         first = first or min(days,default=date.today())
         last = last or max(days,default=first)
         span = (last-first).days+1
-        mode = 'Zile' if span <= 45 else 'Săptămâni' if span <= 180 else 'Luni'
+        mode = 'days' if span <= 45 else 'weeks' if span <= 180 else 'months'
         groups = {}
         for day,totals in sorted(days.items()):
-            start = day if mode == 'Zile' else day-timedelta(days=day.weekday()) if mode == 'Săptămâni' else day.replace(day=1)
-            end = start if mode == 'Zile' else start+timedelta(days=6) if mode == 'Săptămâni' else start.replace(day=calendar.monthrange(start.year,start.month)[1])
+            start = day if mode == 'days' else day-timedelta(days=day.weekday()) if mode == 'weeks' else day.replace(day=1)
+            end = start if mode == 'days' else start+timedelta(days=6) if mode == 'weeks' else start.replace(day=calendar.monthrange(start.year,start.month)[1])
             item = groups.setdefault(start,dict(first=max(first,start),last=min(last,end),worked=0,planned=0,live=0))
             for key in ('worked','planned','live'): item[key]+=totals[key]
         return mode,tuple(groups.values())
@@ -118,7 +120,7 @@ class ActivityReport:
     def top_projects(self,n=5):
         projects = sorted(self.projects.items(),key=lambda pair:(-pair[1]['worked'],pair[1]['name'].casefold(),pair[0] or ''))
         rows = [(data['name'],(pid,),data['worked']) for pid,data in projects[:n]]
-        if len(projects)>n: rows.append(('Restul',tuple(pid for pid,data in projects[n:]),sum(data['worked'] for pid,data in projects[n:])))
+        if len(projects)>n: rows.append((tr('activity.others'),tuple(pid for pid,data in projects[n:]),sum(data['worked'] for pid,data in projects[n:])))
         return tuple(rows)
 
     def with_live(self,live,delta):
@@ -138,19 +140,19 @@ class ActivityReport:
 
 
 def period_bounds(label,today,custom_first=None,custom_last=None):
-    days={'7 zile':7,'30 zile':30,'30 de zile':30,'90 zile':90,'90 de zile':90}.get(label)
+    days={'7d':7,'30d':30,'90d':90,'7 zile':7,'30 zile':30,'30 de zile':30,'90 zile':90,'90 de zile':90}.get(label)
     if days: return today-timedelta(days=days-1),today
-    if label=='Luna curentă': return today.replace(day=1),today.replace(day=calendar.monthrange(today.year,today.month)[1])
-    if label=='Interval personalizat':
+    if label in ('month','Luna curentă'): return today.replace(day=1),today.replace(day=calendar.monthrange(today.year,today.month)[1])
+    if label in ('custom','Interval personalizat'):
         if not custom_first or not custom_last or custom_first>custom_last:
-            raise ValueError('Alege un interval valid: începutul nu poate fi după sfârșit.')
+            raise ValueError(tr('services.activity.alege_un_interval_valid_inceputul_nu_poate_fi_dupa_sfarsit'))
         return custom_first,custom_last
     return None,None
 
 
 def project_filter_title(filters,nodes):
     chosen=filters.focus_projects if filters.focus_projects is not None else (None if filters.project_id==ALL_PROJECTS else (filters.project_id,))
-    return 'Toate proiectele' if chosen is None else ', '.join(nodes[pid].title if pid in nodes else 'Fără proiect' if pid is None else 'Proiect indisponibil' for pid in chosen)
+    return tr('ui.activity_page.toate_proiectele') if chosen is None else ', '.join(nodes[pid].title if pid in nodes else tr('ui.activity_page.fara_proiect') if pid is None else tr('common.project_unavailable') for pid in chosen)
 
 
 class ActivityModel:
@@ -255,8 +257,8 @@ class ActivityModel:
             extra=self.live_delta(live) if live and rid==live.session_id and in_day(wd) else 0
             if not (in_day(wd) or in_day(pd)):continue
             node=nodes.get(nid);project=nodes.get(pid)
-            rows.append(ActivityRow(rid,nid,node.title if node else 'Task indisponibil',pid,
-                project.title if project else 'Fără proiect',fact['status'],fact['start_at'],fact['end_at'],wd,pd,worked,planned,extra))
+            rows.append(ActivityRow(rid,nid,node.title if node else tr('ui.meetings.task_indisponibil'),pid,
+                project.title if project else tr('ui.activity_page.fara_proiect'),fact['status'],fact['start_at'],fact['end_at'],wd,pd,worked,planned,extra))
         complete=set()
         lo=bisect_left(self._events,(datetime.combine(first,time.min,tz),'')) if first else 0
         hi=bisect_left(self._events,(datetime.combine(last+timedelta(days=1),time.min,tz),'')) if last else len(self._events)
@@ -277,7 +279,7 @@ class ActivityModel:
                 late=(node.due_date is not None and node.due_date<now.astimezone(tz).date()) or (node.due_date is None and node.due_at is not None and node.due_at<now)
                 if late:overdue.add(nid)
         project_label=project_filter_title(filters,nodes)
-        report=ActivityReport(filters,self.ws.settings.timezone,tuple(sorted(rows,key=lambda r:(r.start_at,r.id),reverse=True)),frozenset(complete),frozenset(overdue),MappingProxyType(dict(counts)),legacy,tuple(f'{store.directory.name}: {len(store.errors)} înregistrări necitibile omise' for store in (self.ws.repo.sessions,self.ws.repo.history) if store.errors),project_filter_label=project_label)
+        report=ActivityReport(filters,self.ws.settings.timezone,tuple(sorted(rows,key=lambda r:(r.start_at,r.id),reverse=True)),frozenset(complete),frozenset(overdue),MappingProxyType(dict(counts)),legacy,tuple(tr('services.activity.inregistrari_necitibile_omise', store_directory_name=store.directory.name, len_store_errors=len(store.errors)) for store in (self.ws.repo.sessions,self.ws.repo.history) if store.errors),project_filter_label=project_label)
         self._cache[key]=report
         while len(self._cache)>12 or (len(self._cache)>1 and sum(len(r.rows) for r in self._cache.values())>20000):self._cache.popitem(last=False)
         return report
@@ -286,7 +288,7 @@ class ActivityModel:
         # Title-only events update text; numerical totals and membership remain unchanged.
         def label(row):
             node=self.ws.nodes.get(row.node_id);project=self.ws.nodes.get(row.project_id)
-            return replace(row,task=node.title if node else 'Task indisponibil',project=project.title if project else 'Fără proiect')
+            return replace(row,task=node.title if node else tr('ui.meetings.task_indisponibil'),project=project.title if project else tr('ui.activity_page.fara_proiect'))
         return replace(report,rows=tuple(label(row) for row in report.rows),project_filter_label=project_filter_title(report.filters,self.ws.nodes))
 
 
@@ -315,9 +317,9 @@ def activity_ledger(ws,days=30):
     return dict(days=report.days,projects=report.projects,sessions=rows,worked=report.worked,planned=report.planned)
 
 
-CSV_COLUMNS=('Tip','UUID sesiune','UUID task','Task','Proiect','Status sesiune','Început programat','Zi lucrată',
-             'Lucrat înregistrat (secunde)','Programat eligibil (secunde)','Live nesalvat (secunde)',
-             'Indicator','Valoare indicator','Definiție / filtre')
+CSV_COLUMNS=(tr('ui.dialogs.tip'),tr('activity.csv.session_id'),tr('activity.csv.task_id'),tr('ui.outlook_ui.task'),tr('ui.app.proiect'),tr('activity.csv.status'),tr('ui.activity_page.inceput_programat'),tr('services.activity.zi_lucrata'),
+             tr('services.activity.lucrat_inregistrat_secunde'),tr('extra.services.activity.programat_eligibil_secunde'),tr('extra.services.activity.live_nesalvat_secunde'),
+             tr('activity.csv.indicator'),tr('activity.csv.value'),tr('services.activity.definitie_filtre'))
 
 def safe_csv(value):
     if not isinstance(value,str):return value
@@ -331,14 +333,14 @@ def csv_text(report):
     def write(values):writer.writerow([safe_csv(v) for v in values])
     tz=ZoneInfo(report.timezone)
     first,last=report.filters.bounds()
-    interval=(first.strftime('%d.%m.%Y') if first else 'Începutul istoricului')+' — '+(last.strftime('%d.%m.%Y') if last else 'Tot istoricul')
-    context=f'Fus: {report.timezone}; Perioadă: {interval}; Proiecte: {report.project_filter_label}; finalizări distincte; restante și statusuri: situația curentă.'
+    interval=(first.strftime('%d.%m.%Y') if first else tr('services.activity.inceputul_istoricului'))+' — '+(last.strftime('%d.%m.%Y') if last else tr('ui.activity_page.tot_istoricul'))
+    context=tr('services.activity.fus_perioada_proiecte_finalizari_distincte_restante_si_statusuri_situa', report_timezone=report.timezone, interval=interval, report_project_filter_label=report.project_filter_label)
     for row in report.rows:
-        write(('Sesiune',row.id,row.node_id,row.task,row.project,SESSION_STATUS_LABELS[row.status],row.start_at.astimezone(tz).isoformat(),row.worked_day.isoformat(),row.worked,row.planned,row.live,'','',context))
-    for key,label,value in [('worked','Lucrat înregistrat',report.worked),('planned','Programat',report.planned),('completed','Taskuri finalizate distincte',len(report.completed_ids)),('overdue','Restante acum',len(report.overdue_ids)),('live','Live nesalvat',report.live)]:
-        write(('Indicator','','','','','','','','','','',label,value,DEFINITIONS[key]+' '+context))
-    write(('Definiție','','','','','','','','','','','','',f'Istoric incomplet: {report.legacy_done} taskuri finalizate curent nu au tranziție done în istoricul disponibil; nu se inventează date din updated_at. Statusurile și apartenența la proiect sunt curente.'))
-    if report.issues:write(('Definiție',*('',)*12,'Avertismente surse: '+'; '.join(report.issues)))
+        write((tr('ui.tab_journal.sesiune'),row.id,row.node_id,row.task,row.project,SESSION_STATUS_LABELS[row.status],row.start_at.astimezone(tz).isoformat(),row.worked_day.isoformat(),row.worked,row.planned,row.live,'','',context))
+    for key,label,value in [('worked',tr('ui.activity_page.lucrat_inregistrat'),report.worked),('planned',tr('ui.tab_versions.programat'),report.planned),('completed',tr('extra.services.activity.taskuri_finalizate_distincte'),len(report.completed_ids)),('overdue',tr('ui.activity_page.restante_acum'),len(report.overdue_ids)),('live',tr('ui.activity_page.live_nesalvat'),report.live)]:
+        write((tr('activity.csv.indicator'),'','','','','','','','','','',label,value,DEFINITIONS[key]+' '+context))
+    write((tr('services.activity.definitie'),'','','','','','','','','','','','',tr('services.activity.istoric_incomplet_taskuri_finalizate_curent_nu_au_tranzitie_done_in_is', report_legacy_done=report.legacy_done)))
+    if report.issues:write((tr('services.activity.definitie'),*('',)*12,tr('activity.csv.warnings',details='; '.join(report.issues))))
     return '\ufeff'+out.getvalue()
 
 

@@ -7,6 +7,8 @@ Timpul planificat nu este timp lucrat; doar `actual_seconds` conteaza.
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import time
 from dataclasses import dataclass
@@ -94,12 +96,12 @@ class TimerService:
             data, self._digest, _ = read_json(self.path)
             st = TimerState.model_validate(data)
         except Exception as exc:
-            self.recovery_error='Fișierul timerului este nevalid: '+str(exc)
+            self.recovery_error=tr('services.timer.fisierul_timerului_este_nevalid')+str(exc)
             log.warning("timer.json invalid: %s", exc)
             return
         self.state=st
         node=self.ws.nodes.get(st.node_id)
-        self.recovered=Recovered(st,node.title if node else 'Task indisponibil')
+        self.recovered=Recovered(st,node.title if node else tr('ui.meetings.task_indisponibil'))
         try:
             if st.session_draft and not self.ws.read_only:self._ensure_start()
             session=self.ws.repo.sessions.get(st.session_id)
@@ -116,14 +118,14 @@ class TimerService:
         self.ws.repo._require_writable()
         draft=SessionRecord.model_validate(st.session_draft)
         if draft.id!=st.session_id or draft.node_id!=st.node_id:
-            raise ValidationError('Planul timerului nu corespunde sesiunii. Verifică fișierul salvat.')
+            raise ValidationError(tr('services.timer.planul_timerului_nu_corespunde_sesiunii_verifica_fisierul_salvat'))
         try:current=self.ws.repo.sessions.get(st.session_id)
         except NotFoundError:current=None
         if current is None:self.ws.repo.sessions.save(draft)
         elif current.status=='planned' and current.model_dump(mode='json')==st.session_before:
             self.ws.repo.sessions.save(draft)
         elif current.status!='active' or current.started_actual_at!=st.started_at:
-            raise ExternalModificationError('Sesiunea a fost modificată după pornirea întreruptă. Nu o suprascriu.')
+            raise ExternalModificationError(tr('services.timer.sesiunea_a_fost_modificata_dupa_pornirea_intrerupta_nu_o_suprascriu'))
         st.session_draft=None;st.session_before=None
         self.recovery_error=None
 
@@ -132,9 +134,9 @@ class TimerService:
             return
         self.ws.repo._require_writable()
         if self.path.exists() and self._digest != sha256_file(self.path):
-            raise ExternalModificationError('Timerul a fost modificat extern. Reîncarcă workspace-ul.')
+            raise ExternalModificationError(tr('services.timer.timerul_a_fost_modificat_extern_reincarca_workspace_ul'))
         if self._digest is not None and not self.path.exists():
-            raise ExternalModificationError('Fișierul timerului a fost eliminat extern.')
+            raise ExternalModificationError(tr('services.timer.fisierul_timerului_a_fost_eliminat_extern'))
         candidate = self.state.model_copy(deep=True)
         candidate.heartbeat_at = utcnow()
         atomic_write_json(self.path, candidate.model_dump(mode="json"), keep_backup=False)
@@ -146,11 +148,11 @@ class TimerService:
         try:
             self.ws.repo._require_writable()
             if self.path.exists() and self._digest != sha256_file(self.path):
-                raise ExternalModificationError('Timer modificat extern; nu îl șterg.')
+                raise ExternalModificationError(tr('services.timer.timer_modificat_extern_nu_il_sterg'))
             self.path.unlink(missing_ok=True)
             self._digest = None
         except OSError as exc:
-            raise StorageError('Timerul nu a putut fi închis pe disc. Reia salvarea.') from exc
+            raise StorageError(tr('services.timer.timerul_nu_a_putut_fi_inchis_pe_disc_reia_salvarea')) from exc
 
     # ---- control ----------------------------------------------------
     def start(self, node_id: str, planned_session_id: str | None = None) -> SessionRecord:
@@ -158,14 +160,14 @@ class TimerService:
         if self.state is not None:
             if self.active and not self.state.finalization and self.state.node_id == node_id and (planned_session_id is None or planned_session_id == self.state.session_id):
                 return self.ws.repo.sessions.get(self.state.session_id)
-            raise ValidationError("Există deja o sesiune curentă, inclusiv în pauză. Încheie-o înainte să începi alta.")
+            raise ValidationError(tr('services.timer.exista_deja_o_sesiune_curenta_inclusiv_in_pauza_incheie_o_inainte_sa_i'))
         if self.path.exists():
-            raise ValidationError('Există un timer salvat de recuperat. Reîncarcă workspace-ul.')
+            raise ValidationError(tr('services.timer.exista_un_timer_salvat_de_recuperat_reincarca_workspace_ul'))
         node = self.ws.get(node_id)
         if node.kind != Kind.TASK:
-            raise ValidationError("Sesiunile se pornesc doar pentru task-uri.")
+            raise ValidationError(tr('extra.services.timer.sesiunile_se_pornesc_doar_pentru_task_uri'))
         if node.status in CLOSED_STATUSES:
-            raise ValidationError('Redeschide taskul înainte de a începe lucrul.')
+            raise ValidationError(tr('services.timer.redeschide_taskul_inainte_de_a_incepe_lucrul'))
         now = utcnow()
         session_before=None
         blockers = self.ws.unfinished_dependencies(node_id)
@@ -174,9 +176,9 @@ class TimerService:
         if planned_session_id:
             session = self.ws.repo.sessions.get(planned_session_id)
             if session.node_id != node_id:
-                raise ValidationError("Sesiunea planificată aparține altui task.")
+                raise ValidationError(tr('services.timer.sesiunea_planificata_apartine_altui_task'))
             if session.status != 'planned':
-                raise ValidationError('Poate fi pornită doar o rezervare programată, o singură dată.')
+                raise ValidationError(tr('services.timer.poate_fi_pornita_doar_o_rezervare_programata_o_singura_data'))
             session_before=session.model_dump(mode='json')
             session.status = "active"
         else:
@@ -281,13 +283,13 @@ class TimerService:
         self.ws.repo._require_writable()
         if self.state is None:
             if self._last_stopped is not None: return self._last_stopped.model_copy(deep=True)
-            raise ValidationError('Nu există o sesiune curentă.')
+            raise ValidationError(tr('services.timer.nu_exista_o_sesiune_curenta'))
         st=self.state
         if st.finalization is None:
             self.tick()
             now=stopped_at or utcnow()
             if now < st.started_at or now > utcnow():
-                raise ValidationError('Ora încheierii trebuie să fie între început și momentul curent.')
+                raise ValidationError(tr('services.timer.ora_incheierii_trebuie_sa_fie_intre_inceput_si_momentul_curent'))
             seconds=int(st.accumulated_seconds)
             if seconds > (now-st.started_at).total_seconds():
                 # Explicit recovered end caps saved work to the selected wall interval.
@@ -311,7 +313,7 @@ class TimerService:
         matches_done=(session.status=='done' and session.actual_seconds==plan['seconds'] and session.stopped_actual_at==now
                       and session.summary==(plan['summary'] or None) and session.started_actual_at==st.started_at)
         if plan.get('base') is not None and current!=plan['base'] and not matches_done:
-            raise ExternalModificationError('Timpul sau starea sesiunii au fost modificate extern. Nu suprascriu corecția.')
+            raise ExternalModificationError(tr('services.timer.timpul_sau_starea_sesiunii_au_fost_modificate_extern_nu_suprascriu_cor'))
         session.status='done';session.actual_seconds=plan['seconds'];session.stopped_actual_at=now
         if session.origin=='timer':session.end_at=max(now,session.start_at+timedelta(minutes=1))
         session.summary=plan['summary'] or None
@@ -339,9 +341,9 @@ class TimerService:
     def recover_session(self,session_id):
         """Explicitly adopt an orphan active record, never infer elapsed work."""
         self.ws.repo._require_writable()
-        if self.state or self.path.exists():raise ValidationError('Rezolvă mai întâi timerul curent.')
+        if self.state or self.path.exists():raise ValidationError(tr('services.timer.rezolva_mai_intai_timerul_curent'))
         session=self.ws.repo.sessions.get(session_id)
-        if session.status!='active':raise ValidationError('Selectează o înregistrare activă fără timer.')
+        if session.status!='active':raise ValidationError(tr('services.timer.selecteaza_o_inregistrare_activa_fara_timer'))
         self.state=TimerState(session_id=session.id,node_id=session.node_id,state='paused',
             accumulated_seconds=session.actual_seconds,started_at=session.started_actual_at or session.start_at)
         try:self._persist()
@@ -349,7 +351,7 @@ class TimerService:
             self.state=None
             raise
         node=self.ws.nodes.get(session.node_id)
-        self.recovered=Recovered(self.state,node.title if node else 'Task indisponibil')
+        self.recovered=Recovered(self.state,node.title if node else tr('ui.meetings.task_indisponibil'))
         self.ws.emit('timer_changed')
 
     def continue_recovered(self):
@@ -371,7 +373,7 @@ class TimerService:
         if self.state is None:
             return
         if self.state.finalization:
-            raise ValidationError('Încheierea a început deja. Reia salvarea, fără a elimina timpul salvat.')
+            raise ValidationError(tr('services.timer.incheierea_a_inceput_deja_reia_salvarea_fara_a_elimina_timpul_salvat'))
         try:
             session = self.ws.repo.sessions.get(self.state.session_id)
             session.status = "cancelled" if session.origin == "timer" else "planned"

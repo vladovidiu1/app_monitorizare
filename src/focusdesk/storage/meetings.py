@@ -1,4 +1,6 @@
 """Meeting JSON and Markdown, separate CAS baselines and disposable compact index."""
+
+from ..i18n import tr
 from pathlib import Path
 from threading import RLock
 from ..domain.common import is_uuid
@@ -14,9 +16,9 @@ class MeetingStore:
         self._entries=None;self._baselines={};self._mutex=RLock();self.issues=[];self.revision=0
 
     def path(self,mid,name):
-        if not is_uuid(mid) or name not in ('source.json','local.json','notes.md'):raise NotFoundError('Identificator de întâlnire invalid')
+        if not is_uuid(mid) or name not in ('source.json','local.json','notes.md'):raise NotFoundError(tr('storage.meetings.identificator_de_intalnire_invalid'))
         path=self.root/mid/name
-        if any(is_reparse_point(p) for p in (self.root,path.parent,path)):raise UnsafePathError('Cale întâlnire nesigură')
+        if any(is_reparse_point(p) for p in (self.root,path.parent,path)):raise UnsafePathError(tr('storage.meetings.cale_intalnire_nesigura'))
         ensure_path_fits(path);return path
 
     def invalidate(self):
@@ -26,9 +28,9 @@ class MeetingStore:
         path=self.path(mid,name)
         if not path.exists():
             if name=='local.json':self._baselines[(mid,name)]=None;return MeetingLocal()
-            raise NotFoundError('Întâlnirea nu mai este disponibilă')
+            raise NotFoundError(tr('storage.meetings.intalnirea_nu_mai_este_disponibila'))
         data,digest,_=read_json(path,allow_backup=False);value=model.model_validate(data)
-        if name=='source.json' and value.id!=mid:raise ValueError('UUID diferit de directorul întâlnirii')
+        if name=='source.json' and value.id!=mid:raise ValueError(tr('storage.meetings.uuid_diferit_de_directorul_intalnirii'))
         self._baselines[(mid,name)]=digest;return value
 
     def source(self,mid):
@@ -53,8 +55,8 @@ class MeetingStore:
         expected=self._baselines.get(key)
         if path.exists():
             if key not in self._baselines or sha256_file(path)!=expected:
-                raise ExternalModificationError('Întâlnirea sau notițele au fost modificate extern. Ciorna rămâne în editor; reîncarcă explicit înainte de înlocuire.')
-        elif expected is not None:raise ExternalModificationError('Fișierul întâlnirii a fost șters extern')
+                raise ExternalModificationError(tr('storage.meetings.intalnirea_sau_notitele_au_fost_modificate_extern_ciorna_ramane_in_edi'))
+        elif expected is not None:raise ExternalModificationError(tr('storage.meetings.fisierul_intalnirii_a_fost_sters_extern'))
         digest=atomic_write_text(path,value) if name=='notes.md' else atomic_write_json(path,value.model_dump(mode='json'))
         self._baselines[key]=digest
         if self._entries is not None:
@@ -90,14 +92,14 @@ class MeetingStore:
         with self._mutex:
             if self._entries is None:
                 cached={}
-                if is_reparse_point(self.root):raise UnsafePathError('Directorul întâlnirilor este o legătură nesigură')
+                if is_reparse_point(self.root):raise UnsafePathError(tr('storage.meetings.directorul_intalnirilor_este_o_legatura_nesigura'))
                 try:
-                    if is_reparse_point(self.cache.parent) or is_reparse_point(self.cache):raise UnsafePathError('Cache întâlniri nesigur')
+                    if is_reparse_point(self.cache.parent) or is_reparse_point(self.cache):raise UnsafePathError(tr('storage.meetings.cache_intalniri_nesigur'))
                     data,_,_=read_json(self.cache,allow_backup=False)
                     if data.get('version')==2 and checksum(data['entries'])==data['checksum']:cached=data['entries']
                 except Exception:pass
                 entries={};self.issues=[]
-                if is_reparse_point(self.root):raise UnsafePathError('Directorul întâlnirilor este o legătură nesigură')
+                if is_reparse_point(self.root):raise UnsafePathError(tr('storage.meetings.directorul_intalnirilor_este_o_legatura_nesigura'))
                 for folder in sorted(self.root.iterdir()) if self.root.exists() else []:
                     if not is_uuid(folder.name):continue
                     mid=folder.name

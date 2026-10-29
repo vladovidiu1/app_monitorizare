@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import os
 import re
@@ -79,7 +81,7 @@ def create_backup(ws: Workspace, *, full: bool = False, external_dir: Path | Non
         os.replace(tmp, final)
     except (OSError, zipfile.BadZipFile) as exc:
         tmp.unlink(missing_ok=True)
-        raise StorageError(f"Backup-ul a eșuat: {exc}") from exc
+        raise StorageError(tr('services.backup.backup_ul_a_esuat', exc=exc)) from exc
     result = BackupResult(final, kind, count)
     ext = external_dir or (Path(ws.settings.backup.external_dir) if ws.settings.backup.external_dir else None)
     if ext is not None:
@@ -130,6 +132,6 @@ def restore_backup_to_folder(zip_path: Path, dest: Path) -> Path:
     """Extrage intr-un folder NOU; nu suprascrie niciodata workspace-ul curent."""
     dest = Path(dest)
     if dest.exists() and any(dest.iterdir()):
-        raise StorageError("Folderul de destinație nu este gol.")
+        raise StorageError(tr('services.backup.folderul_de_destinatie_nu_este_gol'))
     safe_extract_zip(zip_path, dest)
     return dest

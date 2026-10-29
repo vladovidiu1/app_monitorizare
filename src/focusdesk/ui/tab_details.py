@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr, percent
+
 import tkinter as tk
 from datetime import time
 from tkinter import ttk
@@ -65,13 +67,13 @@ class DetailsTab(InspectorTab):
             r += 1
             return w
 
-        row("title", "Titlu", lambda p: ttk.Entry(p, textvariable=self.vars["title"]))
+        row("title", tr('ui.meetings.titlu'), lambda p: ttk.Entry(p, textvariable=self.vars["title"]))
         self.title_entry = self.rows["title"][1]
-        self.requester_field = row("requester", "Cine a solicitat", lambda p: ColleagueField(
+        self.requester_field = row("requester", tr('ui.tab_details.cine_a_solicitat'), lambda p: ColleagueField(
             p, lambda: self.app.ws, self._mark_dirty))
-        self.status_box = row("status", "Status", lambda p: ttk.Combobox(
+        self.status_box = row("status", tr('ui.tab_details.status'), lambda p: ttk.Combobox(
             p, textvariable=self.vars["status"], state="readonly", values=[STATUS_LABELS[s] for s in VISIBLE_STATUSES]))
-        self.prio_box = row("priority", "Prioritate", lambda p: ttk.Combobox(
+        self.prio_box = row("priority", tr('ui.meetings.prioritate'), lambda p: ttk.Combobox(
             p, textvariable=self.vars["priority"], state="readonly", values=[PRIORITY_LABELS[x] for x in Priority]))
 
         def due_frame(p):
@@ -79,59 +81,59 @@ class DetailsTab(InspectorTab):
             fields=ttk.Frame(fr)
             fields.pack(anchor="w",fill="x")
             ttk.Entry(fields, textvariable=self.vars["due"], width=12).pack(side="left")
-            ttk.Label(fields, text="ora").pack(side="left", padx=(8,2))
+            ttk.Label(fields, text=tr('common.hour')).pack(side="left", padx=(8,2))
             ttk.Entry(fields, textvariable=self.vars["due_time"], width=6).pack(side="left")
             actions=ttk.Frame(fr)
             actions.pack(anchor="w",pady=(4,0))
-            ttk.Button(actions,text="Azi",command=lambda:self._set_due("azi")).pack(side="left")
-            ttk.Button(actions,text="Mâine",command=lambda:self._set_due("mâine")).pack(side="left",padx=4)
+            ttk.Button(actions,text=tr('ui.tab_details.azi'),command=lambda:self._set_due("azi")).pack(side="left")
+            ttk.Button(actions,text=tr('ui.tab_details.maine'),command=lambda:self._set_due(tr('ui.tab_details.maine_2'))).pack(side="left",padx=4)
             from .design import button
-            button(actions,"",lambda:self._set_due(""),glyph="clear",tooltip="Elimină termenul",width=2).pack(side="left")
+            button(actions,"",lambda:self._set_due(""),glyph="clear",tooltip=tr('ui.tab_details.elimina_termenul'),width=2).pack(side="left")
             return fr
 
-        row("due", "Termen", due_frame)
+        row("due", tr('ui.meetings.termen'), due_frame)
 
         def est_frame(p):
             fr = ttk.Frame(p)
             ttk.Entry(fr, textvariable=self.vars["est"], width=9).pack(side="left")
-            ttk.Label(fr, text="rămas").pack(side="left", padx=(10, 2))
+            ttk.Label(fr, text=tr('ui.tab_details.ramas')).pack(side="left", padx=(10, 2))
             ttk.Entry(fr, textvariable=self.vars["rem"], width=9).pack(side="left")
             return fr
 
-        row("est", "Estimare", est_frame)
+        row("est", tr('ui.tab_details.estimare'), est_frame)
         self.agg_lbl = ttk.Label(f, text="", style="Muted.TLabel", wraplength=340, justify="left")
         self.agg_lbl.grid(row=r, column=0, columnspan=2, sticky="w", padx=8)
         r += 1
-        row("tags", "Etichete", lambda p: ttk.Entry(p, textvariable=self.vars["tags"]))
-        row("next", "Următorul pas", lambda p: ttk.Entry(p, textvariable=self.vars["next"]))
-        row("waiting", "Blocaj / motiv", lambda p: ttk.Entry(p, textvariable=self.vars["waiting"]))
-        row("review", "Dată de revenire", lambda p: ttk.Entry(p, textvariable=self.vars["review"], width=14),
+        row("tags", tr('ui.tab_details.etichete'), lambda p: ttk.Entry(p, textvariable=self.vars["tags"]))
+        row("next", tr('ui.tab_details.urmatorul_pas'), lambda p: ttk.Entry(p, textvariable=self.vars["next"]))
+        row("waiting", tr('ui.tab_details.blocaj_motiv'), lambda p: ttk.Entry(p, textvariable=self.vars["waiting"]))
+        row("review", tr('ui.tab_details.data_de_revenire'), lambda p: ttk.Entry(p, textvariable=self.vars["review"], width=14),
             sticky="w")
-        row("completed", "Dată finalizare", lambda p: ttk.Entry(p, textvariable=self.vars["completed"], width=14),
+        row("completed", tr('ui.tab_details.data_finalizare'), lambda p: ttk.Entry(p, textvariable=self.vars["completed"], width=14),
             sticky="w")
-        pin = ttk.Checkbutton(f, text="Prioritate pentru azi (max. 3)", variable=self.pin_var)
+        pin = ttk.Checkbutton(f, text=tr('ui.tab_details.prioritate_pentru_azi_max_3'), variable=self.pin_var)
         pin.grid(row=r, column=1, sticky="w", **pad)
         self.rows["pin"] = [pin]
         r += 1
 
         # Dependente si legaturi (se aplica imediat, nu fac parte din formular)
-        self.dep_frame = ttk.LabelFrame(f, text="Depinde de (dependențe)")
+        self.dep_frame = ttk.LabelFrame(f, text=tr('ui.tab_details.depinde_de_dependente'))
         self.dep_frame.grid(row=r, column=0, columnspan=2, sticky="ew", padx=8, pady=(10, 3))
         self.dep_list = tk.Listbox(self.dep_frame, height=3, activestyle="none", exportselection=False)
         self.dep_list.pack(side="left", fill="both", expand=True, padx=6, pady=6)
         dbtn = ttk.Frame(self.dep_frame)
         dbtn.pack(side="right", padx=6)
-        ttk.Button(dbtn, text="Adaugă…", command=self._add_dep).pack(fill="x", pady=2)
-        ttk.Button(dbtn, text="Elimină", command=self._remove_dep).pack(fill="x", pady=2)
+        ttk.Button(dbtn, text=tr('ui.tab_details.adauga'), command=self._add_dep).pack(fill="x", pady=2)
+        ttk.Button(dbtn, text=tr('ui.tab_details.elimina'), command=self._remove_dep).pack(fill="x", pady=2)
         r += 1
-        self.link_frame = ttk.LabelFrame(f, text="Legături către alte proiecte / task-uri (referințe, fără copii)")
+        self.link_frame = ttk.LabelFrame(f, text=tr('ui.tab_details.legaturi_catre_alte_proiecte_task_uri_referinte_fara_copii'))
         self.link_frame.grid(row=r, column=0, columnspan=2, sticky="ew", padx=8, pady=3)
         self.link_list = tk.Listbox(self.link_frame, height=3, activestyle="none", exportselection=False)
         self.link_list.pack(side="left", fill="both", expand=True, padx=6, pady=6)
         lbtn = ttk.Frame(self.link_frame)
         lbtn.pack(side="right", padx=6)
-        ttk.Button(lbtn, text="Adaugă…", command=self._add_link).pack(fill="x", pady=2)
-        ttk.Button(lbtn, text="Elimină", command=self._remove_link).pack(fill="x", pady=2)
+        ttk.Button(lbtn, text=tr('ui.tab_details.adauga'), command=self._add_link).pack(fill="x", pady=2)
+        ttk.Button(lbtn, text=tr('ui.tab_details.elimina'), command=self._remove_link).pack(fill="x", pady=2)
         r += 1
         self._dep_ids: list[str] = []
         self._link_ids: list[str] = []
@@ -146,9 +148,9 @@ class DetailsTab(InspectorTab):
         self.panes.pack_forget()
         bar.pack(side="bottom", fill="x")
         self.panes.pack(fill="both", expand=True)
-        self.save_btn = tb.Button(bar, text="Salvează (Ctrl+S)", command=self.save, bootstyle="primary")
+        self.save_btn = tb.Button(bar, text=tr('ui.tab_details.salveaza_ctrl_s'), command=self.save, bootstyle="primary")
         self.save_btn.pack(side="left")
-        ttk.Button(bar, text="Renunță la modificări", command=self.revert).pack(side="left", padx=8)
+        ttk.Button(bar, text=tr('ui.tab_details.renunta_la_modificari'), command=self.revert).pack(side="left", padx=8)
         self.state_lbl = ttk.Label(bar, text="", style="Muted.TLabel")
         self.state_lbl.pack(side="bottom", fill="x", pady=(6,0))
 
@@ -209,9 +211,9 @@ class DetailsTab(InspectorTab):
             return
         if not self._split_initialized:
             self._split_initialized = True
-            self.panes.sashpos(0, min(220, int(event.height * .4)))
-        elif self.panes.sashpos(0) > max(100, event.height - 240):
-            self.panes.sashpos(0, max(100, event.height - 240))
+            self.panes.sashpos(0, max(120, min(220, int(event.height * .4))))
+        elif self.panes.sashpos(0) > max(120, event.height - 240):
+            self.panes.sashpos(0, max(120, event.height - 240))
 
     def description_context(self):
         ws = self.app.ws
@@ -271,7 +273,7 @@ class DetailsTab(InspectorTab):
         for dep_id in node.depends_on_ids:
             dep = ws.nodes.get(dep_id)
             if dep is None:
-                label = f"(inexistent) {dep_id[:8]}"
+                label = tr('common.missing',id=dep_id[:8])
             else:
                 done = " ✓" if dep.status in (Status.DONE, Status.CANCELLED) else ""
                 label = f"{dep.title}{done}"
@@ -297,13 +299,13 @@ class DetailsTab(InspectorTab):
             return
         p = q.progress(node.id)
         if p.leaf_total == 0:
-            self.agg_lbl.configure(text="Fără task-uri frunză încă.")
+            self.agg_lbl.configure(text=tr('ui.tab_details.fara_task_uri_frunza_inca'))
             return
-        pct = f"{round(100 * p.ratio)}%" if p.ratio is not None else "—"
-        parts = [f"Progres agregat (task-uri frunză): {p.done}/{p.done + p.open} finalizate ({pct})."]
-        parts.append(f"Timp rămas estimat: {format_minutes(p.remaining_minutes) if p.remaining_minutes else 'Neestimat'}.")
+        pct = percent(round(100 * p.ratio)) if p.ratio is not None else "—"
+        parts = [tr('ui.tab_details.progres_agregat_task_uri_frunza_finalizate', p_done=p.done, p_done_p_open=p.done + p.open, pct=pct)]
+        parts.append(tr('ui.tab_details.timp_ramas_estimat', minutes_if_p_remaining_minutes_else_neestimat=format_minutes(p.remaining_minutes) if p.remaining_minutes else tr('ui.planning.neestimat')))
         if p.unestimated:
-            parts.append(f"{p.unestimated} task-uri deschise sunt neestimate.")
+            parts.append(tr('ui.tab_details.task_uri_deschise_sunt_neestimate', p_unestimated=p.unestimated))
         self.agg_lbl.configure(text=" ".join(parts))
 
     # ---- dirty tracking ---------------------------------------------
@@ -324,7 +326,7 @@ class DetailsTab(InspectorTab):
 
     def _update_state(self, text: str | None = None, error: bool = False) -> None:
         if text is None:
-            text = "Modificări nesalvate" if self._dirty else ""
+            text = tr('ui.tab_details.modificari_nesalvate') if self._dirty else ""
         color = error_color(self) if error or self._dirty else muted_color(self)
         self.state_lbl.configure(text=text, foreground=color)
 
@@ -340,7 +342,7 @@ class DetailsTab(InspectorTab):
         changes: dict = {}
         title = v["title"].get().strip()
         if not title:
-            raise ValueError("Titlul nu poate fi gol.")
+            raise ValueError(tr('ui.tab_details.titlul_nu_poate_fi_gol'))
         if title != node.title:
             changes["title"] = title
         if node.kind != Kind.FOLDER:
@@ -361,7 +363,7 @@ class DetailsTab(InspectorTab):
         d = parse_date(v["due"].get(), today)
         t = parse_time(v["due_time"].get())
         if d is None and t is not None:
-            raise ValueError("Ora termenului necesită și o dată.")
+            raise ValueError(tr('ui.tab_details.ora_termenului_necesita_si_o_data'))
         if d is None:
             new_due = (None, None)
         elif t is None:
@@ -396,7 +398,7 @@ class DetailsTab(InspectorTab):
                 changes["completed_at"] = (local_to_utc(done_day, old_time, self.app.ws.settings.timezone)
                                            if done_day else None)
             elif done_day is not None:
-                raise ValueError("Data finalizării se poate seta doar pentru task-uri finalizate sau anulate.")
+                raise ValueError(tr('ui.tab_details.data_finalizarii_se_poate_seta_doar_pentru_task_uri_finalizate_sau_anu'))
         pinned = today if self.pin_var.get() else None
         current_pin = node.pinned_today if node.pinned_today == today else None
         if pinned != current_pin:
@@ -422,14 +424,14 @@ class DetailsTab(InspectorTab):
             if desc_changed:
                 ws.set_description(node.id, desc)
 
-        if not self.app.run_write(write, success_text="Salvat"):
-            self._update_state("Salvarea a eșuat", error=True)
+        if not self.app.run_write(write, success_text=tr('ui.tab_details.salvat')):
+            self._update_state(tr('ui.tab_details.salvarea_a_esuat'), error=True)
             return False
         self._orig_desc = desc
         self._dirty = False
         self.app.after_inspector_save(node.id)
         self.load(ws.get(node.id))
-        self._update_state("Salvat")
+        self._update_state(tr('ui.tab_details.salvat'))
         return True
 
     def revert(self) -> None:
@@ -444,7 +446,7 @@ class DetailsTab(InspectorTab):
             return
         node = self.app.ws.get(self.node_id)
         exclude = {node.id, *node.depends_on_ids}
-        picked = NodePickerDialog(self, self.app.ws, "Depinde de…", exclude=exclude, only_tasks=True).run()
+        picked = NodePickerDialog(self, self.app.ws, tr('ui.tab_details.depinde_de'), exclude=exclude, only_tasks=True).run()
         if picked:
             self.app.run_write(lambda: self.app.ws.add_dependency(node.id, picked), refresh=True)
 
@@ -459,7 +461,7 @@ class DetailsTab(InspectorTab):
             return
         node = self.app.ws.get(self.node_id)
         exclude = {node.id, *node.related_node_ids}
-        picked = NodePickerDialog(self, self.app.ws, "Legătură către…", exclude=exclude).run()
+        picked = NodePickerDialog(self, self.app.ws, tr('ui.tab_details.legatura_catre'), exclude=exclude).run()
         if picked:
             self.app.run_write(lambda: self.app.ws.add_related(node.id, picked), refresh=True)
 

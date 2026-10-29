@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from datetime import date, timedelta
 
 from ..domain.models import Kind, Node
@@ -61,9 +63,9 @@ class RecurrenceService:
         self.ws.repo._require_writable()
         t = self.ws.repo.recurrences.get(template_id)
         if not t.active:
-            raise ValidationError("Șablonul este dezactivat.")
+            raise ValidationError(tr('services.recurrence.sablonul_este_dezactivat'))
         if not t.occurs_on(day):
-            raise ValidationError("Șablonul nu se aplică în această zi.")
+            raise ValidationError(tr('services.recurrence.sablonul_nu_se_aplica_in_aceasta_zi'))
         for n in self.ws.nodes.values():
             if n.recurrence_template_id == t.id and n.occurrence_date == day:
                 self._record(t, day)

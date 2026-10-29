@@ -1,6 +1,8 @@
 """FocusDesk Light: tokens, styles and local MIT icons. No I/O over the network."""
 from __future__ import annotations
 
+from ..i18n import tr
+
 from dataclasses import dataclass
 import tkinter as tk
 import tkinter.font as tkfont
@@ -161,11 +163,11 @@ def _accessible_button(event):
     if getattr(widget,'_focusdesk_accessible',False):
         return
     text=str(widget.cget('text'))
-    if text.startswith(('Șterge','Golește coșul')):
+    if text.startswith((tr('ui.design.sterge'),tr('ui.design.goleste_cosul'))):
         widget.configure(style='Danger.TButton')
-    labels={'…':('search','Alege sau caută'), '✕':('clear','Elimină selecția'),
-        '▲':('up','Mută mai sus'), '▼':('down','Mută mai jos'),
-        '◀':('left','Înapoi / scoate un nivel'), '▶':('right','Înainte / creează un subnivel')}
+    labels={'…':('search',tr('ui.design.alege_sau_cauta')), '✕':('clear',tr('ui.design.elimina_selectia')),
+        '▲':('up',tr('ui.design.muta_mai_sus')), '▼':('down',tr('ui.design.muta_mai_jos')),
+        '◀':('left',tr('ui.design.inapoi_scoate_un_nivel')), '▶':('right',tr('ui.design.inainte_creeaza_un_subnivel'))}
     if text.endswith('…') and text not in labels:
         widget.configure(text=text[:-1])
     if text in labels:

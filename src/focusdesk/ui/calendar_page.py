@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from datetime import date, datetime, timedelta
 from tkinter import filedialog, ttk
@@ -30,22 +32,22 @@ class PlanTab(InspectorTab):
         self._ids: dict[str, SessionRecord] = {}
         self.avail_lbl = ttk.Label(self, text="", style="Muted.TLabel", wraplength=400, justify="left")
         self.avail_lbl.pack(anchor="w", padx=8, pady=(8, 2))
-        self.tv, frame = make_tree(self, [("when", "Interval", 140), ("status", "Status", 80), ("worked", "Lucrat", 60),
-                                          ("cal", "Calendar", 170)], height=8)
+        self.tv, frame = make_tree(self, [("when", tr('ui.planning.interval'), 140), ("status", tr('ui.tab_details.status'), 80), ("worked", tr('ui.dashboard.lucrat'), 60),
+                                          ("cal", tr('ui.outlook_ui.calendar'), 170)], height=8)
         frame.pack(fill="both", expand=True, padx=8)
         self.tv.tag_configure("past", foreground=muted_color(self))
         self.tv.tag_configure("bad", foreground=error_color(self))
         r1 = ttk.Frame(self)
         r1.pack(fill="x", padx=8, pady=6)
         self.btns: list[ttk.Button] = []
-        for text, cmd in (("Programează…", self._new), ("Modifică…", self._edit), ("Anulează", self._cancel),
-                          ("Asistată…", self._assist)):
+        for text, cmd in ((tr('ui.calendar_page.programeaza'), self._new), (tr('ui.calendar_page.modifica'), self._edit), (tr('ui.meetings.anuleaza'), self._cancel),
+                          (tr('ui.calendar_page.asistata'), self._assist)):
             b = ttk.Button(r1, text=text, command=cmd)
             b.pack(side="left", padx=2)
             self.btns.append(b)
         r2 = ttk.Frame(self)
         r2.pack(fill="x", padx=8)
-        ttk.Button(r2, text="Exportă ICS (viitoare)…", command=self._export).pack(side="left", padx=2)
+        ttk.Button(r2, text=tr('ui.calendar_page.exporta_ics_viitoare'), command=self._export).pack(side="left", padx=2)
         self.extra_row = ttk.Frame(self)
         self.extra_row.pack(fill="x", padx=8, pady=(4, 0))
         self.detail = ttk.Label(self, text="", style="Muted.TLabel", wraplength=400, justify="left")
@@ -55,14 +57,14 @@ class PlanTab(InspectorTab):
         self._build_extra()
 
     def _session_menu(self,parent):
-        button=ttk.Menubutton(parent,text='Sesiune ▾')
+        button=ttk.Menubutton(parent,text=tr('ui.calendar_page.sesiune'))
         menu=tk.Menu(button,tearoff=False)
-        for text,command in [('Începe rezervarea',self._start),('Recuperează sesiunea…',self._recover),('Corectează timpul…',self._correct)]:
+        for text,command in [(tr('ui.calendar_page.incepe_rezervarea'),self._start),(tr('ui.calendar_page.recupereaza_sesiunea'),self._recover),(tr('ui.calendar_page.corecteaza_timpul'),self._correct)]:
             menu.add_command(label=text,command=command)
         button.configure(menu=menu);button.pack(side='left',padx=2)
 
     def _build_extra(self) -> None:
-        ttk.Button(self.extra_row, text="Sincronizează cu Outlook",
+        ttk.Button(self.extra_row, text=tr('ui.calendar_page.sincronizeaza_cu_outlook'),
                    command=lambda: self.app.outlook.sync()).pack(side="left", padx=2)
 
     def applies_to(self, node: Node) -> bool:
@@ -124,14 +126,14 @@ class PlanTab(InspectorTab):
     def _start(self):
         s=self._selected()
         if s and s.status=='planned':self.app.start_session(s.node_id,s.id)
-        else:show_info(self,'Selectează o rezervare programată.')
+        else:show_info(self,tr('ui.calendar_page.selecteaza_o_rezervare_programata'))
 
     def _edit(self) -> None:
         s = self._selected()
         if s is None:
             return
         if s.status != "planned":
-            show_info(self, "Se pot modifica doar sesiunile planificate.")
+            show_info(self, tr('ui.calendar_page.se_pot_modifica_doar_sesiunile_planificate'))
             return
         if ManualSessionDialog(self, self.app, session=s).run():
             self._refresh()
@@ -140,7 +142,7 @@ class PlanTab(InspectorTab):
         s = self._selected()
         if s is None or s.status not in ("planned",):
             return
-        if confirm(self, "Anulezi sesiunea? Dacă este în Outlook, anularea se va aplica la următoarea sincronizare."):
+        if confirm(self, tr('ui.calendar_page.anulezi_sesiunea_daca_este_in_outlook_anularea_se_va_aplica_la_urmatoa')):
             if self.app.run_write(lambda: self.app.sessions.cancel(s.id)):
                 self._refresh()
 
@@ -171,21 +173,22 @@ class CalendarPage(ttk.Frame):
         self._outlook_error = ""
         top = ttk.Frame(self)
         top.pack(fill="x", padx=12, pady=(10, 2))
-        ttk.Label(top, text="Calendar", style="Title.TLabel").pack(side="left")
-        self.days_var = tk.StringVar(value="14 zile")
-        box = ttk.Combobox(top, textvariable=self.days_var, values=["7 zile", "14 zile", "30 zile"], state="readonly",
+        ttk.Label(top, text=tr('ui.outlook_ui.calendar'), style="Title.TLabel").pack(side="left")
+        self.days_var = tk.StringVar(value=tr('calendar.horizon.days',days=14))
+        box = ttk.Combobox(top, textvariable=self.days_var, values=[tr('calendar.horizon.days',days=days) for days in (7,14,30)], state="readonly",
                            width=9)
+        self.horizon_box=box
         box.pack(side="right")
         box.bind("<<ComboboxSelected>>", lambda _e: self.refresh())
-        ttk.Label(top, text="Orizont:").pack(side="right", padx=4)
+        ttk.Label(top, text=tr('ui.calendar_page.orizont')).pack(side="right", padx=4)
         self.hint = ttk.Label(self, text="", style="Muted.TLabel", wraplength=900, justify="left")
         self.hint.pack(fill="x", padx=12)
         bar = ttk.Frame(self)
         bar.pack(fill="x", padx=12, pady=6)
         self.action_btns: list[ttk.Button] = []
-        for text, cmd in (("Programare manuală…", self._manual), ("Planificare asistată…", self._assist),
-                          ("Modifică…", self._edit), ("Anulează rezervarea", self._cancel),
-                          ("Exportă ICS…", self._export), ("Task-uri recurente…", self._recurrence)):
+        for text, cmd in ((tr('ui.calendar_page.programare_manuala'), self._manual), (tr('ui.app.planificare_asistata'), self._assist),
+                          (tr('ui.calendar_page.modifica'), self._edit), (tr('ui.calendar_page.anuleaza_rezervarea'), self._cancel),
+                          (tr('ui.calendar_page.exporta_ics'), self._export), ("Task-uri recurente…", self._recurrence)):
             b = ttk.Button(bar, text=text, command=cmd)
             b.pack(side="left", padx=2)
             self.action_btns.append(b)
@@ -197,11 +200,11 @@ class CalendarPage(ttk.Frame):
         wrap.pack(fill="both", expand=True, padx=12, pady=(0, 10))
         self.tv = ttk.Treeview(wrap, columns=("time", "task", "status", "cal"), show="tree headings",
                                selectmode="browse")
-        self.tv.heading("#0", text="Zi", anchor="w")
-        self.tv.heading("time", text="Interval", anchor="w")
-        self.tv.heading("task", text="Task", anchor="w")
-        self.tv.heading("status", text="Status", anchor="w")
-        self.tv.heading("cal", text="Calendar", anchor="w")
+        self.tv.heading("#0", text=tr('ui.settings_dialog.zi'), anchor="w")
+        self.tv.heading("time", text=tr('ui.planning.interval'), anchor="w")
+        self.tv.heading("task", text=tr('ui.outlook_ui.task'), anchor="w")
+        self.tv.heading("status", text=tr('ui.tab_details.status'), anchor="w")
+        self.tv.heading("cal", text=tr('ui.outlook_ui.calendar'), anchor="w")
         self.tv.column("#0", width=170, stretch=False)
         self.tv.column("time", width=110, stretch=False)
         self.tv.column("task", width=330)
@@ -223,9 +226,9 @@ class CalendarPage(ttk.Frame):
 
     def _build_extra(self) -> None:
         """Butoane de integrare Outlook."""
-        for text, cmd in (("Reîncarcă Outlook", lambda: self.refresh(force_outlook=True)),
-                          ("Testează Outlook…", lambda: self.app.outlook.test()),
-                          ("Sincronizează cu Outlook", lambda: self._sync()),
+        for text, cmd in ((tr('ui.calendar_page.reincarca_outlook'), lambda: self.refresh(force_outlook=True)),
+                          (tr('ui.calendar_page.testeaza_outlook'), lambda: self.app.outlook.test()),
+                          (tr('ui.calendar_page.sincronizeaza_cu_outlook'), lambda: self._sync()),
                           ("Conflicte…", lambda: self._conflicts())):
             ttk.Button(self.extra_bar, text=text, command=cmd).pack(side="left", padx=2)
 
@@ -235,13 +238,13 @@ class CalendarPage(ttk.Frame):
     def _conflicts(self) -> None:
         n = len(self.app.outlook.conflicts())
         if not n:
-            show_info(self, "Nu există conflicte cu Outlook.")
+            show_info(self, tr('ui.calendar_page.nu_exista_conflicte_cu_outlook'))
             return
         ConflictsDialog(self, self.app).run()
         self.refresh()
 
     def horizon(self) -> int:
-        return int(self.days_var.get().split()[0])
+        return (7,14,30)[max(0,self.horizon_box.current())]
 
     def refresh(self, *, force_outlook: bool = False) -> None:
         app = self.app
@@ -270,7 +273,7 @@ class CalendarPage(ttk.Frame):
                     return
                 self._outlook_loading_key = None
                 self._outlook_key, self._outlook_events = outlook_key, []
-                self._outlook_error = f"Nu s-au putut citi ședințele Outlook: {exc}"
+                self._outlook_error = tr('ui.calendar_page.nu_s_au_putut_citi_sedintele_outlook', exc=exc)
                 self.refresh()
 
             app.outlook.get_calendar_events(first, last, loaded, failed)
@@ -296,9 +299,9 @@ class CalendarPage(ttk.Frame):
             work = app.ws.settings.work_hours.get(str(d.weekday()))
             working = bool(work and work.enabled and d not in app.ws.settings.holidays)
             if items or outlook_items or d == today:
-                label = long_date(d) + ("  (azi)" if d == today else "")
+                label = long_date(d) + (tr('common.today_suffix') if d == today else "")
                 if not working:
-                    label += "  · nelucrătoare"
+                    label += tr('ui.calendar_page.nelucratoare')
                 node = self.tv.insert("", "end", iid=f"day:{d.isoformat()}", text=label, open=True, tags=("day",))
                 agenda = [(s.start_at, "session", s) for s in items]
                 agenda += [(event.start, "outlook", event) for event in outlook_items]
@@ -319,16 +322,16 @@ class CalendarPage(ttk.Frame):
                     else:
                         event = item
                         a, b = utc_to_local(event.start, tz), utc_to_local(event.end, tz)
-                        interval = "Toată ziua" if event.all_day else f"{a:%H:%M}–{b:%H:%M}"
+                        interval = tr('ui.calendar_page.toata_ziua') if event.all_day else f"{a:%H:%M}–{b:%H:%M}"
                         self.tv.insert(node, "end", iid=f"outlook:{d.isoformat()}:{index}",
-                                       values=(interval, event.subject or "Ședință Outlook", "Outlook", "Outlook"))
+                                       values=(interval, event.subject or tr('ui.calendar_page.sedinta_outlook'), tr('ui.outlook_ui.outlook'), tr('ui.outlook_ui.outlook')))
                 if not items and not outlook_items:
-                    self.tv.insert(node, "end", values=("", "Nicio sesiune", "", ""))
+                    self.tv.insert(node, "end", values=("", tr('ui.calendar_page.nicio_sesiune'), "", ""))
             d += timedelta(days=1)
         self.tv.selection_set([i for i in selected if self.tv.exists(i)])
         self.tv.yview_moveto(scroll)
         self.tv.xview_moveto(horizontal)
-        hint = app.availability_hint() + "  Timpul planificat nu este timp lucrat."
+        hint = app.availability_hint() + tr('ui.calendar_page.timpul_planificat_nu_este_timp_lucrat')
         if self._outlook_error:
             hint += "  " + self._outlook_error
         self.hint.configure(text=hint)
@@ -365,12 +368,12 @@ class CalendarPage(ttk.Frame):
     def _start(self):
         s=self._selected()
         if s and s.status=='planned':self.app.start_session(s.node_id,s.id)
-        else:show_info(self,'Selectează o rezervare programată.')
+        else:show_info(self,tr('ui.calendar_page.selecteaza_o_rezervare_programata'))
 
     def _edit(self) -> None:
         s = self._selected()
         if s is None or s.status != "planned":
-            show_info(self, "Selectează o sesiune planificată.")
+            show_info(self, tr('ui.calendar_page.selecteaza_o_sesiune_planificata'))
             return
         if ManualSessionDialog(self, self.app, session=s).run():
             self._changed()
@@ -378,9 +381,9 @@ class CalendarPage(ttk.Frame):
     def _cancel(self) -> None:
         s = self._selected()
         if s is None or s.status not in ("planned",):
-            show_info(self, "Selectează o sesiune planificată.")
+            show_info(self, tr('ui.calendar_page.selecteaza_o_sesiune_planificata'))
             return
-        if confirm(self, "Anulezi sesiunea selectată?"):
+        if confirm(self, tr('ui.calendar_page.anulezi_sesiunea_selectata')):
             if self.app.run_write(lambda: self.app.sessions.cancel(s.id)):
                 self._changed()
 

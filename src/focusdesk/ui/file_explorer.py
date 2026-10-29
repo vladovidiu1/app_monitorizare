@@ -1,6 +1,10 @@
 """Lazy disk tree. Workers return metadata; all Tk access stays on the UI thread."""
 from __future__ import annotations
 
+from ..i18n import datetime_text
+
+from ..i18n import tr
+
 from collections import OrderedDict
 from datetime import datetime
 import hashlib
@@ -37,15 +41,15 @@ class FileExplorer(ttk.Frame):
         self._active = False
         self._poll_job = self._refresh_job = None
         self._poll_offset = 0
-        self.tv, frame = make_tree(self, [("type", "Tip", px(self,65)), ("size", "Dimensiune", px(self,80)),
-                                          ("modified", "Modificat", px(self,135)), ("state", "Stare", px(self,110))],
+        self.tv, frame = make_tree(self, [("type", tr('ui.dialogs.tip'), px(self,65)), ("size", tr('ui.file_picker.dimensiune'), px(self,80)),
+                                          ("modified", tr('ui.tab_versions.modificat'), px(self,135)), ("state", tr('ui.meetings.stare'), px(self,110))],
                                    show_tree=True, height=9, selectmode="extended")
-        self.tv.heading("#0", text="Nume", anchor="w")
+        self.tv.heading("#0", text=tr('ui.file_picker.nume'), anchor="w")
         self.tv.column("#0", width=px(self,200), minwidth=px(self,120), stretch=True)
         self.tv.column("type", stretch=False)
         frame.pack(fill="both", expand=True)
         self.tv.tag_configure("bad", foreground=error_color(self))
-        self.status = ttk.Label(self, style="Muted.TLabel", text="Extinde un folder pentru a-l explora.", wraplength=500)
+        self.status = ttk.Label(self, style="Muted.TLabel", text=tr('ui.file_explorer.extinde_un_folder_pentru_a_l_explora'), wraplength=500)
         self.status.pack(fill="x", pady=(4, 0))
         self.tv.bind("<<TreeviewOpen>>", self._opened)
         self.tv.bind("<<TreeviewSelect>>", lambda _e: self.on_select())
@@ -101,7 +105,7 @@ class FileExplorer(ttk.Frame):
             if source.key.startswith("link-"):
                 if links is None:
                     links = "links"
-                    self.tv.insert("", "end", iid=links, text="Legături externe / alte referințe", open=True)
+                    self.tv.insert("", "end", iid=links, text=tr('ui.file_explorer.legaturi_externe_alte_referinte'), open=True)
                 parent = links
             else:
                 parent = ""
@@ -110,7 +114,7 @@ class FileExplorer(ttk.Frame):
             self.rows[iid] = dict(root=source.path, entry=entry, source=source)
             opened = iid in expanded if self._restore else source.is_dir
             self.tv.insert(parent, "end", iid=iid, text=source.label, open=opened,
-                           values=("Folder" if source.is_dir else "Fișier", "—", "—", source.error or "Neîncărcat"),
+                           values=(tr('ui.file_picker.folder') if source.is_dir else tr('ui.tab_versions.fisier'), "—", "—", source.error or tr('ui.file_explorer.neincarcat')),
                            tags=("bad",) if source.error else ())
             if source.path and source.is_dir:
                 self._hint(iid)
@@ -119,7 +123,7 @@ class FileExplorer(ttk.Frame):
     def _hint(self, iid):
         key = iid + ":hint"
         if not self.tv.get_children(iid):
-            self.tv.insert(iid, "end", iid=key, text="Extinde pentru încărcare…")
+            self.tv.insert(iid, "end", iid=key, text=tr('ui.file_explorer.extinde_pentru_incarcare'))
 
     def _mapped(self):
         if not self.ws or not self._visible():
@@ -240,7 +244,7 @@ class FileExplorer(ttk.Frame):
             row = self.rows[iid]
             root, path = row["root"], row["entry"].path
             generation = self._generation
-            self.status.configure(text="Se citesc directoarele deschise…")
+            self.status.configure(text=tr('ui.file_explorer.se_citesc_directoarele_deschise'))
 
             def work(token, root=root, path=path):
                 token.check()
@@ -261,7 +265,7 @@ class FileExplorer(ttk.Frame):
                         # Legacy references remain manageable if a file disappeared from a listed directory.
                         present = {normalized_file_key(child.path) for child in children}
                         children = [*children, *(DirectoryEntry(path, is_dir, None, state="missing",
-                                                               detail="Referință existentă; fișierul lipsește de pe disc.")
+                                                               detail=tr('ui.file_explorer.referinta_existenta_fisierul_lipseste_de_pe_disc'))
                                                 for path, is_dir in self.references
                                                 if normalized_file_key(path.parent) == normalized_file_key(entry.path)
                                                 and normalized_file_key(path) not in present)]
@@ -274,9 +278,9 @@ class FileExplorer(ttk.Frame):
                     self._restore_position()
                 self._drain()
                 if not self.requests and not self._queue:
-                    self.status.configure(text="Unele directoare sunt indisponibile; selectează rândul pentru detalii." if
+                    self.status.configure(text=tr('ui.file_explorer.unele_directoare_sunt_indisponibile_selecteaza_randul_pentru_detalii') if
                                           any(row.get("error") for row in self.rows.values()) else
-                                          "Actualizat de pe disc · F5 pentru directoarele deschise")
+                                          tr('ui.file_explorer.actualizat_de_pe_disc_f5_pentru_directoarele_deschise'))
 
             def failed(error, iid=iid, generation=generation):
                 if not self._valid(generation, iid):
@@ -286,7 +290,7 @@ class FileExplorer(ttk.Frame):
                 self.tv.set(iid, "state", str(error))
                 self.tv.item(iid, tags=("bad",))
                 # Keep old visible children on transient errors; never present them as fresh.
-                self.status.configure(text=f"Folder indisponibil; celelalte surse rămân accesibile. {error}")
+                self.status.configure(text=tr('ui.file_explorer.folder_indisponibil_celelalte_surse_raman_accesibile', error=error))
                 self._drain()
 
             self.requests[iid] = self.app.bridge.submit(work, accept, failed, name="files-list")
@@ -298,13 +302,13 @@ class FileExplorer(ttk.Frame):
         row = self.rows[iid]
         entry = row["entry"]
         try:
-            modified = datetime.fromtimestamp(entry.modified_ns / 1e9).strftime("%d.%m.%Y %H:%M") if entry.modified_ns is not None else "—"
+            modified = datetime_text(datetime.fromtimestamp(entry.modified_ns / 1e9)) if entry.modified_ns is not None else "—"
         except (ValueError, OverflowError, OSError):
-            modified = "Dată indisponibilă"
-        values = ("Legătură" if entry.is_link else "Folder" if entry.is_dir else entry.path.suffix or "Fișier",
+            modified = tr('ui.file_explorer.data_indisponibila')
+        values = (tr('ui.meetings.legatura') if entry.is_link else tr('ui.file_picker.folder') if entry.is_dir else entry.path.suffix or tr('ui.tab_versions.fisier'),
                   format_size(entry.size_bytes) if entry.size_bytes is not None else "—",
                   modified,
-                  entry.detail or "Pe disc")
+                  entry.detail or tr('ui.file_explorer.pe_disc'))
         options = dict(values=values, tags=("bad",) if entry.state != "ready" else ())
         if tuple(self.tv.item(iid, "values")) != values or self.tv.item(iid, "tags"):
             self.tv.item(iid, **options)
@@ -357,7 +361,7 @@ class FileExplorer(ttk.Frame):
             if expandable and self.tv.item(iid, "open") and (previous is None or iid not in self.contents):
                 self._request(iid)
         if len(entries) > limit:
-            text = f"Încarcă următoarele {self.PAGE} · {min(limit,len(entries))} din {len(entries)}"
+            text = tr('ui.file_explorer.incarca_urmatoarele_din', self_page=self.PAGE, min_limit_len_entries=min(limit,len(entries)), len_entries=len(entries))
             if self.tv.exists(more):
                 self.tv.item(more, text=text)
             else:

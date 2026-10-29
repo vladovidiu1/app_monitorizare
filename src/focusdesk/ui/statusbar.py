@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from datetime import datetime
 from tkinter import ttk
@@ -27,15 +29,15 @@ class StatusBar(ttk.Frame):
         lbl.configure(text=text, foreground=color or muted_color(self))
 
     def set_workspace(self, name: str, path: str, read_only: bool) -> None:
-        text = f"Workspace: {name} — {path}"
+        text = tr('ui.statusbar.workspace', name=name, path=path)
         if read_only:
             text += "  [DOAR CITIRE]"
         self._set("workspace", text, error_color(self) if read_only else None)
 
     def set_saved(self) -> None:
-        self._set("save", f"Salvat {datetime.now():%H:%M:%S}", ok_color(self))
+        self._set("save", tr('ui.statusbar.salvat', datetime_now=datetime.now()), ok_color(self))
 
-    def set_save_error(self, text: str = "Eroare la salvare") -> None:
+    def set_save_error(self, text: str = tr('ui.statusbar.eroare_la_salvare')) -> None:
         self._set("save", text, error_color(self))
 
     def set_save_idle(self, text: str = "") -> None:

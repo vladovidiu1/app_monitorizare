@@ -5,6 +5,8 @@ Backend-ul (COM real sau fals pentru teste) lucreaza doar cu tipuri primitive; o
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -40,10 +42,10 @@ class CalendarInfo:
 
     @property
     def label(self) -> str:
-        kind = {"exchange_primary": "Exchange / Microsoft 365 (cutie principală)",
-                "exchange_additional": "Exchange (cutie suplimentară)",
-                "exchange_public": "Exchange (folder public)",
-                "other": "Fișier local / alt tip (NU se sincronizează cu Teams/Exchange)"}.get(self.store_kind, self.store_kind)
+        kind = {"exchange_primary": tr('integrations.outlook.exchange_microsoft_365_cutie_principala'),
+                "exchange_additional": tr('integrations.outlook.exchange_cutie_suplimentara'),
+                'exchange_public': tr('extra.integrations.outlook.exchange_folder_public'),
+                "other": tr('integrations.outlook.fisier_local_alt_tip_nu_se_sincronizeaza_cu_teams_exchange')}.get(self.store_kind, self.store_kind)
         return f"{self.store_name} › {self.name}  —  {kind}"
 
 
@@ -150,9 +152,9 @@ def availability_from_events(events: list[RawEvent], settings: OutlookSettings,
             continue
         busy.append(BusyInterval(max(ev.start, start_utc), min(ev.end, end_utc), "outlook", ev.subject, status))
     if len(events) >= MAX_EVENTS:
-        warnings.append(f"S-au citit {MAX_EVENTS} evenimente (limită); disponibilitatea poate fi incompletă.")
+        warnings.append(tr('integrations.outlook.s_au_citit_evenimente_limita_disponibilitatea_poate_fi_incompleta', max_events=MAX_EVENTS))
     return AvailabilityResult(busy=merge_intervals(busy), verified_scope="outlook",
-                              note="Disponibilitate verificată în Outlook (calendarul ales)", warnings=warnings)
+                              note=tr('integrations.outlook.disponibilitate_verificata_in_outlook_calendarul_ales'), warnings=warnings)
 
 
 # ---- sync operations --------------------------------------------------------
@@ -214,40 +216,40 @@ def _execute(backend: OutlookBackend, req: SyncRequest) -> SyncResult:
         if existing is not None:
             expected = signature_of(req.fields.subject, req.fields.start_utc, req.fields.end_utc, req.fields.busy_status)
             if existing.signature() == expected:
-                return _result_from(existing, req, message="Eveniment existent regăsit după UUID (fără duplicat).")
-            return _result_from(existing, req, "conflict", "Există deja un eveniment cu acest UUID, diferit de plan.")
+                return _result_from(existing, req, message=tr('integrations.outlook.eveniment_existent_regasit_dupa_uuid_fara_duplicat'))
+            return _result_from(existing, req, "conflict", tr('integrations.outlook.exista_deja_un_eveniment_cu_acest_uuid_diferit_de_plan'))
         info = backend.create(req.store_id, req.folder_id, req.fields)
-        return _result_from(info, req, message="Salvat în Outlook (local); sincronizarea Exchange nu este confirmată.")
+        return _result_from(info, req, message=tr('integrations.outlook.salvat_in_outlook_local_sincronizarea_exchange_nu_este_confirmata'))
 
     if req.op in ("update", "cancel", "check", "pull"):
         info = backend.get(req.entry_id, req.store_id) if req.entry_id and req.store_id else None
         if info is None:
             if req.op == "cancel":
-                return SyncResult(req.session_id, req.op, "cancelled", "Evenimentul nu mai exista în Outlook.")
+                return SyncResult(req.session_id, req.op, "cancelled", tr('integrations.outlook.evenimentul_nu_mai_exista_in_outlook'))
             if req.op == "update" and req.force and req.fields and req.store_id and req.folder_id:
                 # Utilizatorul a ales explicit „Aplică planul local”: recreare dupa regasire dupa UUID.
                 again = backend.find_by_session(req.store_id, req.folder_id, req.session_id, req.workspace_id,
                                                 req.fields.start_utc - timedelta(days=1),
                                                 req.fields.end_utc + timedelta(days=1))
                 made = again or backend.create(req.store_id, req.folder_id, req.fields)
-                return _result_from(made, req, message="Eveniment recreat din planul local.")
-            return SyncResult(req.session_id, req.op, "deleted", "Evenimentul a fost șters sau mutat în Outlook.")
+                return _result_from(made, req, message=tr('extra.integrations.outlook.eveniment_recreat_din_planul_local'))
+            return SyncResult(req.session_id, req.op, "deleted", tr('integrations.outlook.evenimentul_a_fost_sters_sau_mutat_in_outlook'))
         if not _markers_ok(info, req):
             return SyncResult(req.session_id, req.op, "failed",
-                              "Evenimentul nu are markerii FocusDesk ai acestei sesiuni; nu este modificat.",
+                              tr('extra.integrations.outlook.evenimentul_nu_are_markerii_focusdesk_ai_acestei_sesiuni_nu_este_'),
                               info.entry_id, info.store_id, info.folder_id)
         changed = bool(req.stored_signature) and info.signature() != req.stored_signature
         if req.op == "check":
             return _result_from(info, req, "conflict" if changed else "ok",
-                                "Modificat în Outlook față de ultima sincronizare." if changed else "")
+                                tr('integrations.outlook.modificat_in_outlook_fata_de_ultima_sincronizare') if changed else "")
         if req.op == "pull":
-            return _result_from(info, req, "saved_locally", "Preluat din Outlook.")
+            return _result_from(info, req, 'saved_locally', tr('extra.integrations.outlook.preluat_din_outlook'))
         if changed and not req.force:
-            return _result_from(info, req, "conflict", "Evenimentul a fost modificat în Outlook.")
+            return _result_from(info, req, "conflict", tr('integrations.outlook.evenimentul_a_fost_modificat_in_outlook'))
         if req.op == "cancel":
             backend.delete(info.entry_id, info.store_id)
-            return SyncResult(req.session_id, req.op, "cancelled", "Șters în Outlook (în Elemente șterse).")
+            return SyncResult(req.session_id, req.op, "cancelled", tr('integrations.outlook.sters_in_outlook_in_elemente_sterse'))
         assert req.fields
         updated = backend.update(info.entry_id, info.store_id, req.fields)
-        return _result_from(updated, req, message="Actualizat în Outlook (local).")
-    return SyncResult(req.session_id, req.op, "failed", f"Operație necunoscută: {req.op}")
+        return _result_from(updated, req, message=tr('integrations.outlook.actualizat_in_outlook_local'))
+    return SyncResult(req.session_id, req.op, "failed", tr('integrations.outlook.operatie_necunoscuta', req_op=req.op))

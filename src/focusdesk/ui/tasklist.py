@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from datetime import date
 from tkinter import ttk
@@ -16,18 +18,19 @@ from ..domain.models import CLOSED_STATUSES, PRIORITY_ORDER, Kind, Node, Priorit
 from ..services.queries import Progress
 from .common import BASE_SIZE, FONT_FAMILY, SessionButton, error_color, muted_color
 from .formats import format_date
+from .common import heading_width, fit_tree_headings
 from .status_visuals import node_icon
 from .tree_rows import sync_rows
 
 if TYPE_CHECKING:
     from .app import FocusDeskApp
 
-ALL = "Toate"
-DUE_FILTERS = {"Orice termen": None, "Restante": "overdue", "Azi": "today", "Următoarele 7 zile": "week",
-               "Fără termen": "none"}
-COLUMNS = [("status", "Status", 120), ("priority", "Prioritate", 76), ("due", "Termen", 84),
-           ("progress", "Progres", 68), ("remaining", "Timp rămas", 150), ("worked", "Lucrat salvat", 100),
-           ("loc", "Locație", 150)]
+ALL = tr('ui.meetings.toate')
+DUE_FILTERS = {tr('ui.tasklist.orice_termen'): None, tr('ui.app.restante'): "overdue", tr('ui.tab_details.azi'): "today", tr('ui.tasklist.urmatoarele_7_zile'): "week",
+               tr('ui.inspector.fara_termen'): "none"}
+COLUMNS = [("status", tr('ui.tab_details.status'), 120), ("priority", tr('ui.meetings.prioritate'), 76), ("due", tr('ui.meetings.termen'), 84),
+           ("progress", tr('ui.tab_subtasks.progres'), 68), ("remaining", tr('ui.planning.timp_ramas'), 150), ("worked", tr('ui.activity_page.lucrat_salvat'), 100),
+           ("loc", tr('ui.dashboard.locatie'), 150)]
 TREE_COLUMNS = ("status", "priority", "due", "progress", "remaining", "worked")
 
 
@@ -61,22 +64,22 @@ class TaskList(ttk.Frame):
 
         bar = ttk.Frame(self)
         bar.pack(fill="x", padx=16, pady=(0, 6))
-        self.status_var = tk.StringVar(value="Orice status")
-        self.prio_var = tk.StringVar(value="Orice prioritate")
-        self.due_var = tk.StringVar(value="Orice termen")
-        self.proj_var = tk.StringVar(value="Toate proiectele")
+        self.status_var = tk.StringVar(value=tr('ui.tasklist.orice_status'))
+        self.prio_var = tk.StringVar(value=tr('ui.tasklist.orice_prioritate'))
+        self.due_var = tk.StringVar(value=tr('ui.tasklist.orice_termen'))
+        self.proj_var = tk.StringVar(value=tr('ui.activity_page.toate_proiectele'))
         self.text_var = tk.StringVar()
         self.requester_var = tk.StringVar()
         self.closed_var = tk.BooleanVar(value=False)
-        self.status_box = self._combo(bar, self.status_var, ["Orice status"] + [STATUS_LABELS[s] for s in VISIBLE_STATUSES], 14)
-        self.prio_box = self._combo(bar, self.prio_var, ["Orice prioritate"] + [PRIORITY_LABELS[p] for p in Priority], 14)
+        self.status_box = self._combo(bar, self.status_var, [tr('ui.tasklist.orice_status')] + [STATUS_LABELS[s] for s in VISIBLE_STATUSES], 14)
+        self.prio_box = self._combo(bar, self.prio_var, [tr('ui.tasklist.orice_prioritate')] + [PRIORITY_LABELS[p] for p in Priority], 14)
         self.due_box = self._combo(bar, self.due_var, list(DUE_FILTERS), 15)
         project_row = ttk.Frame(self)
         project_row.pack(fill="x", padx=16, pady=(0,6))
-        self.proj_box = self._combo(project_row, self.proj_var, ["Toate proiectele"], 18)
+        self.proj_box = self._combo(project_row, self.proj_var, [tr('ui.activity_page.toate_proiectele')], 18)
         people_row = ttk.Frame(self)
         people_row.pack(fill="x", padx=16, pady=(0, 6))
-        ttk.Label(people_row, text="De la").pack(side="left", padx=(0, 6))
+        ttk.Label(people_row, text=tr('ui.meetings.de_la')).pack(side="left", padx=(0, 6))
         self.requester_entry = ttk.Entry(people_row, textvariable=self.requester_var, width=10)
         self.requester_entry.pack(side="left", fill="x", expand=True)
         self.requester_var.trace_add('write', lambda *_: self._debounced_refresh())
@@ -85,28 +88,28 @@ class TaskList(ttk.Frame):
         ent = ttk.Entry(project_row, textvariable=self.text_var,width=12)
         ent.pack(side="left",fill="x",expand=True)
         bar2.columnconfigure(0,weight=1)
-        tb.Checkbutton(people_row, text="Închise", variable=self.closed_var, command=self._toggle_closed,
+        tb.Checkbutton(people_row, text=tr('ui.tasklist.inchise'), variable=self.closed_var, command=self._toggle_closed,
                        bootstyle="round-toggle").pack(side="left",padx=6)
-        tb.Button(people_row, text="Reset", command=self.reset_filters, bootstyle="secondary-outline"
+        tb.Button(people_row, text=tr('ui.tasklist.reset'), command=self.reset_filters, bootstyle="secondary-outline"
                   ).pack(side="left")
         self.text_var.trace_add("write", lambda *_: self._debounced_refresh())
         self._after_id = None
         for box in (self.status_box,self.prio_box,self.due_box,self.proj_box):
             box.bind('<<ComboboxSelected>>',self._filter_changed)
         from .common import Tooltip
-        Tooltip(ent,"Caută în lista curentă")
-        Tooltip(self.requester_entry,"Solicitant: nume, cod sau adresă")
+        Tooltip(ent,tr('ui.tasklist.cauta_in_lista_curenta'))
+        Tooltip(self.requester_entry,tr('ui.tasklist.solicitant_nume_cod_sau_adresa'))
 
         act_bar = ttk.Frame(self)
         act_bar.pack(fill="x", padx=16, pady=(0, 8))
         self.session_btn = SessionButton(act_bar, app, self.selected_id)
         self.session_btn.pack(side="left")
         self.act_bar = act_bar
-        self.move_btn = ttk.Button(act_bar, text="Mută / proiect…", command=app.move_selected)
+        self.move_btn = ttk.Button(act_bar, text=tr('ui.task_space.muta_proiect'), command=app.move_selected)
         self.move_btn.pack(side="left", padx=6)
         quick = ttk.Frame(self)
         quick.pack(fill="x", padx=16, pady=(0,6))
-        for label, code in (("Toate", "all"), ("În așteptare", "waiting"), ("Restante", "overdue"), ("Finalizate", "done")):
+        for label, code in ((tr('ui.meetings.toate'), "all"), (tr('ui.tasklist.in_asteptare'), "waiting"), (tr('ui.app.restante'), "overdue"), (tr('ui.tasklist.finalizate'), "done")):
             ttk.Button(quick, text=label, command=lambda c=code: app.quick_tasks(c)).pack(side="left", padx=(0,4))
 
         self.add_bar = ttk.Frame(self)  # vizibila doar in vizualizarea de arbore, deasupra listei
@@ -116,11 +119,12 @@ class TaskList(ttk.Frame):
         self.list_wrap.pack(fill="both", expand=True, padx=16, pady=(0, 8))
         self.tv = ttk.Treeview(self.list_wrap, style="Dense.Treeview", columns=[c[0] for c in COLUMNS], show="tree headings",
                                selectmode="browse")
-        self.tv.heading("#0", text="Titlu", anchor="w", command=lambda: self._sort_by("title"))
+        self.tv.heading("#0", text=tr('ui.meetings.titlu'), anchor="w", command=lambda: self._sort_by("title"))
         self.tv.column("#0", width=260, minwidth=240, anchor="w", stretch=True)
         for cid, text, width in COLUMNS:
             self.tv.heading(cid, text=text, anchor="w", command=lambda c=cid: self._sort_by(c))
-            self.tv.column(cid, width=width, minwidth=50, anchor="w", stretch=False)
+            self.tv.column(cid, width=max(width,heading_width(self.tv,text)), minwidth=max(50,heading_width(self.tv,text)), anchor="w", stretch=False)
+        self.tv.bind('<Configure>',lambda event:fit_tree_headings(self.tv),add='+')
         vbar = ttk.Scrollbar(self.list_wrap, orient="vertical", command=self.tv.yview)
         self.tv.configure(yscrollcommand=vbar.set)
         self.hbar = ttk.Scrollbar(self.list_wrap, orient="horizontal", command=self.tv.xview)
@@ -154,10 +158,10 @@ class TaskList(ttk.Frame):
         self.add_entry = ttk.Entry(row, textvariable=self.add_var)
         self.add_entry.pack(side="left", fill="x", expand=True)
         self.add_entry.bind("<Return>", lambda _e: self._quick_add(under_selection=True))
-        self.add_btn = tb.Button(row, text="+ Adaugă", bootstyle="primary",
+        self.add_btn = tb.Button(row, text=tr('ui.tasklist.adauga'), bootstyle="primary",
                                   command=lambda: self._quick_add(under_selection=True))
         self.add_btn.pack(side="left", padx=(8, 0))
-        self.add_top_btn = tb.Button(row, text="Aici", bootstyle="secondary-outline",
+        self.add_top_btn = tb.Button(row, text=tr('ui.tasklist.aici'), bootstyle="secondary-outline",
                                       command=lambda: self._quick_add(under_selection=False))
         self.add_top_btn.pack(side="left", padx=(6, 0))
 
@@ -169,7 +173,7 @@ class TaskList(ttk.Frame):
 
     # ---- configuration ----------------------------------------------
     def set_source(self, title: str, loader: Callable[[], list[Node]], crumb: str = "",
-                   show_closed: bool = False, empty_hint: str = "Nu există task-uri aici.",
+                   show_closed: bool = False, empty_hint: str = tr('ui.tasklist.nu_exista_task_uri_aici'),
                    scope_id: str | None = None) -> None:
         self._source = loader
         key = (title, scope_id)
@@ -198,14 +202,14 @@ class TaskList(ttk.Frame):
 
     def _toggle_closed(self):
         if not self.closed_var.get() and STATUS_FROM_LABEL.get(self.status_var.get()) in CLOSED_STATUSES:
-            self.status_var.set('Orice status')
+            self.status_var.set(tr('ui.tasklist.orice_status'))
         self.refresh()
 
     def reset_filters(self) -> None:
-        self.status_var.set("Orice status")
-        self.prio_var.set("Orice prioritate")
-        self.due_var.set("Orice termen")
-        self.proj_var.set("Toate proiectele")
+        self.status_var.set(tr('ui.tasklist.orice_status'))
+        self.prio_var.set(tr('ui.tasklist.orice_prioritate'))
+        self.due_var.set(tr('ui.tasklist.orice_termen'))
+        self.proj_var.set(tr('ui.activity_page.toate_proiectele'))
         self.requester_var.set("")
         self.text_var.set("")
         self.closed_var.set(self.show_closed_default)
@@ -231,22 +235,22 @@ class TaskList(ttk.Frame):
             self._after_id = None
         q, ws = self.app.q, self.app.ws
         projects = self._project_options()
-        self.proj_box.configure(values=["Toate proiectele", "Fără proiect", *projects])
-        if self.proj_var.get() not in ("Toate proiectele", "Fără proiect", *projects):
-            self.proj_var.set("Toate proiectele")
+        self.proj_box.configure(values=[tr('ui.activity_page.toate_proiectele'), tr('ui.activity_page.fara_proiect'), *projects])
+        if self.proj_var.get() not in (tr('ui.activity_page.toate_proiectele'), tr('ui.activity_page.fara_proiect'), *projects):
+            self.proj_var.set(tr('ui.activity_page.toate_proiectele'))
         scope = self.scope_id if self.scope_id in ws.nodes else None
         self._cmap = ws.children_map()
         self._prog = q.progress_map()
         self._worked = q.worked_map()
         nodes = self._source()
-        status = None if self.status_var.get() in (ALL,"Orice status") else STATUS_FROM_LABEL[self.status_var.get()]
-        prio = None if self.prio_var.get() in (ALL,"Orice prioritate") else PRIORITY_FROM_LABEL[self.prio_var.get()]
+        status = None if self.status_var.get() in (ALL,tr('ui.tasklist.orice_status')) else STATUS_FROM_LABEL[self.status_var.get()]
+        prio = None if self.prio_var.get() in (ALL,tr('ui.tasklist.orice_prioritate')) else PRIORITY_FROM_LABEL[self.prio_var.get()]
         proj = projects.get(self.proj_var.get())
         if not self.closed_var.get() and status is None:
             nodes = [n for n in nodes if n.status not in CLOSED_STATUSES]
         nodes = q.filter(nodes, status=status, priority=prio, due=DUE_FILTERS[self.due_var.get()],
                          project_id=proj, text=self.text_var.get(), requester=self.requester_var.get().strip(),
-                         no_project=self.proj_var.get() == "Fără proiect")
+                         no_project=self.proj_var.get() == tr('ui.activity_page.fara_proiect'))
         self._shown = self._sorted(nodes)
         rows = self._tree_rows(scope, nodes) if scope else [("", n) for n in self._shown]
         matched_ids = {n.id for n in nodes}
@@ -269,7 +273,7 @@ class TaskList(ttk.Frame):
         self.tv.xview_moveto(horizontal)
         self._force_open.clear()
         self._expand_all = False
-        self.count_lbl.configure(text=f"{len(self._shown)} task-uri")
+        self.count_lbl.configure(text=tr('items.tasks',count=len(self._shown)))
         if not rows:
             self.empty_lbl.configure(text=self.empty_hint)
             self.empty_lbl.place(relx=0.5, rely=0.65, anchor="center")
@@ -352,8 +356,8 @@ class TaskList(ttk.Frame):
             p = self._prog.get(n.id) or self.app.q.progress(n.id)
             if p.open == 0:
                 return "—"
-            text = format_minutes(p.remaining_minutes) if p.remaining_minutes else "Neestimat"
-            return f"Σ {text}" + (f" (+{p.unestimated} neest.)" if p.unestimated and p.remaining_minutes else "")
+            text = format_minutes(p.remaining_minutes) if p.remaining_minutes else tr('ui.planning.neestimat')
+            return f"Σ {text}" + (tr('list.unestimated',count=p.unestimated) if p.unestimated and p.remaining_minutes else "")
         rem = n.remaining_minutes if n.remaining_minutes is not None else n.estimated_minutes
         return format_minutes(rem)
 
@@ -468,19 +472,19 @@ class TaskList(ttk.Frame):
         if ws is None:
             return
         if self.scope_id is None or self.scope_id not in ws.nodes:
-            self.target_lbl.configure(text="Task independent" if not self._selected_task_id() else "Subtask în selecția curentă")
-            self.add_top_btn.configure(text="Task independent")
+            self.target_lbl.configure(text=tr('ui.tasklist.task_independent') if not self._selected_task_id() else tr('ui.app.subtask_in_selectia_curenta'))
+            self.add_top_btn.configure(text=tr('ui.tasklist.task_independent'))
             if self._selected_task_id(): self.add_top_btn.pack(side="left",padx=(6,0))
             else: self.add_top_btn.pack_forget()
             return
         sel = self._selected_task_id()
         if sel:
-            self.target_lbl.configure(text=f"Se adaugă ca subtask în: {ws.breadcrumb(sel)}")
-            self.add_top_btn.configure(text="La nivelul listei")
+            self.target_lbl.configure(text=tr('ui.tasklist.se_adauga_ca_subtask_in', ws_breadcrumb_sel=ws.breadcrumb(sel)))
+            self.add_top_btn.configure(text=tr('ui.tasklist.la_nivelul_listei'))
             self.add_top_btn.pack(side="left",padx=(6,0))
         else:
-            self.target_lbl.configure(text=f"Se adaugă task în: {ws.breadcrumb(self.scope_id)}")
-            self.add_top_btn.configure(text="Aici")
+            self.target_lbl.configure(text=tr('ui.tasklist.se_adauga_task_in', ws_breadcrumb_self_scope_id=ws.breadcrumb(self.scope_id)))
+            self.add_top_btn.configure(text=tr('ui.tasklist.aici'))
             self.add_top_btn.pack_forget()
 
     def _focus_add(self) -> None:

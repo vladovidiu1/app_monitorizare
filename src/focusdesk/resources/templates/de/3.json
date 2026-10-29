@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "id": "d67ed31f-dc54-5a6d-9410-ccb446174a9b",
+  "revision": 1,
+  "name": "Python-Anwendungsentwicklung",
+  "variables": [
+    "nume_proiect"
+  ],
+  "items": [
+    {
+      "key": "root",
+      "parent": null,
+      "kind": "project",
+      "title": "{{nume_proiect}}",
+      "description": "## Ziel\n\n## Kontext\n",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas1",
+      "parent": "root",
+      "kind": "task",
+      "title": "Anforderungen",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas2",
+      "parent": "root",
+      "kind": "task",
+      "title": "Struktur und Oberfläche",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas3",
+      "parent": "root",
+      "kind": "task",
+      "title": "Implementierung",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas4",
+      "parent": "root",
+      "kind": "task",
+      "title": "Testen",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas5",
+      "parent": "root",
+      "kind": "task",
+      "title": "Dokumentation",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas6",
+      "parent": "root",
+      "kind": "task",
+      "title": "Distribution vorbereiten",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    }
+  ]
+}

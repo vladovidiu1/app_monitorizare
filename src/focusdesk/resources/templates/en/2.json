@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "id": "cf50220d-cc68-5829-b0e3-09c39484b067",
+  "revision": 1,
+  "name": "Incident investigation",
+  "variables": [
+    "nume_proiect"
+  ],
+  "items": [
+    {
+      "key": "root",
+      "parent": null,
+      "kind": "project",
+      "title": "{{nume_proiect}}",
+      "description": "## Goal\n\nInvestigate and resolve the incident.\n\n## Context\n",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas1",
+      "parent": "root",
+      "kind": "task",
+      "title": "Describe and reproduce",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas2",
+      "parent": "root",
+      "kind": "task",
+      "title": "Collect examples",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas3",
+      "parent": "root",
+      "kind": "task",
+      "title": "Analyze root cause",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas4",
+      "parent": "root",
+      "kind": "task",
+      "title": "Implement fix",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas5",
+      "parent": "root",
+      "kind": "task",
+      "title": "Testing",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    },
+    {
+      "key": "pas6",
+      "parent": "root",
+      "kind": "task",
+      "title": "Confirm and close",
+      "description": "",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    }
+  ]
+}

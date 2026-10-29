@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, runtime_checkable
@@ -33,7 +35,7 @@ class Capabilities:
 class AvailabilityResult:
     busy: list[BusyInterval] = field(default_factory=list)
     verified_scope: str = "local"  # "local" | "outlook"
-    note: str = "Disponibilitate verificată doar local"
+    note: str = tr('integrations.calendar.disponibilitate_verificata_doar_local')
     warnings: list[str] = field(default_factory=list)
 
 
@@ -75,10 +77,10 @@ class LocalOnlyProvider:
         return AvailabilityResult()
 
     def create_session(self, session: SessionRecord, title: str, description: str) -> SyncInfo:
-        raise NotSupported("Calendarul local nu sincronizează cu un calendar extern.")
+        raise NotSupported(tr('integrations.calendar.calendarul_local_nu_sincronizeaza_cu_un_calendar_extern'))
 
     def update_session(self, session: SessionRecord, title: str, description: str) -> SyncInfo:
-        raise NotSupported("Calendarul local nu sincronizează cu un calendar extern.")
+        raise NotSupported(tr('integrations.calendar.calendarul_local_nu_sincronizeaza_cu_un_calendar_extern'))
 
     def cancel_session(self, session: SessionRecord) -> SyncInfo:
-        raise NotSupported("Calendarul local nu sincronizează cu un calendar extern.")
+        raise NotSupported(tr('integrations.calendar.calendarul_local_nu_sincronizeaza_cu_un_calendar_extern'))

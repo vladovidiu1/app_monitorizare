@@ -1,6 +1,8 @@
 """Packaged offline manual. This module never opens a workspace or personal documents."""
 from __future__ import annotations
 
+from ..i18n import tr, language
+
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -51,8 +53,9 @@ def blocks(markdown: str) -> tuple[Block, ...]:
         heading = re.match(r'^(#{1,3})\s+(.+?)\s*$', line)
         if heading:
             flush()
-            title = heading[2]
-            key = slug(title)
+            explicit = re.match(r'^(.*?)\s+\{#([a-z0-9-]+)\}$', heading[2])
+            title = explicit[1] if explicit else heading[2]
+            key = explicit[2] if explicit else slug(title)
             anchors[key] = anchors.get(key, 0) + 1
             anchor = key + (f'-{anchors[key]}' if anchors[key] > 1 else '')
             result.append(Block('heading', title, anchor, len(heading[1])))
@@ -94,28 +97,28 @@ class SearchHit:
 
 class GuideLibrary:
     def __init__(self, directory: Path | None = None):
-        directory = directory or resource_path('guide')
+        directory = directory if directory is not None else (resource_path('guide') / language() if language() != 'ro' else resource_path('guide'))
         try:
             manifest = json.loads((directory / 'index.json').read_text('utf-8-sig'))
             if not isinstance(manifest, dict) or manifest.get('version') != 1 or not isinstance(manifest.get('chapters'), list):
-                raise ValueError('Schema ghidului nu este acceptată.')
+                raise ValueError(tr('services.user_guide.schema_ghidului_nu_este_acceptata'))
             self.chapters = {}
             for entry in manifest['chapters']:
                 chapter_id, filename = entry['id'], entry['file']
                 if not re.fullmatch(r'[a-z0-9-]+', chapter_id) or not re.fullmatch(r'[a-z0-9-]+\.md', filename):
-                    raise ValueError('Identificator sau cale invalidă în ghid.')
+                    raise ValueError(tr('services.user_guide.identificator_sau_cale_invalida_in_ghid'))
                 if chapter_id in self.chapters:
-                    raise ValueError('Identificator de capitol duplicat.')
+                    raise ValueError(tr('extra.services.user_guide.identificator_de_capitol_duplicat'))
                 content = (directory / filename).read_text('utf-8-sig')
                 parsed = blocks(content)
                 if not parsed or parsed[0].kind != 'heading' or parsed[0].level != 1:
-                    raise ValueError('Capitol fără titlu.')
+                    raise ValueError(tr('services.user_guide.capitol_fara_titlu'))
                 self.chapters[chapter_id] = Chapter(chapter_id, parsed[0].text, content, parsed)
             if not self.chapters or 'introducere' not in self.chapters:
-                raise ValueError('Lipsește introducerea ghidului.')
+                raise ValueError(tr('services.user_guide.lipseste_introducerea_ghidului'))
             self.validate_links()
         except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
-            raise GuideError(f'Ghidul local nu poate fi încărcat: {exc}. Reinstalează distribuția completă FocusDesk.') from exc
+            raise GuideError(tr('services.user_guide.ghidul_local_nu_poate_fi_incarcat_reinstaleaza_distributia_completa_fo', exc=exc)) from exc
         # Only the bundled documentation is indexed, once per library instance.
         self._index = {key: normalize(chapter.title + '\n' + chapter.content) for key, chapter in self.chapters.items()}
 
@@ -126,14 +129,14 @@ class GuideLibrary:
             value = url.removeprefix('guide:')
             chapter_id, _, anchor = value.partition('#')
         if chapter_id not in self.chapters or (anchor and anchor not in self.chapters[chapter_id].anchors):
-            raise GuideError(f'Legătură internă indisponibilă: {url}')
+            raise GuideError(tr('services.user_guide.legatura_interna_indisponibila', url=url))
         return chapter_id, anchor
 
     def validate_links(self):
         for chapter in self.chapters.values():
             for _label, url in LINK.findall(chapter.content):
                 if not url.startswith(('guide:', '#')):
-                    raise ValueError(f'Ghidul acceptă doar legături interne: {url}')
+                    raise ValueError(tr('services.user_guide.ghidul_accepta_doar_legaturi_interne', url=url))
                 self.target(url, chapter.id)
 
     def search(self, query: str) -> list[SearchHit]:

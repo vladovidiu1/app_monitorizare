@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -38,12 +40,12 @@ def _parse(data: bytes) -> list[Colleague]:
                 first = False
                 try:
                     if any(cell.data_type in {"f", "e"} for cell in cells):
-                        raise ValueError("Formulele si erorile Excel nu sunt acceptate.")
+                        raise ValueError(tr('extra.services.colleagues.formulele_si_erorile_excel_nu_sunt_acceptate'))
                     person = Colleague(name=name, code=code)
                     if person.code in codes:
-                        raise ValueError(f"Cod duplicat: {person.code}")
+                        raise ValueError(tr('extra.services.colleagues.cod_duplicat', person_code=person.code))
                 except ValueError as exc:
-                    raise ValidationError(f"Randul {number}: {exc}") from exc
+                    raise ValidationError(tr('extra.services.colleagues.randul', number=number, exc=exc)) from exc
                 codes.add(person.code)
                 colleagues.append(person)
         finally:
@@ -51,9 +53,9 @@ def _parse(data: bytes) -> list[Colleague]:
     except ValidationError:
         raise
     except (BadZipFile, OSError, ValueError, KeyError, IndexError, SyntaxError) as exc:
-        raise ValidationError(f"Fisier Excel invalid: {exc}") from exc
+        raise ValidationError(tr('extra.services.colleagues.fisier_excel_invalid', exc=exc)) from exc
     if not colleagues:
-        raise ValidationError("Fisierul nu contine colegi.")
+        raise ValidationError(tr('extra.services.colleagues.fisierul_nu_contine_colegi'))
     return sorted(colleagues, key=lambda person: (person.name.casefold(), person.code))
 
 
@@ -72,13 +74,13 @@ def _read(path: Path) -> bytes:
     try:
         return path.read_bytes()
     except OSError as exc:
-        raise ValidationError(f"Nu se poate citi lista de colegi: {exc}") from exc
+        raise ValidationError(tr('extra.services.colleagues.nu_se_poate_citi_lista_de_colegi', exc=exc)) from exc
 
 
 def import_colleagues(ws: Workspace, source: Path) -> list[Colleague]:
     ws._check_writable()
     if source.suffix.lower() != ".xlsx":
-        raise ValidationError("Alege un fisier Excel .xlsx.")
+        raise ValidationError(tr('extra.services.colleagues.alege_un_fisier_excel_xlsx'))
     data = _read(source)
     people = _parse(data)
     atomic_write_bytes(_path(ws), data)

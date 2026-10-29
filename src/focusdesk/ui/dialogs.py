@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from tkinter import ttk
 from typing import Any
@@ -17,7 +19,7 @@ from .common import ModalDialog, make_tree, show_error
 from .colleagues_ui import ColleagueField
 from .formats import parse_date, parse_duration, parse_tags
 
-ROOT_LABEL = "(Rădăcina workspace-ului)"
+ROOT_LABEL = tr('ui.dialogs.radacina_workspace_ului')
 
 
 def location_choices(ws: Workspace, kind: Kind, *, exclude_subtree_of: str | None = None) -> list[tuple[str, str | None]]:
@@ -45,17 +47,17 @@ def location_choices(ws: Workspace, kind: Kind, *, exclude_subtree_of: str | Non
 class NewNodeDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, ws: Workspace, *, kind: Kind = Kind.TASK, parent_id: str | None = None,
                  title: str = "") -> None:
-        titles = {Kind.TASK: "Task nou", Kind.FOLDER: "Folder nou", Kind.PROJECT: "Proiect nou"}
-        super().__init__(parent, titles[kind], ok_text="Creează")
+        titles = {Kind.TASK: tr('ui.app.task_nou'), Kind.FOLDER: tr('ui.app.folder_nou'), Kind.PROJECT: tr('ui.app.proiect_nou')}
+        super().__init__(parent, titles[kind], ok_text=tr('ui.planning.creeaza'))
         self.ws, self.kind = ws, kind
         self.q = Queries(ws)
         b = self.body
         b.columnconfigure(1, weight=1)
-        ttk.Label(b, text="Titlu").grid(row=0, column=0, sticky="w", pady=4)
+        ttk.Label(b, text=tr('ui.meetings.titlu')).grid(row=0, column=0, sticky="w", pady=4)
         self.title_var = tk.StringVar(value=title)
         self.title_entry = ttk.Entry(b, textvariable=self.title_var, width=52)
         self.title_entry.grid(row=0, column=1, sticky="ew", pady=4)
-        ttk.Label(b, text="Locație").grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Label(b, text=tr('ui.dashboard.locatie')).grid(row=1, column=0, sticky="w", pady=4)
         self._choices = location_choices(ws, kind)
         self.loc_var = tk.StringVar()
         self.loc_box = ttk.Combobox(b, textvariable=self.loc_var, state="readonly",
@@ -64,8 +66,8 @@ class NewNodeDialog(ModalDialog):
         idx = next((i for i, c in enumerate(self._choices) if c[1] == parent_id), 0)
         self.loc_box.current(idx)
         self.more_open = tk.BooleanVar(value=False)
-        self.more_btn = ttk.Checkbutton(b, text="Mai multe detalii", variable=self.more_open,
-                                        command=self._toggle_more, style="Toolbutton")
+        self.more_btn = ttk.Checkbutton(b, text=tr('ui.dialogs.mai_multe_detalii'), variable=self.more_open,
+                                        command=self._toggle_more, style=tr('ui.dialogs.toolbutton'))
         self.more_btn.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
         self.more = ttk.Frame(b)
         self.more.columnconfigure(1, weight=1)
@@ -82,36 +84,36 @@ class NewNodeDialog(ModalDialog):
         self.tags_var = tk.StringVar()
         self.next_var = tk.StringVar()
         if self.kind != Kind.FOLDER:
-            ttk.Label(m, text="Status").grid(row=r, column=0, sticky="w", pady=3)
+            ttk.Label(m, text=tr('ui.tab_details.status')).grid(row=r, column=0, sticky="w", pady=3)
             ttk.Combobox(m, textvariable=self.status_var, state="readonly",
                          values=[STATUS_LABELS[s] for s in VISIBLE_STATUSES]).grid(row=r, column=1, sticky="ew", pady=3)
             r += 1
-            ttk.Label(m, text="Prioritate").grid(row=r, column=0, sticky="w", pady=3)
+            ttk.Label(m, text=tr('ui.meetings.prioritate')).grid(row=r, column=0, sticky="w", pady=3)
             ttk.Combobox(m, textvariable=self.prio_var, state="readonly",
                          values=[PRIORITY_LABELS[p] for p in Priority]).grid(row=r, column=1, sticky="ew", pady=3)
             r += 1
         if self.kind == Kind.TASK:
-            ttk.Label(m, text="Cine a solicitat").grid(row=r, column=0, sticky="w", pady=3)
+            ttk.Label(m, text=tr('ui.tab_details.cine_a_solicitat')).grid(row=r, column=0, sticky="w", pady=3)
             self.requester_field = ColleagueField(m, lambda: self.ws)
             self.requester_field.grid(row=r, column=1, sticky="ew", pady=3)
             r += 1
-            ttk.Label(m, text="Termen").grid(row=r, column=0, sticky="w", pady=3)
+            ttk.Label(m, text=tr('ui.meetings.termen')).grid(row=r, column=0, sticky="w", pady=3)
             ttk.Entry(m, textvariable=self.due_var).grid(row=r, column=1, sticky="ew", pady=3)
             r += 1
-            ttk.Label(m, text="Estimare").grid(row=r, column=0, sticky="w", pady=3)
+            ttk.Label(m, text=tr('ui.tab_details.estimare')).grid(row=r, column=0, sticky="w", pady=3)
             ttk.Entry(m, textvariable=self.est_var).grid(row=r, column=1, sticky="ew", pady=3)
             r += 1
-            ttk.Label(m, text="Următorul pas").grid(row=r, column=0, sticky="w", pady=3)
+            ttk.Label(m, text=tr('ui.tab_details.urmatorul_pas')).grid(row=r, column=0, sticky="w", pady=3)
             ttk.Entry(m, textvariable=self.next_var).grid(row=r, column=1, sticky="ew", pady=3)
             r += 1
-        ttk.Label(m, text="Etichete").grid(row=r, column=0, sticky="w", pady=3)
+        ttk.Label(m, text=tr('ui.tab_details.etichete')).grid(row=r, column=0, sticky="w", pady=3)
         ttk.Entry(m, textvariable=self.tags_var).grid(row=r, column=1, sticky="ew", pady=3)
         r += 1
-        ttk.Label(m, text="Descriere").grid(row=r, column=0, sticky="nw", pady=3)
+        ttk.Label(m, text=tr('ui.tab_versions.descriere')).grid(row=r, column=0, sticky="nw", pady=3)
         self.desc = tk.Text(m, height=5, width=40, wrap="word", font="TkTextFont")
         self.desc.grid(row=r, column=1, sticky="ew", pady=3)
         if self.kind == Kind.TASK:
-            hint = "Termen: ZZ.LL.AAAA, azi, mâine, +3. Estimare: 90, 1h30."
+            hint = tr('ui.dialogs.termen_zz_ll_aaaa_azi_maine_3_estimare_90_1h30')
             ttk.Label(m, text=hint, style="Muted.TLabel").grid(row=r + 1, column=1, sticky="w")
 
     def _toggle_more(self) -> None:
@@ -122,7 +124,7 @@ class NewNodeDialog(ModalDialog):
 
     def validate(self) -> bool:
         if not self.title_var.get().strip():
-            show_error(self, "Titlul este obligatoriu.")
+            show_error(self, tr('ui.planning.titlul_este_obligatoriu'))
             return False
         try:
             if self.kind == Kind.TASK:
@@ -153,9 +155,9 @@ class NewNodeDialog(ModalDialog):
 
 class MoveDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, ws: Workspace, node: Node) -> None:
-        super().__init__(parent, f"Mută „{node.title}”", ok_text="Mută")
+        super().__init__(parent, tr('ui.dialogs.muta', node_title=node.title), ok_text=tr('ui.dialogs.muta_2'))
         self.choices = location_choices(ws, node.kind, exclude_subtree_of=node.id)
-        ttk.Label(self.body, text="Destinație nouă").pack(anchor="w")
+        ttk.Label(self.body, text=tr('ui.dialogs.destinatie_noua')).pack(anchor="w")
         self.var = tk.StringVar()
         self.box = ttk.Combobox(self.body, textvariable=self.var, state="readonly",
                                 values=[c[0] for c in self.choices], width=56)
@@ -163,7 +165,7 @@ class MoveDialog(ModalDialog):
         idx = next((i for i, c in enumerate(self.choices) if c[1] == node.parent_id), 0)
         self.box.current(idx)
         ttk.Label(self.body, style="Muted.TLabel", wraplength=420,
-                  text="UUID-urile, fișierele, sesiunile și legăturile rămân neschimbate.").pack(anchor="w")
+                  text=tr('ui.dialogs.uuid_urile_fisierele_sesiunile_si_legaturile_raman_neschimbate')).pack(anchor="w")
 
     def collect(self) -> tuple[str | None]:
         return (self.choices[self.box.current()][1],)
@@ -173,7 +175,7 @@ class NodePickerDialog(ModalDialog):
     """Alege un nod existent (pentru legaturi/dependente)."""
 
     def __init__(self, parent: tk.Misc, ws: Workspace, title: str, *, exclude: set[str] | None = None,
-                 only_tasks: bool = False, ok_text: str = "Alege") -> None:
+                 only_tasks: bool = False, ok_text: str = tr('ui.colleagues_ui.alege')) -> None:
         super().__init__(parent, title, resizable=True, ok_text=ok_text)
         self.ws = ws
         self.q = Queries(ws)
@@ -183,7 +185,7 @@ class NodePickerDialog(ModalDialog):
         entry = ttk.Entry(self.body, textvariable=self.var, width=60)
         entry.pack(fill="x")
         entry.focus_set()
-        self.tv, frame = make_tree(self.body, [("title", "Titlu", 260), ("kind", "Tip", 70), ("loc", "Locație", 220)],
+        self.tv, frame = make_tree(self.body, [("title", tr('ui.meetings.titlu'), 260), ("kind", tr('ui.dialogs.tip'), 70), ("loc", tr('ui.dashboard.locatie'), 220)],
                                    height=12)
         frame.pack(fill="both", expand=True, pady=(8, 0))
         self.tv.bind("<Double-1>", lambda _e: self._on_ok())
@@ -203,7 +205,7 @@ class NodePickerDialog(ModalDialog):
 
     def validate(self) -> bool:
         if not self.tv.selection():
-            show_error(self, "Selectează un element din listă.")
+            show_error(self, tr('ui.dialogs.selecteaza_un_element_din_lista'))
             return False
         return True
 
@@ -213,18 +215,18 @@ class NodePickerDialog(ModalDialog):
 
 class TrashDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, ws: Workspace, on_change) -> None:
-        super().__init__(parent, "Coș", resizable=True, ok_text="Închide", cancel_text="Închide")
+        super().__init__(parent, tr('ui.dialogs.cos'), resizable=True, ok_text=tr('ui.outlook_ui.inchide'), cancel_text=tr('ui.outlook_ui.inchide'))
         self.ok_btn.pack_forget()
         self.ws, self.on_change = ws, on_change
-        self.tv, frame = make_tree(self.body, [("title", "Element", 280), ("kind", "Tip", 80),
-                                               ("count", "Noduri", 60), ("when", "Șters la", 140)], height=10)
+        self.tv, frame = make_tree(self.body, [("title", tr('ui.dialogs.element'), 280), ("kind", tr('ui.dialogs.tip'), 80),
+                                               ("count", tr('ui.dialogs.noduri'), 60), ("when", tr('ui.dialogs.sters_la'), 140)], height=10)
         frame.pack(fill="both", expand=True)
         row = ttk.Frame(self.body)
         row.pack(fill="x", pady=(8, 0))
-        ttk.Button(row, text="Restaurează", command=self._restore).pack(side="left")
-        ttk.Button(row, text="Șterge definitiv", command=self._purge).pack(side="left", padx=8)
+        ttk.Button(row, text=tr('ui.dialogs.restaureaza'), command=self._restore).pack(side="left")
+        ttk.Button(row, text=tr('ui.dialogs.sterge_definitiv'), command=self._purge).pack(side="left", padx=8)
         ttk.Label(self.body, style="Muted.TLabel", wraplength=480,
-                  text="Restaurarea readuce nodul și descendenții lui cu aceleași UUID-uri, la locul inițial dacă mai există.").pack(anchor="w", pady=(8, 0))
+                  text=tr('ui.dialogs.restaurarea_readuce_nodul_si_descendentii_lui_cu_aceleasi_uuid_uri_la')).pack(anchor="w", pady=(8, 0))
         self._load()
 
     def _load(self) -> None:
@@ -254,7 +256,7 @@ class TrashDialog(ModalDialog):
         from .common import confirm
 
         nid = self._selected()
-        if nid and confirm(self, "Ștergerea definitivă nu poate fi anulată. Continui?"):
+        if nid and confirm(self, tr('ui.dialogs.stergerea_definitiva_nu_poate_fi_anulata_continui')):
             try:
                 self.ws.purge_trash(nid)
             except FocusDeskError as exc:
@@ -264,18 +266,18 @@ class TrashDialog(ModalDialog):
 
 class IssuesDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, ws: Workspace) -> None:
-        super().__init__(parent, "Verificare integritate workspace", resizable=True, ok_text="Închide",
-                         cancel_text="Închide")
+        super().__init__(parent, tr('ui.dialogs.verificare_integritate_workspace'), resizable=True, ok_text=tr('ui.outlook_ui.inchide'),
+                         cancel_text=tr('ui.outlook_ui.inchide'))
         self.ok_btn.pack_forget()
         issues = ws.issues
-        ttk.Label(self.body, text=(f"{len(issues)} probleme detectate; nimic nu a fost șters automat."
-                                   if issues else "Nu au fost detectate probleme."),
+        ttk.Label(self.body, text=(tr('ui.dialogs.probleme_detectate_nimic_nu_a_fost_sters_automat', len_issues=len(issues))
+                                   if issues else tr('ui.dialogs.nu_au_fost_detectate_probleme')),
                   style="Section.TLabel").pack(anchor="w")
         if issues:
-            tv, frame = make_tree(self.body, [("sev", "Nivel", 70), ("code", "Cod", 150), ("msg", "Detalii", 560)],
+            tv, frame = make_tree(self.body, [("sev", tr('ui.dialogs.nivel'), 70), ("code", tr('ui.colleagues_ui.cod'), 150), ("msg", tr('ui.dialogs.detalii'), 560)],
                                   height=12)
             frame.pack(fill="both", expand=True, pady=8)
             for i in issues:
-                tv.insert("", "end", values=("Eroare" if i.severity == "error" else "Avertisment", i.code, i.message))
+                tv.insert("", "end", values=(tr('ui.dialogs.eroare') if i.severity == "error" else tr('ui.dialogs.avertisment'), i.code, i.message))
         for m in ws.recovery_messages:
             ttk.Label(self.body, text="• " + m, wraplength=640).pack(anchor="w")

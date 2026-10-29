@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import messagebox, ttk
@@ -14,7 +16,7 @@ from ..domain.models import CLOSED_STATUSES, Kind
 if TYPE_CHECKING:
     from .app import FocusDeskApp
 
-from .design import C, FONT, BASE, install, icon, button
+from .design import C, FONT, BASE, install, icon, button, px
 
 # Compatibilité cu configurațiile vechi; randarea este exclusiv luminoasă.
 THEMES = {"light": "bootstrap-light", "dark": "bootstrap-light"}
@@ -93,7 +95,7 @@ def ok_color(root: tk.Misc) -> str:
     return C.success
 
 
-def show_error(parent: tk.Misc, message: str, title: str = "Eroare") -> None:
+def show_error(parent: tk.Misc, message: str, title: str = tr('ui.dialogs.eroare')) -> None:
     messagebox.showerror(title, message, parent=parent)
 
 
@@ -101,7 +103,7 @@ def show_info(parent: tk.Misc, message: str, title: str = "FocusDesk") -> None:
     messagebox.showinfo(title, message, parent=parent)
 
 
-def confirm(parent: tk.Misc, message: str, title: str = "Confirmare") -> bool:
+def confirm(parent: tk.Misc, message: str, title: str = tr('ui.common.confirmare')) -> bool:
     return messagebox.askyesno(title, message, parent=parent)
 
 
@@ -142,8 +144,8 @@ class ModalDialog(tk.Toplevel):
 
     enter_confirms = True
 
-    def __init__(self, parent: tk.Misc, title: str, *, resizable: bool = False, ok_text: str = "OK",
-                 cancel_text: str = "Anulează") -> None:
+    def __init__(self, parent: tk.Misc, title: str, *, resizable: bool = False, ok_text: str = tr('ui.common.ok'),
+                 cancel_text: str = tr('ui.meetings.anuleaza')) -> None:
         super().__init__(parent)
         self.title(title)
         self.transient(parent.winfo_toplevel())
@@ -218,6 +220,23 @@ class ScrollFrame(ttk.Frame):
             self.canvas.yview_scroll(int(-e.delta / 120), "units")
 
 
+def heading_width(widget, text):
+    """Allow the full localized heading; existing horizontal scrolling handles overflow."""
+    style=widget.cget('style') or 'Treeview'
+    font=tkfont.Font(widget,font=ttk.Style(widget).lookup(style+'.Heading','font') or 'TkDefaultFont')
+    return font.measure(text)+px(widget,20)
+
+
+def fit_tree_headings(widget):
+    """Recheck after mapping/resizing: font size may change with display scaling."""
+    for column in ('#0',*widget['columns']):
+        minimum=heading_width(widget,widget.heading(column,'text'))
+        if widget.column(column,'minwidth')<minimum:
+            widget.column(column,minwidth=minimum)
+        if widget.column(column,'width')<minimum:
+            widget.column(column,width=minimum)
+
+
 def make_tree(parent: tk.Misc, columns: list[tuple[str, str, int]], *, show_tree: bool = False,
               height: int = 8, selectmode: str = "browse") -> tuple[ttk.Treeview, ttk.Frame]:
     """Treeview cu bara de derulare; `columns` = (id, titlu, latime)."""
@@ -227,7 +246,8 @@ def make_tree(parent: tk.Misc, columns: list[tuple[str, str, int]], *, show_tree
                       height=height, selectmode=selectmode)
     for cid, text, width in columns:
         tv.heading(cid, text=text, anchor="w")
-        tv.column(cid, width=width, minwidth=40, anchor="w", stretch=(cid == ids[0] and not show_tree))
+        tv.column(cid, width=max(width,heading_width(tv,text)), minwidth=max(40,heading_width(tv,text)), anchor="w", stretch=(cid == ids[0] and not show_tree))
+    tv.bind('<Configure>',lambda event:fit_tree_headings(tv),add='+')
     vbar = ttk.Scrollbar(frame, orient="vertical", command=tv.yview)
     tv.configure(yscrollcommand=vbar.set)
     hbar=ttk.Scrollbar(frame,orient="horizontal",command=tv.xview)
@@ -269,7 +289,7 @@ class SessionButton(tb.Button):
     """Porneste sesiunea task-ului dat; cat timp o sesiune e activa devine „Oprește sesiunea”."""
 
     def __init__(self, parent: tk.Misc, app: "FocusDeskApp", node_getter: Callable[[], str | None]) -> None:
-        super().__init__(parent, text="Începe sesiune", image=icon(parent,"play-on-accent"), compound="left", command=self._click, bootstyle="primary")
+        super().__init__(parent, text=tr('ui.app.incepe_sesiune'), image=icon(parent,"play-on-accent"), compound="left", command=self._click, bootstyle="primary")
         self.app = app
         self._node_getter = node_getter
         self._mode = "start"
@@ -292,13 +312,13 @@ class SessionButton(tb.Button):
         if app.timer_active():
             same = app.timer.node_id == nid
             mode = ("pause" if app.timer.running else "continue") if same else "start"
-            text = ("Pauză" if app.timer.running else "Continuă") if same else "Începe"
+            text = (tr('ui.session_ui.pauza') if app.timer.running else tr('ui.session_ui.continua')) if same else tr('ui.common.incepe')
             node=ws.nodes.get(nid) if nid else None
             enabled = bool(node and node.kind==Kind.TASK and node.status not in CLOSED_STATUSES and not ws.read_only
                            and not app.timer.recovered and not app.timer.state.finalization)
         else:
             mode = "start"
-            text = "Începe"
+            text = tr('ui.common.incepe')
             node = ws.nodes.get(nid) if nid else None
             enabled = (node is not None and node.kind == Kind.TASK and node.status not in CLOSED_STATUSES
                        and not ws.read_only)
@@ -328,5 +348,5 @@ class _AskString(ModalDialog):
         return self.var.get().strip()
 
 
-def ask_string(parent: tk.Misc, title: str, prompt: str, initial: str = "", ok_text: str = "OK") -> str | None:
+def ask_string(parent: tk.Misc, title: str, prompt: str, initial: str = "", ok_text: str = tr('ui.common.ok')) -> str | None:
     return _AskString(parent, title, prompt, initial, ok_text).run()

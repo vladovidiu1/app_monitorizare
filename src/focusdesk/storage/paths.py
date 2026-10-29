@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import os
 import re
 import stat
@@ -64,7 +66,7 @@ def ensure_path_fits(path: str | os.PathLike, reserve: int = DEFAULT_RESERVE) ->
     length = len(clean_abs(path))
     if length + reserve > MAX_PATH:
         raise PathTooLongError(
-            f"Calea ar depăși limita Windows ({length + reserve} > {MAX_PATH} caractere): {clean_abs(path)}"
+            tr('storage.paths.calea_ar_depasi_limita_windows_caractere', length_reserve=length + reserve, max_path=MAX_PATH, clean_abs_path=clean_abs(path))
         )
 
 
@@ -91,19 +93,19 @@ def is_within(base: str | os.PathLike, candidate: str | os.PathLike) -> bool:
 def resolve_inside(base: str | os.PathLike, rel: str) -> Path:
     """Rezolva o cale relativa strict in interiorul `base`, fara `..` sau linkuri."""
     if not rel or os.path.isabs(rel) or re.match(r"^[A-Za-z]:", rel):
-        raise UnsafePathError(f"Cale relativă invalidă: {rel!r}")
+        raise UnsafePathError(tr('storage.paths.cale_relativa_invalida', rel=rel))
     parts = [p for p in re.split(r"[\\/]+", rel) if p]
     if any(p == ".." for p in parts):
-        raise UnsafePathError(f"Calea iese din folderul permis: {rel!r}")
+        raise UnsafePathError(tr('extra.storage.paths.calea_iese_din_folderul_permis', rel=rel))
     current = Path(clean_abs(base))
     for part in parts:
         if part == ".":
             continue
         current = current / part
         if is_reparse_point(current):
-            raise UnsafePathError(f"Calea conține un link/junction: {current}")
+            raise UnsafePathError(tr('storage.paths.calea_contine_un_link_junction', current=current))
     if not is_within(base, current):
-        raise UnsafePathError(f"Calea iese din folderul permis: {rel!r}")
+        raise UnsafePathError(tr('extra.storage.paths.calea_iese_din_folderul_permis', rel=rel))
     return current
 
 

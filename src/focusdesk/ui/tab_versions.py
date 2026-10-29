@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from ..i18n import datetime_text
+
+from ..i18n import tr, number
+
 import tkinter as tk
 from tkinter import filedialog, ttk
 from typing import TYPE_CHECKING
@@ -18,32 +22,31 @@ from .inspector import InspectorTab
 if TYPE_CHECKING:
     from .app import FocusDeskApp
 
-TRIGGER_TEXT = {"manual": "Manual", "session_end": "Final de sesiune", "scheduled": "Programat",
-                "pre_restore": "Înainte de restaurare", "startup": "La pornire"}
+TRIGGER_TEXT = {"manual": tr('ui.tab_versions.manual'), "session_end": tr('ui.tab_versions.final_de_sesiune'), "scheduled": tr('ui.tab_versions.programat'),
+                "pre_restore": tr('ui.tab_versions.inainte_de_restaurare'), "startup": tr('ui.tab_versions.la_pornire')}
 
 
 def human_size(n: int) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if n < 1024 or unit == "GB":
-            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+            return f"{number(n,0 if unit == 'B' else 1)} {unit}"
         n /= 1024
     return str(n)
 
 
 class IncludedFilesDialog(ModalDialog):
     def __init__(self, parent: tk.Misc, info: dict, root: str) -> None:
-        super().__init__(parent, "Fișiere incluse în checkpoint", resizable=True, ok_text="Închide",
-                         cancel_text="Închide")
+        super().__init__(parent, tr('ui.tab_versions.fisiere_incluse_in_checkpoint'), resizable=True, ok_text=tr('ui.outlook_ui.inchide'),
+                         cancel_text=tr('ui.outlook_ui.inchide'))
         self.ok_btn.pack_forget()
         ttk.Label(self.body, text=root, style="Muted.TLabel", wraplength=520).pack(anchor="w")
-        ttk.Label(self.body, text=(f"{info['count']} fișiere, {human_size(info['total_size'])}; "
-                                   f"{info['excluded']} elemente excluse automat."), style="Section.TLabel").pack(
+        ttk.Label(self.body, text=(tr('ui.tab_versions.fisiere_elemente_excluse_automat', info_count=info['count'], human_size_info_total_size=human_size(info['total_size']), info_excluded=info['excluded'])), style="Section.TLabel").pack(
             anchor="w", pady=(4, 6))
         if info["too_large"]:
             ttk.Label(self.body, foreground=error_color(self), wraplength=520,
-                      text=f"{len(info['too_large'])} fișiere depășesc limita pe fișier și NU sunt incluse: "
+                      text=tr('ui.tab_versions.fisiere_depasesc_limita_pe_fisier_si_nu_sunt_incluse', len_info_too_large=len(info['too_large']))
                            + ", ".join(info["too_large"][:5])).pack(anchor="w")
-        box = tk.Text(self.body, width=70, height=18, wrap="none", font=("Consolas", 9))
+        box = tk.Text(self.body, width=70, height=18, wrap="none", font=(tr('ui.tab_versions.consolas'), 9))
         box.pack(fill="both", expand=True, pady=6)
         box.insert("1.0", "\n".join(info["sample"]))
         box.configure(state="disabled")
@@ -53,12 +56,11 @@ class GitCommitDialog(ModalDialog):
     """Commit manual: mesaj propus (editabil) si lista de fisiere de ales explicit (fara `git add .`)."""
 
     def __init__(self, parent: tk.Misc, entries: list, message: str) -> None:
-        super().__init__(parent, "Commit Git manual", resizable=True, ok_text="Creează commit")
+        super().__init__(parent, tr('ui.tab_versions.commit_git_manual'), resizable=True, ok_text=tr('ui.tab_versions.creeaza_commit'))
         self.geometry("640x520")
         ttk.Label(self.body, wraplength=580, style="Muted.TLabel", text=(
-            "Se rulează `git add -- <fișierele alese>` și `git commit` doar pentru ele. Nu se face push, reset, stash "
-            "sau checkout. Fișierele necomisește noi (??) nu sunt selectate implicit.")).pack(anchor="w")
-        self.tv, frame = make_tree(self.body, [("code", "Stare", 60), ("path", "Fișier", 480)], height=10,
+            tr('ui.tab_versions.se_ruleaza_git_add_fisierele_alese_si_git_commit_doar_pentru_ele_nu_se'))).pack(anchor="w")
+        self.tv, frame = make_tree(self.body, [("code", tr('ui.meetings.stare'), 60), ("path", tr('ui.tab_versions.fisier'), 480)], height=10,
                                    selectmode="extended")
         frame.pack(fill="both", expand=True, pady=6)
         for i, e in enumerate(entries):
@@ -66,17 +68,17 @@ class GitCommitDialog(ModalDialog):
             if not e.untracked:
                 self.tv.selection_add(str(i))
         self._entries = entries
-        ttk.Label(self.body, text="Mesaj").pack(anchor="w")
+        ttk.Label(self.body, text=tr('ui.mail_ui.mesaj')).pack(anchor="w")
         self.msg = tk.Text(self.body, height=5, wrap="word", font="TkTextFont")
         self.msg.pack(fill="x")
         self.msg.insert("1.0", message)
 
     def validate(self) -> bool:
         if not self.tv.selection():
-            show_error(self, "Alege cel puțin un fișier.")
+            show_error(self, tr('ui.tab_versions.alege_cel_putin_un_fisier'))
             return False
         if not self.msg.get("1.0", "end").strip():
-            show_error(self, "Mesajul este obligatoriu.")
+            show_error(self, tr('ui.tab_versions.mesajul_este_obligatoriu'))
             return False
         return True
 
@@ -98,32 +100,32 @@ class VersionsTab(InspectorTab):
         self.desc_var = tk.StringVar()
         self.desc_entry = ttk.Entry(top, textvariable=self.desc_var)
         self.desc_entry.pack(side="left", fill="x", expand=True)
-        self.save_btn = tb.Button(top, text="Salvează checkpoint", command=self._create, bootstyle="primary")
+        self.save_btn = tb.Button(top, text=tr('ui.tab_versions.salveaza_checkpoint'), command=self._create, bootstyle="primary")
         self.save_btn.pack(side="left", padx=(6, 0))
-        self.tv, frame = make_tree(self, [("when", "Data", 110), ("task", "Task", 100), ("trig", "Declanșator", 90),
-                                          ("files", "Fișiere", 50), ("size", "Mărime", 65), ("desc", "Descriere", 120)],
+        self.tv, frame = make_tree(self, [("when", tr('ui.tab_versions.data'), 110), ("task", tr('ui.outlook_ui.task'), 100), ("trig", tr('ui.tab_versions.declansator'), 90),
+                                          ("files", tr('ui.tab_versions.fisiere'), 50), ("size", tr('ui.tab_versions.marime'), 65), ("desc", tr('ui.tab_versions.descriere'), 120)],
                                    height=6)
         frame.pack(fill="both", expand=True, padx=8, pady=6)
         r1 = ttk.Frame(self)
         r1.pack(fill="x", padx=8)
-        ttk.Button(r1, text="Compară cu curentul", command=self._diff_current).pack(side="left", padx=2)
-        ttk.Button(r1, text="Compară cu anteriorul", command=self._diff_previous).pack(side="left", padx=2)
-        ttk.Button(r1, text="Fișiere incluse…", command=self._preview).pack(side="left", padx=2)
+        ttk.Button(r1, text=tr('ui.tab_versions.compara_cu_curentul'), command=self._diff_current).pack(side="left", padx=2)
+        ttk.Button(r1, text=tr('ui.tab_versions.compara_cu_anteriorul'), command=self._diff_previous).pack(side="left", padx=2)
+        ttk.Button(r1, text=tr('ui.tab_versions.fisiere_incluse'), command=self._preview).pack(side="left", padx=2)
         r2 = ttk.Frame(self)
         r2.pack(fill="x", padx=8, pady=(4, 0))
-        ttk.Button(r2, text="Restaurează în folder separat…", command=self._restore_separate).pack(side="left", padx=2)
-        self.overwrite_btn = ttk.Button(r2, text="Suprascrie sursa…", command=self._restore_overwrite)
+        ttk.Button(r2, text=tr('ui.tab_versions.restaureaza_in_folder_separat'), command=self._restore_separate).pack(side="left", padx=2)
+        self.overwrite_btn = ttk.Button(r2, text=tr('ui.tab_versions.suprascrie_sursa_2'), command=self._restore_overwrite)
         self.overwrite_btn.pack(side="left", padx=2)
         self.changes = ttk.Treeview(self, columns=("kind", "path"), show="headings", height=5, selectmode="browse")
-        self.changes.heading("kind", text="Modificare")
-        self.changes.heading("path", text="Fișier")
+        self.changes.heading("kind", text=tr('ui.tab_versions.modificare'))
+        self.changes.heading("path", text=tr('ui.tab_versions.fisier'))
         self.changes.column("kind", width=90, stretch=False)
         self.changes.column("path", width=300)
         self.changes.pack(fill="x", padx=8, pady=(8, 2))
         self.changes.bind("<<TreeviewSelect>>", self._show_text_diff)
         dwrap = ttk.Frame(self)
         dwrap.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        self.diff_text = tk.Text(dwrap, height=8, wrap="none", font=("Consolas", 9), state="disabled")
+        self.diff_text = tk.Text(dwrap, height=8, wrap="none", font=(tr('ui.tab_versions.consolas'), 9), state="disabled")
         sb = ttk.Scrollbar(dwrap, orient="vertical", command=self.diff_text.yview)
         self.diff_text.configure(yscrollcommand=sb.set)
         self.diff_text.pack(side="left", fill="both", expand=True)
@@ -136,19 +138,19 @@ class VersionsTab(InspectorTab):
 
     def _build_git(self) -> None:
         """Sectiune Git optionala: status, log, commit MANUAL cu fisiere alese explicit."""
-        self.git_frame = ttk.LabelFrame(self, text="Git (opțional)")
+        self.git_frame = ttk.LabelFrame(self, text=tr('ui.tab_versions.git_optional'))
         self.git_frame.pack(fill="x", padx=8, pady=(4, 8))
         self.git_lbl = ttk.Label(self.git_frame, text="", style="Muted.TLabel", wraplength=400, justify="left")
         self.git_lbl.pack(anchor="w", padx=6, pady=(4, 2))
-        self.git_tv, frame = make_tree(self.git_frame, [("h", "Commit", 60), ("when", "Data", 100), ("who", "Autor", 80),
-                                                         ("msg", "Mesaj", 170)], height=4)
+        self.git_tv, frame = make_tree(self.git_frame, [("h", tr('ui.tab_versions.commit'), 60), ("when", tr('ui.tab_versions.data'), 100), ("who", tr('ui.tab_versions.autor'), 80),
+                                                         ("msg", tr('ui.mail_ui.mesaj'), 170)], height=4)
         frame.pack(fill="x", padx=6)
         row = ttk.Frame(self.git_frame)
         row.pack(fill="x", padx=6, pady=4)
         self.git_btns = [
-            ttk.Button(row, text="Reîmprospătează", command=self._refresh_git),
-            ttk.Button(row, text="Commit manual…", command=self._git_commit),
-            ttk.Button(row, text="Doar din sesiunile task-ului", command=self._git_filter),
+            ttk.Button(row, text=tr('ui.tab_versions.reimprospateaza'), command=self._refresh_git),
+            ttk.Button(row, text=tr('ui.tab_versions.commit_manual'), command=self._git_commit),
+            ttk.Button(row, text=tr('ui.tab_versions.doar_din_sesiunile_task_ului'), command=self._git_filter),
         ]
         for b in self.git_btns:
             b.pack(side="left", padx=2)
@@ -169,14 +171,14 @@ class VersionsTab(InspectorTab):
             return
         src = self.app.files.usable_source_dir(self.node_id)
         if src is None:
-            self.git_lbl.configure(text="Fara folder de cod: Git indisponibil.")
+            self.git_lbl.configure(text=tr('ui.tab_versions.fara_folder_de_cod_git_indisponibil'))
             self._set_git_enabled(False)
             return
         if git.find_git() is None:
-            self.git_lbl.configure(text="Git nu a fost găsit în PATH (opțional). Checkpoint-urile funcționează fără Git.")
+            self.git_lbl.configure(text=tr('ui.tab_versions.git_nu_a_fost_gasit_in_path_optional_checkpoint_urile_functioneaza_far'))
             self._set_git_enabled(False)
             return
-        self.git_lbl.configure(text="Se citește Git…")
+        self.git_lbl.configure(text=tr('ui.tab_versions.se_citeste_git'))
         self._set_git_enabled(False)
         node_id = self.node_id
 
@@ -190,17 +192,17 @@ class VersionsTab(InspectorTab):
             if node_id != self.node_id:
                 return
             if res is None:
-                self.git_lbl.configure(text="Folderul de cod nu este un repository Git (sau nu are commit-uri).")
+                self.git_lbl.configure(text=tr('ui.tab_versions.folderul_de_cod_nu_este_un_repository_git_sau_nu_are_commit_uri'))
                 return
             root, br, entries, commits = res
             self._git_folder, self._git_commits, self._git_entries = src, commits, entries
             changed = len(entries)
-            self.git_lbl.configure(text=f"Branch: {br}  ·  {changed} fișiere modificate/necomisește  ·  repository: {root}")
+            self.git_lbl.configure(text=tr('ui.tab_versions.branch_fisiere_modificate_necomiseste_repository', br=br, changed=changed, root=root))
             self._fill_commits(commits)
             self._set_git_enabled(True)
 
         def failed(exc: BaseException) -> None:
-            self.git_lbl.configure(text=f"Git: {exc}")
+            self.git_lbl.configure(text=tr('ui.tab_versions.git', exc=exc))
 
         self.app.bridge.submit(work, done, failed, name="git-status")
 
@@ -208,7 +210,7 @@ class VersionsTab(InspectorTab):
         self.git_tv.delete(*self.git_tv.get_children())
         tz = self.app.q.tz()
         for c in commits:
-            self.git_tv.insert("", "end", values=(c.hash[:7], f"{c.when.astimezone(tz):%d.%m.%Y %H:%M}", c.author, c.subject))
+            self.git_tv.insert("", "end", values=(c.hash[:7], f'{datetime_text(c.when.astimezone(tz))}', c.author, c.subject))
 
     def _git_filter(self) -> None:
         from ..integrations import git
@@ -218,7 +220,7 @@ class VersionsTab(InspectorTab):
         windows = [(s.started_actual_at or s.start_at, s.stopped_actual_at or s.end_at)
                    for s in self.app.sessions.for_node(self.node_id) if s.status == "done"]
         if not windows:
-            show_info(self, "Task-ul nu are sesiuni de lucru înregistrate.")
+            show_info(self, tr('ui.tab_versions.task_ul_nu_are_sesiuni_de_lucru_inregistrate'))
             return
         self._fill_commits(git.commits_between(self._git_commits, windows))
 
@@ -236,8 +238,8 @@ class VersionsTab(InspectorTab):
         message, files = res
         folder = self._git_folder
         self.app.run_job(lambda tok: git.commit(folder, message, files),
-                         lambda h: (show_info(self, f"Commit creat: {h[:10]}\nNu s-a făcut push."), self._refresh_git()),
-                         name="git-commit", busy_text="Se creează commit-ul…")
+                         lambda h: (show_info(self, tr('ui.tab_versions.commit_creat_nu_s_a_facut_push', h_10=h[:10])), self._refresh_git()),
+                         name="git-commit", busy_text=tr('ui.tab_versions.se_creeaza_commit_ul'))
 
     def applies_to(self, node: Node) -> bool:
         return node.kind != Kind.FOLDER
@@ -256,17 +258,14 @@ class VersionsTab(InspectorTab):
         self._clear_diff()
         ro = self.app.ws.read_only
         if src is None:
-            self.info.configure(text=source_error or "Asociază un folder de cod în tabul „Fișiere” pentru a salva versiuni. "
-                                     "Proiectele fără Git funcționează complet cu checkpoint-uri.")
+            self.info.configure(text=source_error or tr('ui.tab_versions.asociaza_un_folder_de_cod_in_tabul_fisiere_pentru_a_salva_versiuni_pro'))
             self.save_btn.configure(state="disabled")
             self._load_manifests(node)
             self._refresh_git()
             return
         self.save_btn.configure(state="disabled" if ro else "normal")
-        self.info.configure(text=(("Folder de cod comun. Checkpointurile sunt ale acestei cerințe; Git arată istoricul repository-ului comun. " if src.mode=='shared' or len(self.app.files.shared_users(node.id))>1 else "") +
-            "Checkpoint-ul vede doar fișierele SALVATE pe disc, nu textul nesalvat din VS Code. "
-            "Poți activa Auto Save în VS Code (aplicația nu schimbă setările tale). "
-            "Programarea funcționează doar cât timp FocusDesk rulează."))
+        self.info.configure(text=((tr('ui.tab_versions.folder_de_cod_comun_checkpointurile_sunt_ale_acestei_cerinte_git_arata') if src.mode=='shared' or len(self.app.files.shared_users(node.id))>1 else "") +
+            tr('ui.tab_versions.checkpoint_ul_vede_doar_fisierele_salvate_pe_disc_nu_textul_nesalvat_d')))
         self._load_manifests(node)
         self._refresh_git()
 
@@ -276,7 +275,7 @@ class VersionsTab(InspectorTab):
             self._manifests[m.id] = m
             n = self.app.ws.nodes.get(m.node_id)
             self.tv.insert("", "end", iid=m.id, values=(
-                f"{m.created_at.astimezone(tz):%d.%m.%Y %H:%M}", n.title if n else "?",
+                f'{datetime_text(m.created_at.astimezone(tz))}', n.title if n else "?",
                 TRIGGER_TEXT.get(m.trigger, m.trigger), len(m.files), human_size(m.total_size), m.description))
 
     def _selected(self) -> CheckpointManifest | None:
@@ -307,34 +306,34 @@ class VersionsTab(InspectorTab):
         except FocusDeskError as exc:
             show_error(self,str(exc));return
         if src is None or not src.path.is_dir():
-            show_error(self, "Folderul de cod nu există.")
+            show_error(self, tr('ui.tab_versions.folderul_de_cod_nu_exista'))
             return
         cfg = self.app.ws.settings.checkpoints
         self.app.run_job(lambda tok: preview_included(src.path, cfg),
                          lambda info: IncludedFilesDialog(self, info, str(src.path)).run(),
-                         name="preview", busy_text="Se scanează fișierele…")
+                         name="preview", busy_text=tr('ui.tab_versions.se_scaneaza_fisierele'))
 
     def _diff_current(self) -> None:
         m = self._selected()
         if m is None:
-            show_info(self, "Alege un checkpoint din listă.")
+            show_info(self, tr('ui.tab_versions.alege_un_checkpoint_din_lista'))
             return
         self._diff_manifest = m
 
         def done(d: dict) -> None:
             self._show_changes(d)
 
-        self.app.run_job(lambda tok: self.cs.diff_current(m, tok), done, name="diff", busy_text="Se compară…")
+        self.app.run_job(lambda tok: self.cs.diff_current(m, tok), done, name="diff", busy_text=tr('ui.tab_versions.se_compara'))
 
     def _diff_previous(self) -> None:
         m = self._selected()
         if m is None:
-            show_info(self, "Alege un checkpoint din listă.")
+            show_info(self, tr('ui.tab_versions.alege_un_checkpoint_din_lista'))
             return
         ordered = list(self._manifests.values())
         idx = ordered.index(m)
         if idx + 1 >= len(ordered):
-            show_info(self, "Nu există un checkpoint anterior.")
+            show_info(self, tr('ui.tab_versions.nu_exista_un_checkpoint_anterior'))
             return
         prev = ordered[idx + 1]
         self._diff_manifest = prev
@@ -344,13 +343,13 @@ class VersionsTab(InspectorTab):
                       newer: CheckpointManifest | None = None) -> None:
         self._clear_diff()
         self._newer = newer
-        labels = {"new": "Nou", "modified": "Modificat", "deleted": "Șters"}
+        labels = {"new": tr('ui.tab_versions.nou'), "modified": tr('ui.tab_versions.modificat'), "deleted": tr('ui.tab_versions.sters')}
         for kind in ("new", "modified", "deleted"):
             for path in d[kind]:
                 self.changes.insert("", "end", values=(labels[kind], path))
         if not self.changes.get_children():
             self.diff_text.configure(state="normal")
-            self.diff_text.insert("1.0", "Fără diferențe.")
+            self.diff_text.insert("1.0", tr('ui.tab_versions.fara_diferente'))
             self.diff_text.configure(state="disabled")
 
     def _show_text_diff(self, _e=None) -> None:
@@ -360,7 +359,7 @@ class VersionsTab(InspectorTab):
         kind, path = self.changes.item(sel[0], "values")
         m = self._diff_manifest
         if getattr(self, "_newer", None) is not None:
-            text = "(Diff de text disponibil doar la compararea cu starea curentă.)"
+            text = tr('ui.tab_versions.diff_de_text_disponibil_doar_la_compararea_cu_starea_curenta')
         else:
             try:
                 text = self.cs.text_diff(m, path)
@@ -377,10 +376,10 @@ class VersionsTab(InspectorTab):
     def _restore_separate(self) -> None:
         m = self._selected()
         if m is None:
-            show_info(self, "Alege un checkpoint din listă.")
+            show_info(self, tr('ui.tab_versions.alege_un_checkpoint_din_lista'))
             return
         initial = self.cs.default_restore_dir(m)
-        d = filedialog.askdirectory(parent=self, title="Alege un folder GOL pentru restaurare",
+        d = filedialog.askdirectory(parent=self, title=tr('ui.tab_versions.alege_un_folder_gol_pentru_restaurare'),
                                     initialdir=str(initial.parent), mustexist=False)
         if not d:
             return
@@ -389,27 +388,25 @@ class VersionsTab(InspectorTab):
         dest = Path(d)
         if dest.exists() and any(dest.iterdir()):
             dest = initial
-            if not confirm(self, f"Folderul ales nu este gol. Restaurez în:\n{dest} ?"):
+            if not confirm(self, tr('ui.tab_versions.folderul_ales_nu_este_gol_restaurez_in', dest=dest)):
                 return
         self.app.run_job(lambda tok: self.cs.restore(m, dest, cancel=tok),
-                         lambda out: show_info(self, f"Restaurat în:\n{out}\n\nSursa originală nu a fost modificată."),
-                         name="restore", busy_text="Se restaurează…")
+                         lambda out: show_info(self, tr('ui.tab_versions.restaurat_in_sursa_originala_nu_a_fost_modificata', out=out)),
+                         name="restore", busy_text=tr('ui.tab_versions.se_restaureaza'))
 
     def _restore_overwrite(self) -> None:
         m = self._selected()
         if m is None:
-            show_info(self, "Alege un checkpoint din listă.")
+            show_info(self, tr('ui.tab_versions.alege_un_checkpoint_din_lista'))
             return
-        ans = ask_choice(self, "Suprascrie sursa",
-                         f"Fișierele din checkpoint vor fi scrise PESTE:\n{m.source_root}\n\n"
-                         "Înainte se creează automat un checkpoint de siguranță. Fișierele noi, care nu există în "
-                         "checkpoint, nu se șterg.",
-                         [("go", "Creează copie de siguranță și suprascrie"), ("cancel", "Anulează")])
+        ans = ask_choice(self, tr('ui.tab_versions.suprascrie_sursa'),
+                         tr('ui.tab_versions.fisierele_din_checkpoint_vor_fi_scrise_peste_inainte_se_creeaza_automa', m_source_root=m.source_root),
+                         [("go", tr('ui.tab_versions.creeaza_copie_de_siguranta_si_suprascrie')), ("cancel", tr('ui.meetings.anuleaza'))])
         if ans != "go":
             return
         from pathlib import Path
 
         self.app.run_job(lambda tok: self.cs.restore(m, Path(m.source_root), overwrite_source=True, cancel=tok),
-                         lambda out: (show_info(self, "Sursa a fost restaurată. Copia de siguranță este în listă."),
+                         lambda out: (show_info(self, tr('ui.tab_versions.sursa_a_fost_restaurata_copia_de_siguranta_este_in_lista')),
                                       self.load(self.app.ws.get(self.node_id))),  # type: ignore[arg-type]
-                         name="restore", busy_text="Se restaurează…")
+                         name="restore", busy_text=tr('ui.tab_versions.se_restaureaza'))

@@ -1,7 +1,7 @@
 # FocusDesk
 
 Organizator personal pentru proiecte, task-uri, subtask-uri, sesiuni de lucru, fișiere și versiuni de cod.
-Aplicație desktop Windows (Python, **Tkinter + ttk**, aspect `ttkbootstrap`), interfața în limba română.
+Aplicație desktop Windows (Python, **Tkinter + ttk**, aspect `ttkbootstrap`), interfață în română, engleză, germană, franceză și spaniolă (implicit română).
 Datele sunt **într-un folder local ales de tine** (JSON, Markdown, fișiere, ZIP): fără SQL, fără cloud, fără server web.
 
 Scop: să pui rapid backlog-ul în aplicație, să-l grupezi în foldere/proiecte/task-uri, să alegi realist ce faci azi,
@@ -175,3 +175,7 @@ Foldere reale de proiect/task, încărcare la extindere, actualizare la revenire
 ## Ghid complet în aplicație
 
 **Ghid de utilizare** în antet și **F1** oferă 19 capitole, tutoriale, căutare offline și legături interne, într-o fereastră nemodală. Conținutul inclus în distribuție este documentația canonică de utilizare. [Cuprins](docs/utilizare.md) · [Verificări și limite](docs/GHID-IN-APLICATIE.md).
+
+## Limba interfeței
+
+**Setări → General → Limbă / Language** selectează Română, English, Deutsch, Français sau Español, inclusiv fără workspace. Preferința se aplică la următoarea pornire manuală și nu schimbă datele, ciornele sau timerul. Sunt incluse ghidul și șabloanele localizate, fără servicii de traducere în utilizare. [Implementare și întreținere](docs/INTERNATIONALIZARE.md) · [Verificări](docs/VERIFICARE-LIMBI.md).

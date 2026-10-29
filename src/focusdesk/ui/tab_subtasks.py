@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
@@ -30,9 +32,9 @@ class SubtasksTab(InspectorTab):
         self.add_entry = ttk.Entry(add, textvariable=self.add_var)
         self.add_entry.pack(side="left", fill="x", expand=True)
         self.add_entry.bind("<Return>", lambda _e: self._quick_add())
-        self.add_btn = ttk.Button(add, text="Adaugă subtask", command=self._quick_add)
+        self.add_btn = ttk.Button(add, text=tr('ui.tab_subtasks.adauga_subtask'), command=self._quick_add)
         self.add_btn.pack(side="left", padx=(6, 0))
-        self.tv, frame = make_tree(self, [("title", "Titlu", 220), ("status", "Status", 90), ("progress", "Progres", 75), ("due", "Termen", 90)],
+        self.tv, frame = make_tree(self, [("title", tr('ui.meetings.titlu'), 220), ("status", tr('ui.tab_details.status'), 90), ("progress", tr('ui.tab_subtasks.progres'), 75), ("due", tr('ui.meetings.termen'), 90)],
                                    height=7)
         frame.pack(fill="both", expand=True, padx=8)
         self.tv.configure(show="tree headings")
@@ -42,11 +44,11 @@ class SubtasksTab(InspectorTab):
         btns = ttk.Frame(self)
         btns.pack(fill="x", padx=8, pady=4)
         for text, cmd in (("▲", lambda: self._reorder(-1)), ("▼", lambda: self._reorder(1)),
-                          ("Finalizează / redeschide", self._toggle_done), ("Deschide", self._open),
-                          ("În coș", self._trash)):
+                          (tr('ui.tab_subtasks.finalizeaza_redeschide'), self._toggle_done), (tr('ui.user_guide.deschide'), self._open),
+                          (tr('ui.tab_subtasks.in_cos'), self._trash)):
             ttk.Button(btns, text=text, command=cmd, width=3 if len(text) == 1 else None).pack(side="left", padx=2)
 
-        self.check_frame = ttk.LabelFrame(self, text="Checklist funcțional al taskului (separat de căsuțele Markdown)")
+        self.check_frame = ttk.LabelFrame(self, text=tr('ui.tab_subtasks.checklist_functional_al_taskului_separat_de_casutele_markdown'))
         self.check_frame.pack(fill="x", padx=8, pady=(6, 8))
         self.check_tv = ttk.Treeview(self.check_frame, show="tree", height=4, selectmode="browse")
         self.check_tv.tag_configure("checked",foreground=C.muted)
@@ -59,8 +61,8 @@ class SubtasksTab(InspectorTab):
         ce = ttk.Entry(crow, textvariable=self.check_var)
         ce.pack(side="left", fill="x", expand=True)
         ce.bind("<Return>", lambda _e: self._add_check())
-        ttk.Button(crow, text="Adaugă", command=self._add_check).pack(side="left", padx=4)
-        ttk.Button(crow, text="Elimină", command=self._remove_check).pack(side="left")
+        ttk.Button(crow, text=tr('ui.tab_subtasks.adauga'), command=self._add_check).pack(side="left", padx=4)
+        ttk.Button(crow, text=tr('ui.tab_details.elimina'), command=self._remove_check).pack(side="left")
 
         if checklist_first:
             self.check_frame.pack(before=add, fill="x", padx=8, pady=(6,8))
@@ -149,7 +151,7 @@ class SubtasksTab(InspectorTab):
     def _trash(self) -> None:
         if self.app.ws.read_only: return
         sel = self._selected()
-        if sel and confirm(self, "Muți elementul selectat (și subtask-urile lui) în coș?"):
+        if sel and confirm(self, tr('ui.tab_subtasks.muti_elementul_selectat_si_subtask_urile_lui_in_cos')):
             self.app.run_write(lambda: self.app.ws.trash(sel), refresh=True)
 
     # ---- checklist --------------------------------------------------

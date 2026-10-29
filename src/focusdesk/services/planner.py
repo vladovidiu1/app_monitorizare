@@ -5,6 +5,8 @@ Calculeaza determinist intervalele, capacitatea, pauzele si dependentele.
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -163,7 +165,7 @@ class Planner:
         free = self.free_intervals(start_day, end_day, busy, local_sessions, now)
         result.free_minutes_total = sum(minutes_between(a, b) for a, b in free)
         if not free:
-            result.notes.append("Nu există timp liber în program pentru perioada aleasă.")
+            result.notes.append(tr('services.planner.nu_exista_timp_liber_in_program_pentru_perioada_aleasa'))
 
         selected = {r.node_id: r for r in requests}
         order = self._ordered(requests, nodes, unfinished_deps)
@@ -178,28 +180,28 @@ class Planner:
             allocated_end[nid] = None
             fully_done[nid] = False
             if node.kind != Kind.TASK or node.status in CLOSED_STATUSES:
-                result.unallocated.append(Unallocated(nid, 0, "finalizat/anulat sau nu este task"))
+                result.unallocated.append(Unallocated(nid, 0, tr('extra.services.planner.finalizat_anulat_sau_nu_este_task')))
                 continue
             need = req.minutes if req.minutes is not None else (
                 node.remaining_minutes if node.remaining_minutes is not None else node.estimated_minutes)
             if need is None:
-                result.unallocated.append(Unallocated(nid, 0, "neestimat — setează o estimare"))
+                result.unallocated.append(Unallocated(nid, 0, tr('services.planner.neestimat_seteaza_o_estimare')))
                 continue
             need = max(0, need - already.get(nid, 0))
             if need == 0:
                 fully_done[nid] = True
-                result.notes.append(f"„{node.title}”: timpul estimat este deja acoperit de sesiuni planificate.")
+                result.notes.append(tr('extra.services.planner.timpul_estimat_este_deja_acoperit_de_sesiuni_planificate', node_title=node.title))
                 continue
             blockers = [d for d in unfinished_deps.get(nid, [])]
             external_blockers = [d for d in blockers if d not in selected]
             if external_blockers:
                 names = ", ".join(nodes[d].title if d in nodes else d[:8] for d in external_blockers)
-                result.unallocated.append(Unallocated(nid, need, f"blocat de dependențe nefinalizate: {names}"))
+                result.unallocated.append(Unallocated(nid, need, tr('services.planner.blocat_de_dependente_nefinalizate', names=names)))
                 continue
             unmet = [d for d in blockers if not fully_done.get(d)]
             if unmet:
                 names = ", ".join(nodes[d].title for d in unmet if d in nodes)
-                result.unallocated.append(Unallocated(nid, need, f"blocat: dependența nu este programată complet ({names})"))
+                result.unallocated.append(Unallocated(nid, need, tr('services.planner.blocat_dependenta_nu_este_programata_complet', names=names)))
                 continue
             earliest = period_start
             for d in blockers:
@@ -208,7 +210,7 @@ class Planner:
                     earliest = end_d + timedelta(minutes=self.s.gap_minutes)
             latest = self._deadline(node, period_end)
             if latest <= max(earliest, _ceil_min(now)):
-                result.unallocated.append(Unallocated(nid, need, "termen depășit sau înainte de perioada de planificare"))
+                result.unallocated.append(Unallocated(nid, need, tr('services.planner.termen_depasit_sau_inainte_de_perioada_de_planificare')))
                 continue
             chunks, remaining = self._allocate(free, need, earliest, latest)
             for a, b in chunks:
@@ -216,10 +218,10 @@ class Planner:
             if chunks:
                 allocated_end[nid] = max(b for _, b in chunks)
             if remaining > 0:
-                reason = "capacitate insuficientă"
+                reason = tr('services.planner.capacitate_insuficienta')
                 if latest < period_end:
-                    reason += " înainte de termen"
-                result.unallocated.append(Unallocated(nid, remaining, f"{reason} (lipsesc {remaining} min)"))
+                    reason += tr('services.planner.inainte_de_termen')
+                result.unallocated.append(Unallocated(nid, remaining, tr('extra.services.planner.lipsesc_min', reason=reason, remaining=remaining)))
             else:
                 fully_done[nid] = True
         result.sessions.sort(key=lambda p: p.start)

@@ -1,4 +1,6 @@
 """Primitive calendar import DTOs. No COM object or message body crosses threads."""
+
+from ..i18n import tr
 from dataclasses import dataclass,field
 from datetime import datetime,date
 
@@ -67,7 +69,7 @@ def read_outlook_meetings(backend,store_id,folder_id,start,end):
             if b<=start or a>=end:item=collection.GetNext();continue
             recurrence=int(getattr(item,'RecurrenceState',0))
             uid=clean_uid(item)
-            if not uid and recurrence:raise ValueError('Recurență fără identificator de serie stabil; element omis')
+            if not uid and recurrence:raise ValueError(tr('integrations.meetings.recurenta_fara_identificator_de_serie_stabil_element_omis'))
             uid=uid or str(item.EntryID)
             slot=''
             if recurrence in (2,3):
@@ -77,7 +79,7 @@ def read_outlook_meetings(backend,store_id,folder_id,start,end):
                     slot=stamp(original).isoformat()
                 else:slot=a.isoformat()
             elif recurrence==1:
-                raise ValueError('Outlook a returnat masterul recurent în loc de apariție; nu se importă ca întâlnire separată')
+                raise ValueError(tr('integrations.meetings.outlook_a_returnat_masterul_recurent_in_loc_de_aparitie_nu_se_importa'))
             link=''
             try:link=str(named_property(item,PSET_APPOINTMENT,0x8245,'001F') or '')
             except Exception:pass
@@ -94,5 +96,5 @@ def read_outlook_meetings(backend,store_id,folder_id,start,end):
             out.complete=False;out.warnings.append('Element omis: '+str(exc))
         item=collection.GetNext()
     if item is not None:
-        out.complete=False;out.warnings.append(f'Limită de {MAX_EVENTS} evenimente atinsă; rezultatul este parțial.')
+        out.complete=False;out.warnings.append(tr('integrations.meetings.limita_de_evenimente_atinsa_rezultatul_este_partial', max_events=MAX_EVENTS))
     return out

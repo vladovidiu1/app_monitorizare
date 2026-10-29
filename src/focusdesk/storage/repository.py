@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import os
 import threading
@@ -46,7 +48,7 @@ class LoadIssue:
 def migrate_node_data(data: dict) -> dict:
     version = data.get("schema_version", 1)
     if not isinstance(version, int) or version > SCHEMA_VERSION:
-        raise CorruptFileError(f"schema_version {version!r} este mai nouă decât cea suportată ({SCHEMA_VERSION})")
+        raise CorruptFileError(tr('storage.repository.schema_version_este_mai_noua_decat_cea_suportata', version=version, schema_version=SCHEMA_VERSION))
     return data
 
 
@@ -117,7 +119,7 @@ class WorkspaceRepository:
         repo = cls(root)
         if not cls.is_workspace(root):
             if not create:
-                raise NotFoundError(f"{root} nu este un workspace FocusDesk.")
+                raise NotFoundError(tr('extra.storage.repository.nu_este_un_workspace_focusdesk', root=root))
             repo._create_layout(name)
         if read_only:
             repo.read_only = True
@@ -181,7 +183,7 @@ class WorkspaceRepository:
 
     def _require_writable(self) -> None:
         if self.read_only:
-            raise ReadOnlyError("Workspace-ul este deschis doar pentru citire.")
+            raise ReadOnlyError(tr('ui.app.workspace_ul_este_deschis_doar_pentru_citire'))
 
     def rename_workspace(self, name: str) -> None:
         self._require_writable()
@@ -197,7 +199,7 @@ class WorkspaceRepository:
             return Settings.model_validate(data)
         except (CorruptFileError, PydanticValidationError, NotFoundError) as exc:
             log.warning("settings.json invalid, folosesc valori implicite: %s", exc)
-            self.issues.append(LoadIssue("warning", "settings_invalid", f"settings.json invalid: {exc}"))
+            self.issues.append(LoadIssue('warning', 'settings_invalid', tr('extra.storage.repository.settings_json_invalid', exc=exc)))
             return Settings()
 
     def save_settings(self, settings: Settings) -> None:
@@ -244,7 +246,7 @@ class WorkspaceRepository:
         try:
             entries = sorted(container.iterdir(), key=lambda p: p.name)
         except OSError as exc:
-            self._issue("error", "scan_failed", f"Nu se poate citi {container}: {exc}", container)
+            self._issue('error', 'scan_failed', tr('extra.storage.repository.nu_se_poate_citi', container=container, exc=exc), container)
             return
         for entry in entries:
             self._load_entry(entry, physical_parent, parent_known)
@@ -255,7 +257,7 @@ class WorkspaceRepository:
         njson = entry / "node.json"
         if not njson.is_file():
             self._issue("warning", "dir_without_node_json",
-                        f"Directorul {entry.name} nu conține node.json și a fost ignorat.", entry)
+                        tr('storage.repository.directorul_nu_contine_node_json_si_a_fost_ignorat', entry_name=entry.name), entry)
             return
         try:
             entry_data = self._cache_entries.get(str(entry.relative_to(self.root)))
@@ -285,13 +287,13 @@ class WorkspaceRepository:
         if from_bak:
             self._stamps.pop(node.id,None)
             self._issue("warning", "node_from_backup",
-                        f"node.json corupt, s-a folosit copia .bak: {entry.name}", njson, node.id)
+                        tr('extra.storage.repository.node_json_corupt_s_a_folosit_copia_bak', entry_name=entry.name), njson, node.id)
         if node.id in self.nodes:
             self._issue("error", "duplicate_id",
-                        f"UUID duplicat {node.id} în {entry} (deja în {self.dirs[node.id]}).", entry, node.id)
+                        tr('storage.repository.uuid_duplicat_in_deja_in', node_id=node.id, entry=entry, self_dirs_node_id=self.dirs[node.id]), entry, node.id)
             return
         if not is_node_dirname(entry.name):
-            self._issue("warning", "unusual_dirname", f"Nume director neobișnuit: {entry.name}", entry, node.id)
+            self._issue("warning", "unusual_dirname", tr('storage.repository.nume_director_neobisnuit', entry_name=entry.name), entry, node.id)
         self.nodes[node.id] = node
         self.index_node(node)
         self.dirs[node.id] = entry
@@ -299,7 +301,7 @@ class WorkspaceRepository:
         if not from_bak: self._stamps[node.id] = signature(njson)
         if parent_known and node.parent_id != physical_parent:
             self._issue("warning", "parent_mismatch",
-                        f"'{node.title}': parent_id nu corespunde locației fizice.", entry, node.id)
+                        tr('storage.repository.parent_id_nu_corespunde_locatiei_fizice', node_title=node.title), entry, node.id)
         self._scan(entry / "children", node.id)
 
     def load_node_dir(self, entry: Path, physical_parent: str | None = None) -> None:
@@ -314,29 +316,29 @@ class WorkspaceRepository:
         for node in self.nodes.values():
             if node.parent_id is not None and node.parent_id not in self.nodes:
                 self._issue("warning", "missing_parent",
-                            f"'{node.title}' referă un părinte inexistent; apare ca orfan.", self.dirs[node.id], node.id)
+                            tr('storage.repository.refera_un_parinte_inexistent_apare_ca_orfan', node_title=node.title), self.dirs[node.id], node.id)
             for ref in node.related_node_ids:
                 if ref not in self.nodes:
-                    self._issue("warning", "dangling_related", f"'{node.title}': legătură către nod inexistent {ref}.",
+                    self._issue("warning", "dangling_related", tr('storage.repository.legatura_catre_nod_inexistent', node_title=node.title, ref=ref),
                                 None, node.id)
             for ref in node.depends_on_ids:
                 if ref not in self.nodes:
                     self._issue("warning", "dangling_dependency",
-                                f"'{node.title}': dependență către nod inexistent {ref}.", None, node.id)
+                                tr('storage.repository.dependenta_catre_nod_inexistent', node_title=node.title, ref=ref), None, node.id)
         for node in self.nodes.values():
             if node.continuation_of and node.continuation_of not in self.nodes:
-                self._issue('warning','missing_continuation','Taskul sursă al cerinței este indisponibil.',None,node.id)
+                self._issue('warning','missing_continuation',tr('storage.repository.taskul_sursa_al_cerintei_este_indisponibil'),None,node.id)
             current=node.continuation_of;visited={node.id}
             while current in self.nodes:
                 if current in visited:
-                    self._issue('error','continuation_cycle','Ciclu în lanțul cerințelor.',None,node.id);break
+                    self._issue('error','continuation_cycle',tr('storage.repository.ciclu_in_lantul_cerintelor'),None,node.id);break
                 visited.add(current);current=self.nodes[current].continuation_of
         for node in self.nodes.values():
             seen = {node.id}
             cur = node.parent_id
             while cur is not None and cur in self.nodes:
                 if cur in seen:
-                    self._issue("error", "parent_cycle", f"Ciclu în ierarhie la '{node.title}'.", None, node.id)
+                    self._issue("error", "parent_cycle", tr('storage.repository.ciclu_in_ierarhie_la', node_title=node.title), None, node.id)
                     break
                 seen.add(cur)
                 cur = self.nodes[cur].parent_id
@@ -346,13 +348,13 @@ class WorkspaceRepository:
         with self._mutex:
             self._require_writable()
             if node.id in self.nodes:
-                raise ValidationError(f"UUID deja folosit: {node.id}")
+                raise ValidationError(tr('extra.storage.repository.uuid_deja_folosit', node_id=node.id))
             if node.parent_id is not None and node.parent_id not in self.nodes:
-                raise NotFoundError(f"Părintele {node.parent_id} nu există.")
+                raise NotFoundError(tr('storage.repository.parintele_nu_exista', node_parent_id=node.parent_id))
             target = self.nodes_dir / physical_dirname(node.title, node.id)
             ensure_path_fits(target)
             if target.exists():
-                raise StorageError(f"Directorul există deja: {target.name}")
+                raise StorageError(tr('storage.repository.directorul_exista_deja', target_name=target.name))
             self.mark_index_dirty()
             try:
                 target.mkdir(parents=True)
@@ -364,7 +366,7 @@ class WorkspaceRepository:
             except StorageError:
                 raise
             except OSError as exc:
-                raise StorageError(f"Crearea nodului a eșuat: {exc}") from exc
+                raise StorageError(tr('storage.repository.crearea_nodului_a_esuat', exc=exc)) from exc
             self.generation += 1
             self.aggregate_generation += 1
             self.nodes[node.id] = node
@@ -379,10 +381,10 @@ class WorkspaceRepository:
         if recorded is None:
             return
         if not path.exists():
-            raise ExternalModificationError(f"{name} a fost șters din afara aplicației ({path.parent.name}).")
+            raise ExternalModificationError(tr('storage.repository.a_fost_sters_din_afara_aplicatiei', name=name, path_parent_name=path.parent.name))
         if sha256_file(path) != recorded:
             raise ExternalModificationError(
-                f"{name} din '{path.parent.name}' a fost modificat din afara aplicației. Reîncarcă workspace-ul."
+                tr('storage.repository.din_a_fost_modificat_din_afara_aplicatiei_reincarca_workspace_ul', name=name, path_parent_name=path.parent.name)
             )
 
     def write_node(self, new: Node) -> Node:
@@ -391,7 +393,7 @@ class WorkspaceRepository:
             self._require_writable()
             old = self.nodes.get(new.id)
             if old is None:
-                raise NotFoundError(f"Nodul {new.id} nu există.")
+                raise NotFoundError(tr('storage.repository.nodul_nu_exista', new_id=new.id))
             path = self.dirs[new.id] / "node.json"
             self._check_unmodified(new.id, "node.json", path)
             stored = new.model_copy(update={"revision": old.revision + 1, "updated_at": utcnow()})

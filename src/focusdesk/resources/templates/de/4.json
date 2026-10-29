@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "79844992-2e0f-528c-aa45-9ecfc712e10d",
+  "revision": 1,
+  "name": "Einfache Aufgabe",
+  "variables": [],
+  "items": [
+    {
+      "key": "root",
+      "parent": null,
+      "kind": "task",
+      "title": "Neue Aufgabe",
+      "description": "## Ziel\n\n## Kontext\n\n## Schritte\n\n- \n\n## Erwartetes Ergebnis\n\n## Abschlusskriterien\n",
+      "checklist": [],
+      "priority": null,
+      "tags": [],
+      "estimated_minutes": null,
+      "next_action": null,
+      "depends_on": [],
+      "related": []
+    }
+  ]
+}

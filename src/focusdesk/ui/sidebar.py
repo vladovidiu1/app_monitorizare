@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
@@ -15,8 +17,8 @@ if TYPE_CHECKING:
     from .app import FocusDeskApp
 
 SMART_VIEWS = [
-    ("today", "Astăzi"), ("tasks", "Proiecte și taskuri"),
-    ("calendar", "Calendar"), ("activity", "Activitate"),
+    ("today", tr('ui.app.astazi')), ("tasks", tr('ui.app.proiecte_si_taskuri')),
+    ("calendar", tr('ui.outlook_ui.calendar')), ("activity", tr('ui.activity_page.activitate')),
 ]
 
 
@@ -32,7 +34,7 @@ class Sidebar(ttk.Frame):
         self.app = app
         self._suppress = False
 
-        ttk.Label(self, text="NAVIGARE", style="Sidebar.TLabel").pack(anchor="w", padx=14, pady=(14, 4))
+        ttk.Label(self, text=tr('extra.ui.sidebar.navigare'), style="Sidebar.TLabel").pack(anchor="w", padx=14, pady=(14, 4))
         self.views = ttk.Treeview(self, show="tree", selectmode="browse", height=len(SMART_VIEWS), style="Nav.Treeview")
         self.views.pack(fill="x", padx=8)
         for key, label in SMART_VIEWS:
@@ -40,21 +42,21 @@ class Sidebar(ttk.Frame):
         self.views.bind("<<TreeviewSelect>>", self._on_view_select)
         head = ttk.Frame(self, style="Sidebar.TFrame")
         head.pack(fill="x", padx=14, pady=(16, 4))
-        ttk.Label(head, text="PROIECTE ȘI CATEGORII", style="Sidebar.TLabel").pack(side="left")
+        ttk.Label(head, text=tr('ui.sidebar.proiecte_si_categorii'), style="Sidebar.TLabel").pack(side="left")
         wrap = ttk.Frame(self)
         wrap.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         self.hierarchy_head = head
         self.hierarchy_wrap = wrap
         secondary = ttk.Frame(self)
         secondary.pack(side="bottom",fill="x",padx=10,pady=8)
-        ttk.Button(secondary,text="Arhivă",image=icon(self,"archive"),compound="left",command=lambda:app.show_view("archive")).pack(fill="x")
-        ttk.Button(secondary,text="Setări",image=icon(self,"settings"),compound="left",command=app.open_settings).pack(fill="x",pady=2)
-        data_button = ttk.Menubutton(secondary,text="Date și backup")
+        ttk.Button(secondary,text=tr('ui.app.arhiva'),image=icon(self,"archive"),compound="left",command=lambda:app.show_view("archive")).pack(fill="x")
+        ttk.Button(secondary,text=tr('ui.settings_dialog.setari'),image=icon(self,"settings"),compound="left",command=app.open_settings).pack(fill="x",pady=2)
+        data_button = ttk.Menubutton(secondary,text=tr('ui.sidebar.date_si_backup'))
         data_button.pack(fill="x",pady=2)
         data_menu = tk.Menu(data_button,tearoff=False)
-        for label,command in (("Coș…",app.open_trash),("Backup metadate",lambda:app.backup_now(False)),
-                              ("Backup complet",lambda:app.backup_now(True)),("Restaurează backup…",app.restore_backup),
-                              ("Verifică integritatea…",app.show_issues)):
+        for label,command in ((tr('ui.app.cos'),app.open_trash),(tr('ui.sidebar.backup_metadate'),lambda:app.backup_now(False)),
+                              (tr('ui.sidebar.backup_complet'),lambda:app.backup_now(True)),(tr('ui.sidebar.restaureaza_backup'),app.restore_backup),
+                              (tr('ui.sidebar.verifica_integritatea'),app.show_issues)):
             data_menu.add_command(label=label,command=command)
         data_button.configure(menu=data_menu)
         self.tree = ttk.Treeview(wrap, show="tree", selectmode="browse", style="Dense.Treeview")

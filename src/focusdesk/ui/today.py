@@ -1,4 +1,6 @@
 """Compact persistent daily cockpit; timer controls reflect real timer state."""
+
+from ..i18n import tr
 from datetime import date
 from tkinter import ttk
 from ..domain.labels import STATUS_LABELS, format_seconds, session_status_text
@@ -7,10 +9,7 @@ from .dialogs import NodePickerDialog
 from .design import C, icon
 from .formats import format_date
 
-_DAYS=['luni','marți','miercuri','joi','vineri','sâmbătă','duminică']
-_MONTHS=['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie']
-def long_date(day:date):
-    return f'{_DAYS[day.weekday()].capitalize()}, {day.day} {_MONTHS[day.month-1]} {day.year}'
+from ..i18n import long_date
 
 
 class TodayPage(ttk.Frame):
@@ -18,18 +17,18 @@ class TodayPage(ttk.Frame):
         super().__init__(parent);self.app=app
         self.sf=ScrollFrame(self);self.sf.pack(fill='both',expand=True)
         f=self.sf.inner;f.configure(style='Page.TFrame');self.sf.canvas.configure(background=C.canvas)
-        self.heading=ttk.Label(f,text='Astăzi',style='Page.Title.TLabel');self.heading.pack(anchor='w',padx=16,pady=(14,2))
+        self.heading=ttk.Label(f,text=tr('ui.app.astazi'),style='Page.Title.TLabel');self.heading.pack(anchor='w',padx=16,pady=(14,2))
         self.day_label=ttk.Label(f,style='Page.Muted.TLabel');self.day_label.pack(anchor='w',padx=16)
         active=ttk.Frame(f,padding=10);active.pack(fill='x',padx=16,pady=10)
         self.timer_label=ttk.Label(active,style='Section.TLabel',wraplength=700);self.timer_label.pack(anchor='w')
         actions=ttk.Frame(active);actions.pack(fill='x',pady=(6,0));self.timer_actions=actions
         self.timer_toggle=ttk.Button(actions,command=app.toggle_pause);self.timer_toggle.pack(side='left')
-        self.stop_btn=ttk.Button(actions,text='Încheie sesiunea…',image=icon(self,'stop'),compound='left',command=app.stop_session);self.stop_btn.pack(side='left',padx=6)
-        self.open_timer=ttk.Button(actions,text='Deschide taskul activ',command=app.resume_work);self.open_timer.pack(side='left')
+        self.stop_btn=ttk.Button(actions,text=tr('ui.task_space.incheie_sesiunea'),image=icon(self,'stop'),compound='left',command=app.stop_session);self.stop_btn.pack(side='left',padx=6)
+        self.open_timer=ttk.Button(actions,text=tr('ui.today.deschide_taskul_activ'),command=app.resume_work);self.open_timer.pack(side='left')
         row=ttk.Frame(f,style='Page.TFrame');row.pack(fill='x',padx=16,pady=(6,4))
-        self.priorities_label=ttk.Label(row,text='Prioritățile zilei',style='Section.TLabel');self.priorities_label.pack(side='left')
-        ttk.Button(row,text='Alege priorități…',command=self._pick_priority).pack(side='right')
-        self.priorities,pwrap=make_tree(f,[('title','Task',240),('status','Status',120),('due','Termen',100),('next','Următorul pas',300)],show_tree=True,height=3)
+        self.priorities_label=ttk.Label(row,text=tr('ui.today.prioritatile_zilei'),style='Section.TLabel');self.priorities_label.pack(side='left')
+        ttk.Button(row,text=tr('ui.today.alege_prioritati'),command=self._pick_priority).pack(side='right')
+        self.priorities,pwrap=make_tree(f,[('title',tr('ui.outlook_ui.task'),240),('status',tr('ui.tab_details.status'),120),('due',tr('ui.meetings.termen'),100),('next',tr('ui.tab_details.urmatorul_pas'),300)],show_tree=True,height=3)
         self.priorities.configure(style='Dense.Treeview')
         self.priorities.column('#0',width=28,minwidth=28,stretch=False)
         pwrap.pack(fill='x',padx=16)
@@ -38,10 +37,10 @@ class TodayPage(ttk.Frame):
         self.priority_empty=ttk.Label(f,style='Page.Muted.TLabel');self.priority_empty.pack(fill='x',padx=16)
         pbuttons=ttk.Frame(f,style='Page.TFrame');pbuttons.pack(fill='x',padx=16,pady=4)
         self.priority_start=SessionButton(pbuttons,app,lambda:self._selected(self.priorities));self.priority_start.pack(side='left')
-        ttk.Button(pbuttons,text='Deschide',command=lambda:self._open(self.priorities)).pack(side='left',padx=6)
-        ttk.Button(pbuttons,text='Scoate din priorități',command=self._unpin).pack(side='left')
-        ttk.Label(f,text='Rezervări și lucru azi',style='Section.TLabel').pack(anchor='w',padx=16,pady=(12,4))
-        self.sessions,swrap=make_tree(f,[('time','Interval',120),('title','Task',300),('status','Stare rezervare / lucru',120)],show_tree=True,height=5)
+        ttk.Button(pbuttons,text=tr('ui.user_guide.deschide'),command=lambda:self._open(self.priorities)).pack(side='left',padx=6)
+        ttk.Button(pbuttons,text=tr('ui.today.scoate_din_prioritati'),command=self._unpin).pack(side='left')
+        ttk.Label(f,text=tr('ui.today.rezervari_si_lucru_azi'),style='Section.TLabel').pack(anchor='w',padx=16,pady=(12,4))
+        self.sessions,swrap=make_tree(f,[('time',tr('ui.planning.interval'),120),('title',tr('ui.outlook_ui.task'),300),('status',tr('ui.today.stare_rezervare_lucru'),120)],show_tree=True,height=5)
         self.sessions.configure(style='Dense.Treeview')
         self.sessions.column('#0',width=28,minwidth=28,stretch=False)
         swrap.pack(fill='x',padx=16)
@@ -49,10 +48,10 @@ class TodayPage(ttk.Frame):
         self.sessions.bind('<<TreeviewSelect>>',lambda e:self.update_timer())
         self.session_empty=ttk.Label(f,style='Page.Muted.TLabel');self.session_empty.pack(fill='x',padx=16)
         sbuttons=ttk.Frame(f,style='Page.TFrame');sbuttons.pack(fill='x',padx=16,pady=4)
-        self.start_session_btn=ttk.Button(sbuttons,text='Începe rezervarea selectată',command=self._start_planned);self.start_session_btn.pack(side='left')
-        ttk.Button(sbuttons,text='Deschide Calendar',command=lambda:app.show_view('calendar')).pack(side='left',padx=6)
+        self.start_session_btn=ttk.Button(sbuttons,text=tr('ui.today.incepe_rezervarea_selectata'),command=self._start_planned);self.start_session_btn.pack(side='left')
+        ttk.Button(sbuttons,text=tr('ui.today.deschide_calendar'),command=lambda:app.show_view('calendar')).pack(side='left',padx=6)
         self.overdue_btn=ttk.Button(f,command=lambda:app.quick_tasks('overdue'));self.overdue_btn.pack(anchor='w',padx=16,pady=(12,10))
-        ttk.Button(f,text='Toate proiectele și taskurile',command=lambda:app.show_view('tasks')).pack(anchor='w',padx=16,pady=(0,12))
+        ttk.Button(f,text=tr('ui.today.toate_proiectele_si_taskurile'),command=lambda:app.show_view('tasks')).pack(anchor='w',padx=16,pady=(0,12))
         self._session_nodes={};self._planned_ids=set()
 
     def _selected(self,tv):
@@ -81,11 +80,11 @@ class TodayPage(ttk.Frame):
         selected=self.priorities.selection();self.priorities.delete(*self.priorities.get_children())
         nodes=q.pinned_today()
         self.priorities.configure(height=max(1,min(3,len(nodes))))
-        self.priorities_label.configure(text=f'Prioritățile zilei · {len(nodes)}/{app.ws.settings.max_today_priorities}')
-        for n in nodes:self.priorities.insert('','end',iid=n.id,image=node_icon(self,n),values=(n.title,STATUS_LABELS[n.status],format_date(q.due_day(n)),n.next_action or 'Adaugă următorul pas în Detalii'))
+        self.priorities_label.configure(text=tr('ui.today.prioritatile_zilei_2', len_nodes=len(nodes), app_ws_settings_max_today_priorities=app.ws.settings.max_today_priorities))
+        for n in nodes:self.priorities.insert('','end',iid=n.id,image=node_icon(self,n),values=(n.title,STATUS_LABELS[n.status],format_date(q.due_day(n)),n.next_action or tr('ui.today.adauga_urmatorul_pas_in_detalii')))
         keep=[s for s in selected if self.priorities.exists(s)]
         if keep or nodes:self.priorities.selection_set(keep or nodes[0].id)
-        self.priority_empty.configure(text='' if nodes else 'Nicio prioritate aleasă. Folosește „Alege priorități…” sau deschide lista de taskuri.')
+        self.priority_empty.configure(text='' if nodes else tr('ui.today.nicio_prioritate_aleasa_foloseste_alege_prioritati_sau_deschide_lista'))
         selected=self.sessions.selection();self.sessions.delete(*self.sessions.get_children());self._session_nodes={};self._planned_ids=set()
         planned=q.sessions_on(q.today())
         self.sessions.configure(height=max(1,min(6,len(planned))))
@@ -97,8 +96,8 @@ class TodayPage(ttk.Frame):
             self.sessions.insert('','end',iid=s.id,image=node_icon(self,n),values=(f'{s.start_at.astimezone(q.tz()):%H:%M}–{s.end_at.astimezone(q.tz()):%H:%M}',n.title,session_status_text(s,app.timer)))
         keep=[s for s in selected if self.sessions.exists(s)]
         if keep or self._session_nodes:self.sessions.selection_set(keep or next(iter(self._session_nodes)))
-        self.session_empty.configure(text='' if planned else 'Nicio rezervare azi. Programează timp din Calendar.')
-        self.overdue_btn.configure(text=f'{len(q.view_overdue())} taskuri restante · vezi și filtrează')
+        self.session_empty.configure(text='' if planned else tr('ui.today.nicio_rezervare_azi_programeaza_timp_din_calendar'))
+        self.overdue_btn.configure(text=tr('ui.today.taskuri_restante_vezi_si_filtreaza', len_q_view_overdue=len(q.view_overdue())))
         self.update_timer();self.sf.canvas.yview_moveto(scroll)
 
     def update_timer(self):
@@ -107,11 +106,11 @@ class TodayPage(ttk.Frame):
         if active:
             self.timer_actions.pack(fill='x',pady=(6,0))
             n=app.ws.nodes.get(t.node_id)
-            self.timer_label.configure(text=f'{"În lucru" if t.running else "În pauză"} · {n.title if n else "Task"} · {format_seconds(t.seconds)}')
+            self.timer_label.configure(text=tr('ui.today.timer_summary', in_lucru_if_t_running_else_in_pauza=tr('ui.session_ui.in_lucru') if t.running else tr('ui.session_ui.in_pauza'), n_title_if_n_else_task=n.title if n else tr('ui.outlook_ui.task'), format_seconds_t_seconds=format_seconds(t.seconds)))
         else:
             self.timer_actions.pack_forget()
-            self.timer_label.configure(text='Nicio sesiune de lucru pornită. Alege o prioritate și apasă Începe.')
-        self.timer_toggle.configure(image=icon(self,'pause' if active and t.running else 'play'),compound='left',text='Pauză' if active and t.running else 'Continuă',state='normal' if active and not t.recovered else 'disabled')
+            self.timer_label.configure(text=tr('ui.today.nicio_sesiune_de_lucru_pornita_alege_o_prioritate_si_apasa_incepe'))
+        self.timer_toggle.configure(image=icon(self,'pause' if active and t.running else 'play'),compound='left',text=tr('ui.session_ui.pauza') if active and t.running else tr('ui.session_ui.continua'),state='normal' if active and not t.recovered else 'disabled')
         self.stop_btn.configure(state='normal' if active and not t.recovered else 'disabled')
         self.open_timer.configure(state='normal' if active else 'disabled')
         self.start_session_btn.configure(state='disabled' if self._selected(self.sessions) not in self._planned_ids or app.ws.read_only else 'normal')
@@ -120,5 +119,5 @@ class TodayPage(ttk.Frame):
     def _pick_priority(self):
         ws=self.app.ws
         if ws.read_only:return
-        picked=NodePickerDialog(self,ws,'Alege prioritate pentru azi',exclude={n.id for n in self.app.q.pinned_today()},only_tasks=True).run()
+        picked=NodePickerDialog(self,ws,tr('ui.today.alege_prioritate_pentru_azi'),exclude={n.id for n in self.app.q.pinned_today()},only_tasks=True).run()
         if picked:self.app.set_pinned(picked,True)

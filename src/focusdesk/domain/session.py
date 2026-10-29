@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 from datetime import date, timezone
 from typing import Literal
 
@@ -64,7 +66,7 @@ class SessionRecord(_Base):
     @model_validator(mode="after")
     def _interval(self) -> "SessionRecord":
         if self.end_at <= self.start_at:
-            raise ValueError("sfarsitul sesiunii trebuie sa fie dupa inceput")
+            raise ValueError(tr('extra.domain.session.sfarsitul_sesiunii_trebuie_sa_fie_dupa_inceput'))
         return self
 
     @property
@@ -74,7 +76,7 @@ class SessionRecord(_Base):
     def set_interval(self, start, end) -> None:
         """Seteaza ambele capete deodata (validate_assignment ar refuza o stare intermediara invalida)."""
         if end <= start:
-            raise ValueError("sfarsitul sesiunii trebuie sa fie dupa inceput")
+            raise ValueError(tr('extra.domain.session.sfarsitul_sesiunii_trebuie_sa_fie_dupa_inceput'))
         self.__dict__["start_at"] = start.astimezone(timezone.utc)
         self.__dict__["end_at"] = end.astimezone(timezone.utc)
 
@@ -115,9 +117,9 @@ class RecurrenceTemplate(_Base):
     @model_validator(mode="after")
     def _check(self) -> "RecurrenceTemplate":
         if self.frequency == "weekly" and not self.weekdays:
-            raise ValueError("o regula saptamanala are nevoie de cel putin o zi")
+            raise ValueError(tr('extra.domain.session.o_regula_saptamanala_are_nevoie_de_cel_putin_o_zi'))
         if any(d < 0 or d > 6 for d in self.weekdays):
-            raise ValueError("zilele saptamanii sunt 0-6")
+            raise ValueError(tr('extra.domain.session.zilele_saptamanii_sunt_0_6'))
         return self
 
     def occurs_on(self, day: date) -> bool:

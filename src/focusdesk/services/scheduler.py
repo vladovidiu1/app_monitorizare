@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import os
 from dataclasses import dataclass
@@ -55,9 +57,7 @@ class CheckpointScheduler:
         late = now_local - scheduled > timedelta(minutes=LATE_AFTER_MINUTES)
         note = None
         if late:
-            note = (f"Ora programată {cfg.daily_time} a fost ratată (aplicația era oprită sau în repaus); "
-                    f"checkpoint creat la {now_local:%H:%M} cu starea curentă. Starea istorică din momentul "
-                    "în care aplicația era închisă nu poate fi reconstruită.")
+            note = (tr('services.scheduler.ora_programata_a_fost_ratata_aplicatia_era_oprita_sau_in_repaus_checkp', cfg_daily_time=cfg.daily_time, now_local=now_local))
         return ScheduleDecision(True, late, note)
 
     def sources(self) -> list[str]:

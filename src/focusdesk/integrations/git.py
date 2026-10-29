@@ -5,6 +5,8 @@ Fara `git add .`, push, reset, stash, checkout sau alte operatii automate. Argum
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 import os
 import shutil
@@ -51,18 +53,18 @@ def find_git() -> str | None:
 def _run(folder: Path, args: list[str], *, max_output: int = 2_000_000, timeout: int = TIMEOUT_S) -> str:
     exe = find_git()
     if exe is None:
-        raise GitError("Git nu a fost găsit în PATH. Proiectele fără Git funcționează complet cu checkpoint-uri.")
+        raise GitError(tr('integrations.git.git_nu_a_fost_gasit_in_path_proiectele_fara_git_functioneaza_complet_c'))
     env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_OPTIONAL_LOCKS="0", LC_ALL="C.UTF-8")
     try:
         res = subprocess.run([exe, "-C", str(folder), *args], capture_output=True, timeout=timeout, shell=False,
                              env=env, creationflags=CREATE_NO_WINDOW if sys.platform == "win32" else 0)
     except subprocess.TimeoutExpired as exc:
-        raise GitError(f"Git nu a răspuns în {timeout} s.") from exc
+        raise GitError(tr('integrations.git.git_nu_a_raspuns_in_s', timeout=timeout)) from exc
     except OSError as exc:
-        raise GitError(f"Git nu a putut fi pornit: {exc}") from exc
+        raise GitError(tr('extra.integrations.git.git_nu_a_putut_fi_pornit', exc=exc)) from exc
     if res.returncode != 0:
         msg = res.stderr.decode("utf-8", errors="replace").strip()
-        raise GitError(msg or f"git a ieșit cu codul {res.returncode}")
+        raise GitError(msg or tr('integrations.git.git_a_iesit_cu_codul', res_returncode=res.returncode))
     return res.stdout[:max_output].decode("utf-8", errors="replace")
 
 
@@ -78,7 +80,7 @@ def branch(folder: Path) -> str:
     try:
         return _run(folder, ["rev-parse", "--abbrev-ref", "HEAD"]).strip() or "?"
     except GitError:
-        return "(fără commit-uri)"
+        return tr('integrations.git.fara_commit_uri')
 
 
 def status(folder: Path) -> list[GitStatusEntry]:
@@ -121,15 +123,15 @@ def diff(folder: Path, path: str | None = None, *, max_bytes: int = 200_000) -> 
         _check_relpath(folder, path)
         args += ["--", path]
     out = _run(folder, args, max_output=max_bytes)
-    return out if out else "(Fără diferențe față de ultimul commit.)"
+    return out if out else tr('integrations.git.fara_diferente_fata_de_ultimul_commit')
 
 
 def _check_relpath(folder: Path, rel: str) -> None:
     p = Path(rel)
     if p.is_absolute() or ".." in p.parts or not rel.strip():
-        raise GitError(f"Cale invalidă pentru Git: {rel!r}")
+        raise GitError(tr('integrations.git.cale_invalida_pentru_git', rel=rel))
     if not is_within(folder, folder / p):
-        raise GitError(f"Cale în afara repository-ului: {rel!r}")
+        raise GitError(tr('integrations.git.cale_in_afara_repository_ului', rel=rel))
 
 
 def propose_message(task_title: str, summary: str | None = None) -> str:
@@ -143,9 +145,9 @@ def commit(folder: Path, message: str, files: list[str]) -> str:
     """Commit MANUAL doar pentru fisierele alese explicit; nu se foloseste `-A`/`.`/push/reset/stash/checkout."""
     message = message.strip()
     if not message:
-        raise GitError("Mesajul commit-ului este obligatoriu.")
+        raise GitError(tr('extra.integrations.git.mesajul_commit_ului_este_obligatoriu'))
     if not files:
-        raise GitError("Alege cel puțin un fișier pentru commit.")
+        raise GitError(tr('integrations.git.alege_cel_putin_un_fisier_pentru_commit'))
     for f in files:
         _check_relpath(folder, f)
     _run(folder, ["add", "--", *files])

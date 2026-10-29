@@ -7,6 +7,8 @@ E-mailul: `send_mail` trimite doar la cererea explicita a utilizatorului (dialog
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import logging
 from datetime import datetime, timezone
 
@@ -24,8 +26,7 @@ OL_TEXT = 1
 OL_NON_MEETING = 0
 PROP_SESSION = "FocusDeskSessionId"
 PROP_WORKSPACE = "FocusDeskWorkspaceId"
-NEW_OUTLOOK_HINT = ("Outlook.Application nu este disponibil. New Outlook nu suportă COM/Outlook Object Model; "
-                    "folosește Outlook Classic sau exportul .ics.")
+NEW_OUTLOOK_HINT = (tr('integrations.outlook_com.outlook_application_nu_este_disponibil_new_outlook_nu_suporta_com_outl'))
 
 
 def to_utc(dt: datetime) -> datetime:
@@ -81,7 +82,7 @@ class OutlookComBackend:
 
             info["pywin32"] = True
         except ImportError as exc:
-            info["error"] = f"pywin32 lipsește: {exc}"
+            info["error"] = tr('integrations.outlook_com.pywin32_lipseste', exc=exc)
             return info
         try:
             app, ns = self._connect()
@@ -250,8 +251,7 @@ class OutlookComBackend:
                 try:
                     mail.Attachments.Add(item.path)
                 except Exception as exc:
-                    raise RuntimeError(f"Outlook a refuzat atașamentul „{item.name}” ({item.path}): {exc}. "
-                                       "Mesajul nu a fost predat pentru trimitere sau deschis.") from exc
+                    raise RuntimeError(tr('integrations.outlook_com.outlook_a_refuzat_atasamentul_mesajul_nu_a_fost_predat_pentru_trimiter', item_name=item.name, item_path=item.path, exc=exc)) from exc
         except Exception:
             try:
                 mail.Close(1)  # olDiscard: discard only this incomplete, undisplayed MailItem.
@@ -262,15 +262,15 @@ class OutlookComBackend:
             try:
                 mail.Display(False)
             except Exception as exc:
-                raise MailHandoffUncertain(f"Outlook nu a confirmat deschiderea ciornei: {exc}") from exc
+                raise MailHandoffUncertain(tr('extra.integrations.outlook_com.outlook_nu_a_confirmat_deschiderea_ciornei', exc=exc)) from exc
             return "displayed"
         if not mail.Recipients.ResolveAll():
             bad = [str(r.Name) for r in mail.Recipients if not r.Resolved]
-            raise ValueError("Outlook nu a putut rezolva destinatarii: " + ", ".join(bad) + ". Nimic nu a fost trimis.")
+            raise ValueError(tr('extra.integrations.outlook_com.outlook_nu_a_putut_rezolva_destinatarii') + tr('extra.integrations.outlook_com.').join(bad) + tr('extra.integrations.outlook_com.nimic_nu_a_fost_trimis'))
         try:
             mail.Send()
         except Exception as exc:
-            raise MailHandoffUncertain(f"Outlook nu a confirmat predarea mesajului: {exc}") from exc
+            raise MailHandoffUncertain(tr('extra.integrations.outlook_com.outlook_nu_a_confirmat_predarea_mesajului', exc=exc)) from exc
         return "submitted"
 
     # ---- writing ----------------------------------------------------

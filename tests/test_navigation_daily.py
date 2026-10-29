@@ -78,8 +78,8 @@ def test_activity_uses_saved_seconds_once_and_separates_planned(ws):
 @pytest.mark.parametrize('view',['inbox','waiting','overdue','completed','Asistent','tree:old'])
 def test_old_navigation_preferences_are_safe(view):
     config=AppConfig(last_view=view,inspector_tab='Jurnal')
-    assert config.last_view=='tasks' and config.inspector_tab=='Activitate'
-    assert AppConfig(inspector_tab='Subtask-uri').inspector_tab=='Subtaskuri'
+    assert config.last_view=='tasks' and config.inspector_tab=='journal'
+    assert AppConfig(inspector_tab='Subtask-uri').inspector_tab=='subtasks'
 
 
 def test_four_destinations_and_task_tabs(ui):
@@ -141,7 +141,7 @@ def test_independent_to_project_subtask_timer_finish_reopen_archive(ui,monkeypat
     ui.ws.trash(child.id);ui.ws.restore(child.id)
     assert child.id in ui.ws.nodes
     ui.show_view('activity');ui.activity_page.period.set('Tot istoricul');ui.activity_page.refresh();wait_activity(ui)
-    assert ui.activity_page.tables['Sesiuni'].get_children()
+    assert ui.activity_page.tables['sessions'].get_children()
 
 
 def test_task_note_draft_obeys_selection_confirmation(ui,monkeypatch):

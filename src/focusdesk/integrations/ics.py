@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..i18n import tr
+
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -15,7 +17,7 @@ from ..storage.atomic import atomic_write_bytes
 from .calendar import AvailabilityResult, Capabilities, NotSupported
 
 PRODID = "-//FocusDesk//Sesiuni de lucru//RO"
-EXPORT_STATE_TEXT = "Exportat — necesită import în calendar"
+EXPORT_STATE_TEXT = tr('integrations.ics.exportat_necesita_import_in_calendar')
 
 
 def stable_uid(workspace_id: str, session_id: str) -> str:
@@ -61,14 +63,14 @@ class IcsExportProvider:
     """Nu citeste disponibilitatea si nu creeaza evenimente; produce doar fisiere .ics de importat manual."""
 
     name = "ics"
-    label = "Export ICS"
+    label = tr('integrations.ics.export_ics')
     capabilities = Capabilities()
 
     def get_availability(self, start: datetime, end: datetime) -> AvailabilityResult:
         return AvailabilityResult()
 
     def create_session(self, *a, **k):
-        raise NotSupported("Exportul ICS nu creează evenimente automat; importă fișierul în calendar.")
+        raise NotSupported(tr('integrations.ics.exportul_ics_nu_creeaza_evenimente_automat_importa_fisierul_in_calenda'))
 
     update_session = create_session
     cancel_session = create_session

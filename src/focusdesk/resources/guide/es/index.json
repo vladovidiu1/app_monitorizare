@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "chapters": [
+    {
+      "id": "introducere",
+      "file": "introducere.md"
+    },
+    {
+      "id": "primii-pasi",
+      "file": "primii-pasi.md"
+    },
+    {
+      "id": "interfata",
+      "file": "interfata.md"
+    },
+    {
+      "id": "astazi",
+      "file": "astazi.md"
+    },
+    {
+      "id": "organizare",
+      "file": "organizare.md"
+    },
+    {
+      "id": "descriere",
+      "file": "descriere.md"
+    },
+    {
+      "id": "sesiuni",
+      "file": "sesiuni.md"
+    },
+    {
+      "id": "calendar",
+      "file": "calendar.md"
+    },
+    {
+      "id": "intalniri",
+      "file": "intalniri.md"
+    },
+    {
+      "id": "activitate",
+      "file": "activitate.md"
+    },
+    {
+      "id": "fisiere",
+      "file": "fisiere.md"
+    },
+    {
+      "id": "email",
+      "file": "email.md"
+    },
+    {
+      "id": "cerinte",
+      "file": "cerinte.md"
+    },
+    {
+      "id": "sabloane",
+      "file": "sabloane.md"
+    },
+    {
+      "id": "versiuni",
+      "file": "versiuni.md"
+    },
+    {
+      "id": "siguranta",
+      "file": "siguranta.md"
+    },
+    {
+      "id": "setari",
+      "file": "setari.md"
+    },
+    {
+      "id": "scurtaturi",
+      "file": "scurtaturi.md"
+    },
+    {
+      "id": "probleme",
+      "file": "probleme.md"
+    }
+  ]
+}
